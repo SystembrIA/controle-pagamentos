@@ -185,6 +185,30 @@ tfoot td{padding:7px 10px;font-weight:700;background:#e8efff;}
 tfoot .lbl{color:#1e40af;text-align:right;font-size:.75rem;}
 tfoot .val{color:#1e40af;font-size:.92rem;text-align:right;}
 
+/* BUSCA */
+.busca-wrap{display:flex;align-items:center;gap:4px;flex:1;min-width:200px;max-width:340px;}
+.busca-wrap input{flex:1;border:1px solid #cbd5e1;border-radius:8px;padding:6px 10px;
+  font-size:.82rem;color:#1e293b;background:white;}
+.busca-wrap input:focus{outline:none;border-color:#1e40af;}
+
+.busca-panel{background:white;border-bottom:2px solid #e2e8f0;padding:10px 16px;
+  max-width:1600px;margin:0 auto;width:100%;max-height:420px;overflow-y:auto;}
+.busca-header{display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;font-size:.85rem;font-weight:700;color:#1e293b;}
+.busca-grupo{margin-bottom:12px;}
+.busca-data{font-size:.72rem;font-weight:700;color:#1e40af;text-transform:uppercase;
+  letter-spacing:.04em;margin-bottom:4px;padding:2px 8px;background:#eff6ff;
+  border-radius:6px;display:inline-block;}
+.busca-linha{display:flex;align-items:center;gap:8px;padding:5px 8px;
+  border-radius:8px;font-size:.8rem;border-bottom:1px solid #f1f5f9;}
+.busca-linha:hover{background:#f8faff;}
+.busca-emp{font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:20px;
+  background:#e8efff;color:#1e40af;white-space:nowrap;}
+.busca-forn{flex:1;font-weight:600;color:#1e293b;}
+.busca-ref{font-size:.72rem;color:#94a3b8;}
+.busca-val{font-weight:800;color:#059669;white-space:nowrap;}
+.busca-vazio{text-align:center;color:#94a3b8;font-size:.85rem;padding:20px;}
+
 /* ADD ROW */
 .add-row-btn{width:100%;padding:7px;text-align:center;border:none;background:#f8fafc;
   color:#94a3b8;font-size:.78rem;cursor:pointer;transition:background .15s;}
@@ -406,10 +430,10 @@ tfoot .val{color:#1e40af;font-size:.92rem;text-align:right;}
   }
   .mtb-label{font-size:.65rem;font-weight:700;text-transform:uppercase;
     letter-spacing:.06em;opacity:.75;margin-bottom:6px;}
-  .mtb-vals{display:flex;gap:0;justify-content:space-between;}
-  .mtb-item{display:flex;flex-direction:column;align-items:center;flex:1;}
-  .mtb-sub{font-size:.6rem;opacity:.7;margin-bottom:2px;}
-  .mtb-item span:last-child{font-size:.9rem;font-weight:800;white-space:nowrap;}
+  .mtb-vals{display:flex;gap:4px;justify-content:space-between;}
+  .mtb-item{display:flex;flex-direction:column;align-items:center;flex:1;min-width:0;}
+  .mtb-sub{font-size:.58rem;opacity:.7;margin-bottom:2px;white-space:nowrap;}
+  .mtb-item span:last-child{font-size:.75rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
 
   /* ocultar o card total-card dentro do saldo-grid em mobile (está no banner) */
   .total-card{display:none !important;}
@@ -438,16 +462,20 @@ tfoot .val{color:#1e40af;font-size:.92rem;text-align:right;}
   .empresa-header .emp-total{font-size:.82rem;}
   .empresa-header .btn-limpar{margin-left:auto;}
 
-  /* tabela mobile: sem scroll, só Fornecedor + Valor + Descrição */
+  /* tabela mobile: só Fornecedor + Valor */
   .contas-body{overflow-x:hidden;}
-  table{font-size:.78rem;min-width:unset;width:100%;}
+  table{font-size:.78rem;min-width:unset;width:100%;table-layout:fixed;}
   thead th{padding:5px 7px;font-size:.65rem;}
   td{padding:5px 7px;}
   .mob-hide{display:none !important;}
   .mob-show{display:table-cell !important;}
   /* no mobile: oculta input de valor, mostra texto formatado */
   input.val-edit{display:none !important;}
-  .val-print{display:inline !important;font-size:.78rem;font-weight:700;}
+  .val-print{display:inline !important;font-size:.78rem;font-weight:700;white-space:nowrap;}
+  /* larguras fixas mobile: Fornecedor flex, Valor fixo */
+  col.col-forn{width:auto;}
+  col.col-valor{width:90px;}
+  col.col-venc,col.col-metodo,col.col-desc,col.col-cat,col.col-acao{width:0 !important;max-width:0 !important;padding:0 !important;overflow:hidden !important;}
   /* descrição aparece abaixo do fornecedor como sublinha */
   .mob-desc-sub{
     display:block;
@@ -515,6 +543,19 @@ tfoot .val{color:#1e40af;font-size:.92rem;text-align:right;}
   <button class="btn btn-outline btn-sm btn-mobile-hide" onclick="document.getElementById('fileInput').click()"
     title="Nome do arquivo define a empresa. Ex: pizza.xlsx → PIZZA">📂 Upload planilha</button>
   <button class="btn btn-print btn-sm btn-mobile-hide" onclick="window.print()">🖨️ Imprimir</button>
+  <div class="busca-wrap btn-mobile-hide">
+    <input type="text" id="buscaInput" placeholder="🔍 Buscar fornecedor em todas as datas..." oninput="buscaAoDigitar()" autocomplete="off">
+    <button class="btn btn-outline btn-sm" onclick="limparBusca()" id="btnLimparBusca" style="display:none">✕</button>
+  </div>
+</div>
+
+<!-- PAINEL DE BUSCA -->
+<div id="buscaPanel" class="busca-panel" style="display:none">
+  <div class="busca-header">
+    <span id="buscaTitle">Resultados</span>
+    <button class="btn btn-outline btn-sm" onclick="limparBusca()">✕ Fechar</button>
+  </div>
+  <div id="buscaResultados"></div>
 </div>
 
 <!-- MAIN -->
@@ -1358,6 +1399,77 @@ function showUploadStatus(type,msg) {
   el.style.display='flex';
   el.textContent=msg;
   setTimeout(()=>{el.style.display='none';},8000);
+}
+
+// ══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+// BUSCA GLOBAL
+// ══════════════════════════════════════════════════════════
+function buscaAoDigitar() {
+  const q = document.getElementById('buscaInput').value.trim();
+  document.getElementById('btnLimparBusca').style.display = q ? '' : 'none';
+  if (q.length < 2) { document.getElementById('buscaPanel').style.display='none'; return; }
+  executarBusca(q);
+}
+
+function limparBusca() {
+  document.getElementById('buscaInput').value='';
+  document.getElementById('btnLimparBusca').style.display='none';
+  document.getElementById('buscaPanel').style.display='none';
+}
+
+function executarBusca(q) {
+  const termo = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const catLbl={motoboy:'Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',outro:'Outro'};
+
+  // agrupa resultados por data
+  const grupos = {};
+  for (const [dt, dia] of Object.entries(DB)) {
+    for (const emp of EMPRESAS) {
+      const contas = dia.contas[emp.key] || [];
+      for (const c of contas) {
+        const haystack = [c.desc||'', c.ref||'', c.categoria||'']
+          .join(' ').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+        if (!haystack.includes(termo)) continue;
+        if (!grupos[dt]) grupos[dt] = [];
+        grupos[dt].push({ emp, c });
+      }
+    }
+  }
+
+  const datas = Object.keys(grupos).sort().reverse();
+  const panel = document.getElementById('buscaPanel');
+  const res   = document.getElementById('buscaResultados');
+  const title = document.getElementById('buscaTitle');
+
+  if (datas.length === 0) {
+    res.innerHTML = `<div class="busca-vazio">Nenhum resultado para "<b>${esc(q)}</b>"</div>`;
+    title.textContent = 'Sem resultados';
+    panel.style.display = '';
+    return;
+  }
+
+  let total = 0;
+  let html = '';
+  for (const dt of datas) {
+    const [y,m,d] = dt.split('-');
+    html += `<div class="busca-grupo"><div class="busca-data">📅 ${d}/${m}/${y}</div>`;
+    for (const {emp, c} of grupos[dt]) {
+      total++;
+      html += `<div class="busca-linha">
+        <span class="busca-emp">${emp.emoji} ${emp.label}</span>
+        <span class="busca-forn">${esc(c.desc||'')}</span>
+        <span class="busca-ref">${esc(c.ref||'')}</span>
+        <span class="busca-val">${fmt(c.valor||0)}</span>
+        <span class="badge-cat cat-${c.cat||'out'}" style="font-size:.65rem">${catLbl[c.cat]||c.cat||''}</span>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  title.textContent = `🔍 "${q}" — ${total} resultado(s) em ${datas.length} data(s)`;
+  res.innerHTML = html;
+  panel.style.display = '';
 }
 
 // ══════════════════════════════════════════════════════════
