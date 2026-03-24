@@ -445,6 +445,9 @@ tfoot .val{color:#1e40af;font-size:.92rem;text-align:right;}
   td{padding:5px 7px;}
   .mob-hide{display:none !important;}
   .mob-show{display:table-cell !important;}
+  /* no mobile: oculta input de valor, mostra texto formatado */
+  input.val-edit{display:none !important;}
+  .val-print{display:inline !important;font-size:.78rem;font-weight:700;}
   /* descrição aparece abaixo do fornecedor como sublinha */
   .mob-desc-sub{
     display:block;
@@ -973,7 +976,7 @@ function renderContas(d) {
             <th>Vencimento</th>
             <th>Fornecedor</th>
             <th class="r">Valor</th>
-            <th class="c">Método</th>
+            <th class="c mob-hide">Método</th>
             <th class="col-desc-th mob-hide">Descrição</th>
             <th class="c col-cat-th mob-hide">Categoria</th>
             <th class="c no-print mob-hide">Ação</th>
@@ -1017,7 +1020,7 @@ function rowHTML(empKey,c,i) {
         onchange="editValor('${empKey}',${i},this.value)" onblur="editValor('${empKey}',${i},this.value)">
       <span class="val-print">${fmt(c.valor||0)}</span>
     </td>
-    <td class="c" style="white-space:nowrap"><span class="badge-cat ${catMap[c.cat]||'cat-out'}" style="white-space:nowrap">${catLbl[c.cat]||c.cat||''}</span></td>
+    <td class="c mob-hide" style="white-space:nowrap"><span class="badge-cat ${catMap[c.cat]||'cat-out'}" style="white-space:nowrap">${catLbl[c.cat]||c.cat||''}</span></td>
     <td class="col-desc-td mob-hide" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;font-size:.75rem;color:#475569">${esc(c.ref||'')}</td>
     <td class="c col-cat-td mob-hide" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.7rem;color:#64748b;max-width:80px">${esc(c.categoria||'')}</td>
     <td class="c no-print mob-hide">
