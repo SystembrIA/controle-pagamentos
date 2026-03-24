@@ -112,6 +112,10 @@ input[type=date]:focus{outline:none;border-color:#1e40af;}
 .total-card .mini-val{font-size:.95rem;font-weight:800;color:#6ee7b7;}
 .total-card-footer{display:none;}
 
+/* no card total: vermelho → laranja claro, verde → verde água (já ok) */
+.total-card .val-neg{color:#fcd34d !important;}  /* amarelo quente — contrasta no azul */
+.total-card .val-pos{color:#6ee7b7 !important;}  /* verde água — já estava ok */
+
 .val-neg{color:#dc2626 !important;}
 .val-pos{color:#059669 !important;}
 
@@ -260,14 +264,13 @@ tfoot .val{color:#1e40af;font-size:.92rem;text-align:right;}
     table-layout:fixed;
     border-collapse:collapse;
   }
-  /* Larguras das colunas — A4 retrato sem Descrição e Categoria */
-  /* Vencimento 15% | Fornecedor 50% | Método 15% | Valor 20% (espaço para R$ 1.000.000,00) */
+  /* Larguras das colunas — A4 retrato nova ordem: Venc|Forn|Valor|Metodo */
   col.col-venc   { width:15%;  }
-  col.col-forn   { width:50%;  }
-  col.col-desc   { width:0; display:none; }
-  col.col-metodo { width:15%;  }
-  col.col-cat    { width:0; display:none; }
+  col.col-forn   { width:45%;  }
   col.col-valor  { width:20%;  }
+  col.col-metodo { width:20%;  }
+  col.col-desc   { width:0; display:none; }
+  col.col-cat    { width:0; display:none; }
   col.col-acao   { width:0; visibility:hidden; }
 
   thead th{
@@ -960,35 +963,36 @@ function renderContas(d) {
           <colgroup>
             <col class="col-venc">
             <col class="col-forn">
-            <col class="col-desc">
-            <col class="col-metodo">
-            <col class="col-cat">
             <col class="col-valor">
+            <col class="col-metodo">
+            <col class="col-desc">
+            <col class="col-cat">
             <col class="col-acao">
           </colgroup>
           <thead><tr>
             <th>Vencimento</th>
             <th>Fornecedor</th>
-            <th class="col-desc-th mob-hide">Descrição</th>
-            <th class="c">Método</th>
-            <th class="c col-cat-th mob-hide">Categoria</th>
             <th class="r">Valor</th>
+            <th class="c">Método</th>
+            <th class="col-desc-th mob-hide">Descrição</th>
+            <th class="c col-cat-th mob-hide">Categoria</th>
             <th class="c no-print mob-hide">Ação</th>
           </tr></thead>
           <tbody id="tbody_${emp.key}">
             ${contas.map((c,i)=>rowHTML(emp.key,c,i)).join('')}
           </tbody>
           <tfoot>
-            <!-- linha de tela -->
+            <!-- linha de tela: Venc(1)+Forn(2) | Valor(3) | Método(4)+Desc(5)+Cat(6)+Ação(7) -->
             <tr class="no-print">
-              <td colspan="4" class="lbl mob-hide">Total Pendente →</td>
-              <td class="lbl mob-show" style="font-weight:700;color:#1e40af;text-align:left">Total</td>
-              <td class="val col-valor-td" colspan="3">${fmt(total-pago)}</td>
-            </tr>
-            <!-- linha de impressão: só 4 colunas visíveis (Venc, Forn, Método, Valor) -->
-            <tr class="print-only">
-              <td colspan="3" class="lbl">Total →</td>
+              <td colspan="2" class="lbl">Total</td>
               <td class="val col-valor-td">${fmt(total-pago)}</td>
+              <td colspan="4" class="lbl"></td>
+            </tr>
+            <!-- linha de impressão: Venc(1)+Forn(2) | Valor(3) | Método(4) -->
+            <tr class="print-only">
+              <td colspan="2" class="lbl">Total →</td>
+              <td class="val col-valor-td">${fmt(total-pago)}</td>
+              <td></td>
             </tr>
           </tfoot>
         </table>
@@ -1008,15 +1012,15 @@ function rowHTML(empKey,c,i) {
   return `<tr class="${st?'paid':''}" id="row_${empKey}_${i}">
     <td style="white-space:nowrap;overflow:hidden">${esc(venc)}</td>
     <td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px">${esc(c.desc||'')}<span class="mob-desc-sub">${esc(c.ref||'')}</span></td>
-    <td class="col-desc-td mob-hide" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;font-size:.75rem;color:#475569">${esc(c.ref||'')}</td>
-    <td class="c" style="white-space:nowrap"><span class="badge-cat ${catMap[c.cat]||'cat-out'}" style="white-space:nowrap">${catLbl[c.cat]||c.cat||''}</span></td>
-    <td class="c col-cat-td mob-hide" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.7rem;color:#64748b;max-width:80px">${esc(c.categoria||'')}</td>
     <td class="r col-valor-td" style="white-space:nowrap">
       <input class="val-edit" type="number" step="0.01" value="${(c.valor||0).toFixed(2)}"
         onchange="editValor('${empKey}',${i},this.value)" onblur="editValor('${empKey}',${i},this.value)">
       <span class="val-print">${fmt(c.valor||0)}</span>
     </td>
-    <td class="c no-print">
+    <td class="c" style="white-space:nowrap"><span class="badge-cat ${catMap[c.cat]||'cat-out'}" style="white-space:nowrap">${catLbl[c.cat]||c.cat||''}</span></td>
+    <td class="col-desc-td mob-hide" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;font-size:.75rem;color:#475569">${esc(c.ref||'')}</td>
+    <td class="c col-cat-td mob-hide" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.7rem;color:#64748b;max-width:80px">${esc(c.categoria||'')}</td>
+    <td class="c no-print mob-hide">
       <button class="btn btn-outline btn-sm" onclick="abrirEditConta('${empKey}',${i})">✏️</button>
     </td>
   </tr>`;
