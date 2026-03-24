@@ -148,8 +148,8 @@ th.r,td.r{text-align:right;}
 th.c,td.c{text-align:center;}
 tbody tr{border-bottom:1px solid #e2e8f0;transition:background .1s;}
 tbody tr:hover{background:#eff6ff;}
-tbody tr.paid{opacity:.45;}
-td{padding:6px 10px;vertical-align:middle;color:#1e293b !important;}
+tbody tr.paid{opacity:1;}
+tbody td{padding:6px 10px;vertical-align:middle;color:#1e293b !important;}
 td .desc-main{font-size:.8rem;font-weight:600;display:block;}
 td .desc-sub{font-size:.7rem;color:#94a3b8;display:block;margin-top:1px;}
 
@@ -180,11 +180,11 @@ input.val-edit:focus{outline:none;border-color:#1e40af;background:#eff6ff;}
 .print-only{display:none;}
 @media print { .print-only{display:table-row !important;} }
 
-tfoot td{padding:7px 10px;font-weight:700;background:#e8efff;}
+tfoot td{padding:7px 10px;font-weight:700;background:#e8efff;color:#1e40af !important;}
 .mob-show{display:none;}
-tfoot .lbl{color:#1e40af;text-align:right;font-size:.75rem;}
-tfoot tr td[colspan="7"]{text-align:right;color:#1e40af;background:#e8efff;}
-tfoot .val{color:#1e40af;font-size:.92rem;text-align:right;}
+tfoot .lbl{color:#1e40af !important;text-align:right;font-size:.75rem;}
+tfoot tr td[colspan="7"]{text-align:right;color:#1e40af !important;background:#e8efff;font-size:.92rem;}
+tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
 
 /* BUSCA */
 .busca-wrap{display:flex;align-items:center;gap:4px;flex:1;min-width:200px;max-width:340px;}
@@ -434,7 +434,7 @@ tfoot .val{color:#1e40af;font-size:.92rem;text-align:right;}
   .mtb-vals{display:flex;gap:4px;justify-content:space-between;}
   .mtb-item{display:flex;flex-direction:column;align-items:center;flex:1;min-width:0;}
   .mtb-sub{font-size:.58rem;opacity:.7;margin-bottom:2px;white-space:nowrap;}
-  .mtb-item span:last-child{font-size:1.15rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+  .mtb-item span:last-child{font-size:1rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
 
   /* ocultar o card total-card dentro do saldo-grid em mobile (está no banner) */
   .total-card{display:none !important;}
@@ -1017,14 +1017,14 @@ function renderContas(d) {
           <tfoot>
             <!-- linha de tela -->
             <tr class="no-print">
-              <td colspan="7" style="font-weight:700;color:#1e40af;text-align:right;white-space:nowrap">
-                Total &nbsp; ${fmt(total-pago)}
+              <td colspan="7" style="font-weight:700;color:#1e40af !important;text-align:right;white-space:nowrap;background:#e8efff;font-size:.92rem;">
+                Total &nbsp; ${fmt(total)}
               </td>
             </tr>
             <!-- linha de impressão: Venc(1)+Forn(2) | Valor(3) | Método(4) -->
             <tr class="print-only">
               <td colspan="2" class="lbl">Total →</td>
-              <td class="val col-valor-td">${fmt(total-pago)}</td>
+              <td class="val col-valor-td">${fmt(total)}</td>
               <td></td>
             </tr>
           </tfoot>
@@ -1138,10 +1138,10 @@ function atualizarRodape(empKey) {
   const pendente=total-pago;
   // atualiza linha de tela — pega o primeiro td da linha no-print
   const trTela=document.querySelector(`#sec_${empKey} tfoot tr.no-print`);
-  if (trTela) { const td=trTela.querySelector('td'); if(td) td.innerHTML='Total &nbsp; '+fmt(pendente); }
+  if (trTela) { const td=trTela.querySelector('td'); if(td) td.innerHTML='Total &nbsp; '+fmt(total); }
   // atualiza linha de impressão
   const tdPrint=document.querySelector(`#sec_${empKey} tfoot tr.print-only .val`);
-  if (tdPrint) tdPrint.textContent=fmt(pendente);
+  if (tdPrint) tdPrint.textContent=fmt(total);
   // atualiza total no cabeçalho da empresa
   const empTotal=document.querySelector(`#sec_${empKey} .emp-total`);
   if (empTotal) empTotal.textContent=fmt(total);
