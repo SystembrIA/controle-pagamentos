@@ -9,6 +9,20 @@
 <meta http-equiv="Expires" content="0">
 <title>💳 Controle de Pagamento Diário</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyDayNUFLVZWI8Ph5K3XV5KRbG5uvEvlGvY",
+  authDomain: "pagamento-diario-f3eba.firebaseapp.com",
+  databaseURL: "https://pagamento-diario-f3eba-default-rtdb.firebaseio.com",
+  projectId: "pagamento-diario-f3eba",
+  storageBucket: "pagamento-diario-f3eba.firebasestorage.app",
+  messagingSenderId: "213871083183",
+  appId: "1:213871083183:web:67ade49c58d05027969e5a"
+});
+const fbDB = firebase.database();
+</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1e293b;min-height:100vh;}
@@ -689,11 +703,11 @@ function fmtData(v) {
 // ══════════════════════════════════════════════════════════
 // ESTADO
 // ══════════════════════════════════════════════════════════
+// Firebase já inicializado acima
 let DB = {};
-let cloudRecords = {};
 let diaAtual = null;
 let editIdx = null;
-const TABLE = 'pagamentos_dias';
+let _fbListener = null;
 
 // ══════════════════════════════════════════════════════════
 // SYNC BAR
@@ -708,29 +722,8 @@ function setSyncBar(type, msg) {
 }
 
 // ══════════════════════════════════════════════════════════
-// NUVEM
+// FIREBASE — NUVEM TEMPO REAL
 // ══════════════════════════════════════════════════════════
-async function carregarDadosNuvem() {
-  try {
-    setSyncBar('','Carregando...');
-    const resp = await fetch(`tables/${TABLE}?limit=200`);
-    if (!resp.ok) throw new Error('HTTP '+resp.status);
-    const json = await resp.json();
-    for (const row of (json.data||[])) {
-      const dt = row.data; if (!dt) continue;
-      cloudRecords[dt] = row.id;
-      try { DB[dt] = { saldos:JSON.parse(row.saldos||'{}'), contas:JSON.parse(row.contas||'{}') }; }
-      catch(e){ DB[dt]={saldos:{},contas:{}}; }
-    }
-    preencherHistorico();
-    setSyncBar('ok',`${(json.data||[]).length} dia(s) carregado(s)`);
-  } catch(e) {
-    setSyncBar('err','Offline — usando dados locais');
-    try { DB=JSON.parse(localStorage.getItem('pagDB_v3')||'{}'); } catch(x){DB={};}
-    preencherHistorico();
-  }
-}
-
 function preencherHistorico() {
   for (const [dt,saldos] of Object.entries(HIST)) {
     if (!DB[dt]) DB[dt]={saldos:{},contas:{}};
@@ -738,23 +731,63 @@ function preencherHistorico() {
   }
 }
 
+async function carregarDadosNuvem() {
+  setSyncBar('','Conectando ao Firebase...');
+  return new Promise(resolve => {
+    fbDB.ref('pagamentos').once('value')
+      .then(snap => {
+        const data = snap.val() || {};
+        for (const [dt, val] of Object.entries(data)) {
+          DB[dt] = { saldos: val.saldos||{}, contas: val.contas||{} };
+        }
+        preencherHistorico();
+        setSyncBar('ok', `${Object.keys(data).length} dia(s) carregado(s)`);
+        resolve();
+      })
+      .catch(() => {
+        setSyncBar('err','Offline — usando dados locais');
+        try { DB=JSON.parse(localStorage.getItem('pagDB_v3')||'{}'); } catch(x){DB={};}
+        preencherHistorico();
+        resolve();
+      });
+  });
+}
+
+// Listener em tempo real no dia selecionado
+// Qualquer alteração feita em outro dispositivo aparece instantaneamente
+function ativarListenerDia(dt) {
+  if (_fbListener) {
+    fbDB.ref('pagamentos/'+_fbListener).off('value');
+    _fbListener = null;
+  }
+  _fbListener = dt;
+  fbDB.ref('pagamentos/'+dt).on('value', snap => {
+    const val = snap.val();
+    if (!val) return;
+    const remoto = JSON.stringify({saldos:val.saldos||{},contas:val.contas||{}});
+    const local  = JSON.stringify({saldos:DB[dt]?.saldos||{},contas:DB[dt]?.contas||{}});
+    if (remoto !== local) {
+      DB[dt] = { saldos: val.saldos||{}, contas: val.contas||{} };
+      if (diaAtual === dt) renderTudo();
+      setSyncBar('ok','🔄 Atualizado em tempo real');
+    }
+  });
+}
+
 async function salvarNuvem() {
   if (!diaAtual) return;
   const d = getDia(diaAtual);
   setSyncBar('saving','Salvando...');
   try {
-    const payload = { data:diaAtual, saldos:JSON.stringify(d.saldos||{}), contas:JSON.stringify(d.contas||{}) };
-    const method = cloudRecords[diaAtual] ? 'PUT' : 'POST';
-    const url = cloudRecords[diaAtual] ? `tables/${TABLE}/${cloudRecords[diaAtual]}` : `tables/${TABLE}`;
-    const resp = await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    if (!resp.ok) throw new Error('HTTP '+resp.status);
-    const json = await resp.json();
-    cloudRecords[diaAtual] = json.id;
-    localStorage.setItem('pagDB_v3',JSON.stringify(DB));
+    await fbDB.ref('pagamentos/'+diaAtual).set({
+      saldos: d.saldos || {},
+      contas: d.contas || {}
+    });
+    localStorage.setItem('pagDB_v3', JSON.stringify(DB));
     setSyncBar('ok','Salvo ✓');
   } catch(e) {
-    setSyncBar('err','Erro ao salvar');
-    localStorage.setItem('pagDB_v3',JSON.stringify(DB));
+    setSyncBar('err','Erro ao salvar — verifique conexão');
+    localStorage.setItem('pagDB_v3', JSON.stringify(DB));
   }
 }
 
@@ -798,6 +831,7 @@ function carregarDia() {
   if (!dt) return;
   diaAtual = dt;
   getDia(dt);
+  ativarListenerDia(dt);
   if (HIST[dt] && !Object.values(DB[dt].saldos||{}).some(v=>v>0))
     DB[dt].saldos={...HIST[dt]};
   const temSaldo = Object.values(DB[dt].saldos||{}).some(v=>v>0);
@@ -1335,6 +1369,6 @@ function toast(msg,duration=3000) {
   clearTimeout(t._t); t._t=setTimeout(()=>{t.style.display='none';},duration);
 }
 </script>
-<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+<script src="https://www.genspark.ai/sandbox_inspect.js"></script><script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
