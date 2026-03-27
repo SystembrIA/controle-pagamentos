@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -110,6 +111,7 @@ input[type=date]:focus{outline:none;border-color:#1e40af;}
 .total-card .saldo-ini{color:white;font-size:.95rem;font-weight:800;}
 .total-card .saldo-mini{border-color:rgba(255,255,255,.2);}
 .total-card .mini-val{font-size:.95rem;font-weight:800;color:#6ee7b7;}
+.total-card .mini-note{font-size:.72rem;font-weight:700;opacity:.78;white-space:nowrap;}
 .total-card-footer{display:none;}
 
 /* no card total: vermelho → laranja claro, verde → verde água (já ok) */
@@ -434,7 +436,8 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
   .mtb-vals{display:flex;gap:4px;justify-content:space-between;}
   .mtb-item{display:flex;flex-direction:column;align-items:center;flex:1;min-width:0;}
   .mtb-sub{font-size:.58rem;opacity:.7;margin-bottom:2px;white-space:nowrap;}
-  .mtb-item span:last-child{font-size:1rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+  .mtb-value{font-size:1rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+  .mtb-extra{font-size:.58rem !important;font-weight:700 !important;opacity:.82;margin-top:2px;}
 
   /* ocultar o card total-card dentro do saldo-grid em mobile (está no banner) */
   .total-card{display:none !important;}
@@ -556,7 +559,7 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
     <div class="mtb-vals">
       <span class="mtb-item"><span class="mtb-sub">Saldo Inicial</span><span id="mtbIni">—</span></span>
       <span class="mtb-item"><span class="mtb-sub">A Pagar</span><span id="mtbPagar" style="color:#fca5a5">—</span></span>
-      <span class="mtb-item"><span class="mtb-sub">Saldo Final</span><span id="mtbFinal">—</span></span>
+      <span class="mtb-item"><span class="mtb-sub">Saldo Final</span><span id="mtbFinal" class="mtb-value">—</span><span id="mtbEntreContas" class="mtb-extra">Entre Contas: —</span></span>
     </div>
   </div>
 
@@ -857,6 +860,19 @@ function getDia(dt) {
 function getContas(dt,empKey) {
   const d=getDia(dt); if (!d.contas[empKey]) d.contas[empKey]=[]; return d.contas[empKey];
 }
+function normTextoBusca(str) {
+  return String(str||'').trim().toUpperCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/\s+/g,' ');
+}
+function isEntreContas(conta) {
+  return /^ENTRE CONTAS\b/.test(normTextoBusca(conta?.desc||''));
+}
+function somarEntreContas(d) {
+  return Object.values(d.contas||{}).flat().reduce((s,conta)=>{
+    return s + (isEntreContas(conta) ? (Number(conta?.valor)||0) : 0);
+  },0);
+}
 
 // ══════════════════════════════════════════════════════════
 // INIT
@@ -919,6 +935,7 @@ function fmt(v){
 function renderSaldos(d) {
   const grid=document.getElementById('saldoGrid');
   let totalIni=0,totalPagarSemService=0,totalPagarService=0;
+  const totalEntreContas=somarEntreContas(d);
   let html='';
   for (const emp of EMPRESAS) {
     const ini=d.saldos[emp.key]||0;
@@ -942,12 +959,14 @@ function renderSaldos(d) {
   // totalFinal  = saldo inicial - apenas empresas sem service (liquido real)
   const totalPagar=totalPagarSemService+totalPagarService;
   const totalFinal=totalIni-totalPagarSemService;
+  const totalFinalAjustado=totalFinal+totalEntreContas;
   html+=`<div class="total-card">
     <div class="emp-name">💰 TOTAL GERAL</div>
     <div class="saldo-ini">${fmt(totalIni)}</div>
     <div class="saldo-mini">
       <div class="mini-val" style="color:#fca5a5">-${fmt(totalPagar)}</div>
-      <div class="mini-val">${fmt(totalFinal)}</div>
+      <div class="mini-val ${totalFinalAjustado<0?'val-neg':'val-pos'}">${fmt(totalFinalAjustado)}</div>
+      <div class="mini-note">Entre Contas: +${fmt(totalEntreContas)}</div>
     </div>
     <div class="total-card-footer">
       <button class="btn btn-print btn-sm" onclick="window.print()">🖨️ Imprimir</button>
@@ -963,8 +982,10 @@ function renderSaldos(d) {
     document.getElementById('mtbIni').textContent=fmt(totalIni);
     document.getElementById('mtbPagar').textContent='-'+fmt(totalPagar);
     const el=document.getElementById('mtbFinal');
-    el.textContent=fmt(totalFinal);
-    el.style.color=totalFinal<0?'#fca5a5':'#6ee7b7';
+    el.textContent=fmt(totalFinalAjustado);
+    el.style.color=totalFinalAjustado<0?'#fca5a5':'#6ee7b7';
+    const extra=document.getElementById('mtbEntreContas');
+    if(extra) extra.textContent=`Entre Contas: +${fmt(totalEntreContas)}`;
   }
 }
 
