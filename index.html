@@ -171,12 +171,9 @@ input.val-edit:focus{outline:none;border-color:#1e40af;background:#eff6ff;}
 .st-pend{background:#fef3c7;color:#92400e;}
 .st-pago{background:#dcfce7;color:#166534;}
 
-/* no-print: oculta na impressão */
 @media print { .no-print{display:none !important;} }
-/* val-print: só aparece na impressão */
 .val-print{display:none;}
 @media print { .val-print{display:block;font-size:8px;font-weight:700;text-align:right;} }
-/* print-only: oculta na tela, aparece só na impressão */
 .print-only{display:none;}
 @media print { .print-only{display:table-row !important;} }
 
@@ -236,9 +233,7 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
   padding:10px 16px;border-radius:10px;font-size:.84rem;font-weight:500;
   display:none;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3);}
 
-/* ══════════════════════════════════════
-   IMPRESSÃO
-══════════════════════════════════════ */
+/* IMPRESSÃO */
 @media print {
   @page { margin: 8mm 10mm; size: A4 portrait; }
 
@@ -256,7 +251,6 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
 
   .main{padding:0;}
 
-  /* cada empresa numa página separada */
   .empresa-section{
     page-break-before:always;
     page-break-inside:avoid;
@@ -266,11 +260,8 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
     border-radius:0;
   }
   .empresa-section:first-of-type{page-break-before:auto;}
-
-  /* oculta empresas sem contas na impressão */
   .empresa-section.sem-contas{display:none !important;}
 
-  /* header da empresa */
   .empresa-header{
     padding:4px 10px;
     border-bottom:1px solid #cbd5e1;
@@ -282,14 +273,12 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
   .empresa-header .emp-count{font-size:8px;}
   .empresa-header .emp-total{font-size:9px;}
 
-  /* TABELA: layout fixo com larguras proporcionais */
   table{
     font-size:10px;
     width:100%;
     table-layout:fixed;
     border-collapse:collapse;
   }
-  /* Larguras das colunas — A4 retrato nova ordem: Venc|Forn|Valor|Metodo */
   col.col-venc   { width:15%;  }
   col.col-forn   { width:45%;  }
   col.col-valor  { width:20%;  }
@@ -305,7 +294,6 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
     overflow:hidden !important;
     text-overflow:ellipsis !important;
   }
-  /* TODAS as células: uma linha só, sem exceção */
   td, td *{
     padding:2px 4px;
     white-space:nowrap !important;
@@ -315,14 +303,10 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
     display:revert;
     vertical-align:middle;
   }
-  /* spans dentro de td: inline, sem quebra */
   td span { display:inline !important; }
   tfoot td, tfoot td *{padding:3px 5px;font-size:9px;white-space:nowrap !important;font-weight:700;}
-
-  /* valor inline na impressão */
   .val-print{font-size:10px;font-weight:700;text-align:right;display:inline !important;}
 
-  /* saldo cards: linha horizontal lado a lado, compactos */
   .saldo-grid{
     display:flex !important;
     flex-direction:row !important;
@@ -352,7 +336,6 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
   .edit-saldo-btn{display:none !important;}
   .total-card-footer{display:none !important;}
 
-  /* FORÇA UMA ÚNICA LINHA EM TODAS AS CÉLULAS SEM EXCEÇÃO */
   table, thead, tbody, tfoot, tr, th, td {
     white-space: nowrap !important;
     overflow: hidden !important;
@@ -361,14 +344,12 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
     word-break: keep-all !important;
     word-wrap: normal !important;
   }
-  /* Remove qualquer elemento filho que possa causar quebra */
   td span, td div {
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     display: inline !important;
   }
-  /* Badge de categoria: inline, sem quebra */
   .badge-cat {
     display: inline !important;
     white-space: nowrap !important;
@@ -376,16 +357,12 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
     padding: 1px 3px !important;
   }
 
-  /* ── Ocultar colunas Descrição e Categoria na impressão ── */
   th.col-desc-th, td.col-desc-td,
   th.col-cat-th,  td.col-cat-td  { display:none !important; }
-  /* na impressão, mob-hide não deve ocultar nada */
   .mob-hide { display:revert !important; }
   .mob-show { display:none !important; }
-  /* sublinha de descrição mobile: oculta na impressão */
   .mob-desc-sub { display:none !important; }
 
-  /* ── Coluna Valor: NUNCA cortar — regra com máxima especificidade ── */
   td.col-valor-td,
   td.col-valor-td *,
   tfoot td.col-valor-td {
@@ -396,12 +373,10 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
   }
 }
 
-/* ── Banner de total mobile (oculto no desktop) ── */
+/* Banner mobile */
 .mobile-total-banner{display:none;}
 
-/* ══════════════════════════════════════
-   MOBILE — otimizado para celular
-══════════════════════════════════════ */
+/* MOBILE */
 @media(max-width:768px){
   .header{padding:10px 14px;}
   .header h1{font-size:1rem;}
@@ -477,9 +452,7 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
   #toast{right:12px;left:12px;bottom:16px;text-align:center;}
 
   .section-title{font-size:.72rem;}
-
   .add-row-btn{padding:10px;font-size:.8rem;}
-
   .btn-sm{padding:4px 9px;font-size:.7rem;}
 }
 </style>
@@ -541,7 +514,7 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
     <div class="mtb-vals">
       <span class="mtb-item"><span class="mtb-sub">Saldo Inicial</span><span id="mtbIni">—</span></span>
       <span class="mtb-item"><span class="mtb-sub">A Pagar</span><span id="mtbPagar" style="color:#fca5a5">—</span></span>
-      <span class="mtb-item"><span class="mtb-sub">Saldo Final</span><span id="mtbFinal" class="mtb-value">—</span><span id="mtbEntreContas" class="mtb-extra">Entre Contas: —</span></span>
+      <span class="mtb-item"><span class="mtb-sub">Saldo Final</span><span id="mtbFinal" class="mtb-value">—</span><span id="mtbEntreContas" class="mtb-extra"></span></span>
     </div>
   </div>
 
@@ -762,44 +735,56 @@ function preencherHistorico() {
 async function carregarDadosNuvem() {
   setSyncBar('','Conectando ao Firebase...');
   return new Promise(resolve => {
-    let finalizado = false;
+    let concluido = false;
 
-    function concluir() {
-      if (finalizado) return;
-      finalizado = true;
+    function finalizar() {
+      if (concluido) return;
+      concluido = true;
       resolve();
     }
 
-    const timer = setTimeout(() => {
-      if (finalizado) return;
+    const timeout = setTimeout(() => {
+      if (concluido) return;
       setSyncBar('err','Conexão lenta/offline — usando dados locais');
-      try { DB = JSON.parse(localStorage.getItem('pagDB_v3') || '{}'); } catch(x){ DB = {}; }
+      try {
+        DB = JSON.parse(localStorage.getItem('pagDB_v3') || '{}');
+      } catch (e) {
+        DB = {};
+      }
       preencherHistorico();
-      concluir();
+      finalizar();
     }, 6000);
 
     fbDB.ref('pagamentos').once('value')
       .then(snap => {
-        if (finalizado) return;
-        clearTimeout(timer);
+        if (concluido) return;
+        clearTimeout(timeout);
 
         const data = snap.val() || {};
+        DB = {};
+
         for (const [dt, val] of Object.entries(data)) {
-          DB[dt] = { saldos: val.saldos||{}, contas: val.contas||{} };
+          DB[dt] = {
+            saldos: val.saldos || {},
+            contas: val.contas || {}
+          };
         }
 
         preencherHistorico();
         setSyncBar('ok', `${Object.keys(data).length} dia(s) carregado(s)`);
-        concluir();
+        finalizar();
       })
       .catch(() => {
-        if (finalizado) return;
-        clearTimeout(timer);
-
+        if (concluido) return;
+        clearTimeout(timeout);
         setSyncBar('err','Offline — usando dados locais');
-        try { DB = JSON.parse(localStorage.getItem('pagDB_v3') || '{}'); } catch(x){ DB = {}; }
+        try {
+          DB = JSON.parse(localStorage.getItem('pagDB_v3') || '{}');
+        } catch (e) {
+          DB = {};
+        }
         preencherHistorico();
-        concluir();
+        finalizar();
       });
   });
 }
@@ -860,9 +845,15 @@ function isEntreContas(conta) {
   return normTextoBusca(conta?.ref || '').includes('ENTRE CONTAS');
 }
 function somarEntreContas(d) {
-  return Object.values(d.contas||{}).flat().reduce((s,conta)=>{
-    return s + (isEntreContas(conta) ? (Number(conta?.valor)||0) : 0);
-  },0);
+  let total = 0;
+  for (const emp of EMPRESAS) {
+    if (emp.key === 'SERVICE') continue;
+    const lista = d.contas?.[emp.key] || [];
+    total += lista.reduce((s, conta) => {
+      return s + (isEntreContas(conta) ? (Number(conta?.valor) || 0) : 0);
+    }, 0);
+  }
+  return total;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -874,8 +865,21 @@ window.addEventListener('resize', ()=>{
 });
 
 document.addEventListener('DOMContentLoaded', async ()=>{
-  await carregarDadosNuvem();
-  document.getElementById('loadingOverlay').style.display='none';
+  try {
+    await carregarDadosNuvem();
+  } catch (e) {
+    setSyncBar('err','Erro ao iniciar — usando dados locais');
+    try {
+      DB = JSON.parse(localStorage.getItem('pagDB_v3') || '{}');
+    } catch (x) {
+      DB = {};
+    }
+    preencherHistorico();
+  } finally {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) overlay.style.display='none';
+  }
+
   const hoje = new Date().toLocaleDateString('sv');
   document.getElementById('selData').value = hoje;
   carregarDia();
@@ -922,7 +926,6 @@ function fmt(v){
 }
 
 // ── SALDOS ──────────────────────────────────────────────
-// SERVICE: A Pagar soma ao totalPagar, mas NÃO afeta saldo inicial nem saldo final líquido
 function renderSaldos(d) {
   const grid=document.getElementById('saldoGrid');
   let totalIni=0,totalPagarSemService=0,totalPagarService=0;
@@ -930,8 +933,8 @@ function renderSaldos(d) {
   let html='';
 
   for (const emp of EMPRESAS) {
-    const ini=d.saldos[emp.key]||0;
-    const pagar=(d.contas[emp.key]||[]).reduce((s,c)=>s+(c.valor||0),0);
+    const ini=Number(d.saldos[emp.key]||0);
+    const pagar=(d.contas[emp.key]||[]).reduce((s,c)=>s+(Number(c.valor)||0),0);
     const final=ini-pagar;
 
     if (emp.key==='SERVICE') { totalPagarService+=pagar; }
@@ -960,7 +963,7 @@ function renderSaldos(d) {
     <div class="saldo-mini">
       <div class="mini-val" style="color:#fca5a5">-${fmt(totalPagar)}</div>
       <div class="mini-val ${totalFinalAjustado<0?'val-neg':'val-pos'}">${fmt(totalFinalAjustado)}</div>
-      ${totalEntreContas > 0 ? `<div class="mini-note">Entre Contas: +${fmt(totalEntreContas)}</div>` : ''}
+      ${totalEntreContas>0?`<div class="mini-note">Entre Contas: +${fmt(totalEntreContas)}</div>`:''}
     </div>
     <div class="total-card-footer">
       <button class="btn btn-print btn-sm" onclick="window.print()">🖨️ Imprimir</button>
@@ -978,11 +981,7 @@ function renderSaldos(d) {
     el.textContent=fmt(totalFinalAjustado);
     el.style.color=totalFinalAjustado<0?'#fca5a5':'#6ee7b7';
     const extra=document.getElementById('mtbEntreContas');
-    if(extra){
-      extra.textContent = totalEntreContas > 0
-        ? `Entre Contas: +${fmt(totalEntreContas)}`
-        : '';
-    }
+    if(extra) extra.textContent=totalEntreContas>0?`Entre Contas: +${fmt(totalEntreContas)}`:'';
   }
 }
 
@@ -998,141 +997,4 @@ function renderContas(d) {
     const isService=emp.key==='SERVICE';
     html+=`<div class="empresa-section ${semContas}" id="sec_${emp.key}">
       <div class="empresa-header" onclick="toggleSec('${emp.key}')">
-        <span class="emp-badge">${emp.emoji} ${emp.label}${isService?' <span style="font-size:.6rem;opacity:.7">(manual)</span>':''}</span>
-        <span class="emp-count">${contas.length} conta(s)</span>
-        <span class="emp-total">${fmt(total)}</span>
-        <button class="btn btn-sort btn-sm no-print" id="btnSort_${emp.key}"
-          onclick="ordenarPorValor(event,'${emp.key}')"
-          title="Ordenar por valor (maior → menor)">↕️ Ordenar</button>
-        <button class="btn btn-danger-soft btn-sm btn-limpar"
-          onclick="limparContas(event,'${emp.key}')"
-          title="Excluir todos os lançamentos desta empresa">🗑️ Limpar</button>
-        <span class="toggle-icon">▼</span>
-      </div>
-      <div class="contas-body" id="body_${emp.key}">
-        <table>
-          <colgroup>
-            <col class="col-venc">
-            <col class="col-forn">
-            <col class="col-valor">
-            <col class="col-metodo">
-            <col class="col-desc">
-            <col class="col-cat">
-            <col class="col-acao">
-          </colgroup>
-          <thead><tr>
-            <th class="mob-hide">Vencimento</th>
-            <th>Fornecedor</th>
-            <th class="r">Valor</th>
-            <th class="c">Método</th>
-            <th class="col-desc-th mob-hide">Descrição</th>
-            <th class="c col-cat-th mob-hide">Categoria</th>
-            <th class="c no-print mob-hide">Ação</th>
-          </tr></thead>
-          <tbody id="tbody_${emp.key}">
-            ${contas.map((c,i)=>rowHTML(emp.key,c,i)).join('')}
-          </tbody>
-          <tfoot>
-            <tr class="no-print">
-              <td colspan="7" style="font-weight:700;color:#1e40af !important;text-align:right;white-space:nowrap;background:#e8efff;font-size:.92rem;">
-                Total &nbsp; ${fmt(total)}
-              </td>
-            </tr>
-            <tr class="print-only">
-              <td colspan="2" class="lbl">Total →</td>
-              <td class="val col-valor-td">${fmt(total)}</td>
-              <td></td>
-            </tr>
-          </tfoot>
-        </table>
-        <button class="add-row-btn" onclick="abrirAddConta('${emp.key}')">+ Adicionar conta para ${emp.label}</button>
-      </div>
-    </div>`;
-  }
-  sec.innerHTML=html;
-}
-
-function rowHTML(empKey,c,i) {
-  const catMap={motoboy:'cat-mb',boleto:'cat-bl',pix:'cat-pix',ted:'cat-ted',outro:'cat-out'};
-  const catLbl={motoboy:'Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',outro:'Outro'};
-  const st=c.status==='pago';
-  const venc=c.venc||'';
-  return `<tr class="${st?'paid':''}" id="row_${empKey}_${i}">
-    <td class="mob-hide" style="white-space:nowrap;overflow:hidden">${esc(venc)}</td>
-    <td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px">
-      ${esc(c.desc||'')}
-    </td>
-    <td class="r col-valor-td" style="white-space:nowrap">
-      <input class="val-edit" type="number" step="0.01" value="${(c.valor||0).toFixed(2)}"
-        onchange="editValor('${empKey}',${i},this.value)" onblur="editValor('${empKey}',${i},this.value)">
-      <span class="val-print">${fmt(c.valor||0)}</span>
-    </td>
-    <td class="c" style="white-space:nowrap"><span class="badge-cat ${catMap[c.cat]||'cat-out'}" style="white-space:nowrap">${catLbl[c.cat]||c.cat||''}</span></td>
-    <td class="col-desc-td mob-hide" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;font-size:.75rem">${esc(c.ref||'')}</td>
-    <td class="c col-cat-td mob-hide" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.7rem;max-width:80px">${esc(c.categoria||'')}</td>
-    <td class="c no-print mob-hide">
-      <button class="btn btn-outline btn-sm" onclick="abrirEditConta('${empKey}',${i})">✏️</button>
-    </td>
-  </tr>`;
-}
-
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-
-function toggleSec(empKey) {
-  const h=document.querySelector(`#sec_${empKey} .empresa-header`);
-  const b=document.getElementById('body_'+empKey);
-  if (!h||!b) return;
-  h.classList.toggle('collapsed');
-  b.style.display=h.classList.contains('collapsed')?'none':'';
-}
-
-function limparContas(event, empKey) {
-  event.stopPropagation();
-  const emp=EMPRESAS.find(e=>e.key===empKey);
-  const n=(getDia(diaAtual).contas[empKey]||[]).length;
-  if (n===0){toast('Nenhum lançamento para excluir');return;}
-  if (!confirm(`Excluir todos os ${n} lançamento(s) de ${emp?.label||empKey}?`)) return;
-  getDia(diaAtual).contas[empKey]=[];
-  renderTudo();
-  salvarNuvem();
-  toast(`🗑️ ${n} lançamento(s) excluído(s) — ${emp?.label||empKey}`);
-}
-
-const _sortState={};
-function ordenarPorValor(event, empKey) {
-  event.stopPropagation();
-  const contas=getDia(diaAtual).contas[empKey]||[];
-  if(contas.length===0){toast('Nenhum lançamento para ordenar');return;}
-  _sortState[empKey]=_sortState[empKey]==='desc'?'asc':'desc';
-  const dir=_sortState[empKey];
-  contas.sort((a,b)=> dir==='desc' ? (b.valor||0)-(a.valor||0) : (a.valor||0)-(b.valor||0));
-  getDia(diaAtual).contas[empKey]=contas;
-  renderTudo();
-  salvarNuvem();
-  const btn=document.getElementById('btnSort_'+empKey);
-  if(btn){
-    btn.classList.add('ativo');
-    btn.textContent= dir==='desc' ? '↓ Maior→Menor' : '↑ Menor→Maior';
-  }
-  toast(`↕️ Ordenado por valor (${dir==='desc'?'maior → menor':'menor → maior'})`);
-}
-
-function editValor(empKey,i,v) {
-  const contas=getContas(diaAtual,empKey);
-  if (!contas[i]) return;
-  contas[i].valor=parseFloat(v)||0;
-  renderSaldos(getDia(diaAtual));
-  atualizarRodape(empKey);
-  salvarNuvem();
-}
-
-function toggleStatus(empKey,i) {
-  const contas=getContas(diaAtual,empKey);
-  if (!contas[i]) return;
-  contas[i].status=contas[i].status==='pago'?'pendente':'pago';
-  const tr=document.getElementById(`row_${empKey}_${i}`);
-  if (tr){
-    const st=contas[i].status==='pago';
-    tr.className=st?'paid':'';
-    const badge=tr.querySelector('.st-badge');
-    if (badge){badge.className='st-badge '+(st?'st-pago':'st-pend');badge.textContent=st?'✅
+        <span class="emp-badge
