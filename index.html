@@ -1,1000 +1,245 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-<title>💳 Controle de Pagamento Diário</title>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-<script>
-firebase.initializeApp({
-  apiKey: "AIzaSyDayNUFLVZWI8Ph5K3XV5KRbG5uvEvlGvY",
-  authDomain: "pagamento-diario-f3eba.firebaseapp.com",
-  databaseURL: "https://pagamento-diario-f3eba-default-rtdb.firebaseio.com",
-  projectId: "pagamento-diario-f3eba",
-  storageBucket: "pagamento-diario-f3eba.firebasestorage.app",
-  messagingSenderId: "213871083183",
-  appId: "1:213871083183:web:67ade49c58d05027969e5a"
-});
-const fbDB = firebase.database();
-</script>
-<style>
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1e293b;min-height:100vh;}
 
-/* LOADING */
-#loadingOverlay{position:fixed;inset:0;background:#1e40af;z-index:9999;display:flex;
-  flex-direction:column;align-items:center;justify-content:center;color:white;gap:18px;}
-#loadingOverlay h2{font-size:1.3rem;font-weight:700;}
-#loadingOverlay p{font-size:.9rem;opacity:.75;}
-.spinner{width:44px;height:44px;border:4px solid rgba(255,255,255,.25);
-  border-top-color:white;border-radius:50%;animation:spin .8s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg);}}
-
-/* SYNC BAR */
-#syncBar{background:#e8efff;border-bottom:1px solid #bfdbfe;padding:5px 16px;
-  font-size:.78rem;color:#1e40af;align-items:center;gap:8px;display:none;}
-#syncBar.show{display:flex;}
-#syncBar.ok{background:#f0fdf4;border-color:#bbf7d0;color:#15803d;}
-#syncBar.err{background:#fef2f2;border-color:#fecaca;color:#b91c1c;}
-#syncBar.saving{background:#fffbeb;border-color:#fde68a;color:#92400e;}
-
-/* HEADER */
-.header{background:linear-gradient(135deg,#1e40af,#1e3a8a);color:white;padding:12px 24px;
-  display:flex;align-items:center;gap:16px;box-shadow:0 2px 8px rgba(0,0,0,.2);}
-.header h1{font-size:1.2rem;font-weight:700;}
-.header .sub{font-size:.78rem;opacity:.75;margin-top:2px;}
-
-/* TOOLBAR */
-.toolbar{background:white;border-bottom:1px solid #e2e8f0;padding:9px 12px;
-  display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:1600px;margin:0 auto;width:100%;}
-.toolbar label{font-size:.82rem;font-weight:600;color:#475569;}
-input[type=date]{border:1px solid #cbd5e1;border-radius:8px;padding:6px 10px;
-  font-size:.85rem;color:#1e293b;background:white;cursor:pointer;}
-input[type=date]:focus{outline:none;border-color:#1e40af;}
-
-.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;
-  border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;border:none;transition:all .15s;}
-.btn-primary{background:#1e40af;color:white;}.btn-primary:hover{background:#1d3789;}
-.btn-success{background:#059669;color:white;}.btn-success:hover{background:#047857;}
-.btn-outline{background:white;color:#475569;border:1px solid #cbd5e1;}
-.btn-outline:hover{background:#f8fafc;}
-.btn-danger{background:#dc2626;color:white;}.btn-danger:hover{background:#b91c1c;}
-.btn-danger-soft{background:#fef2f2;color:#dc2626;border:1px solid #fecaca;}
-.btn-danger-soft:hover{background:#fee2e2;}
-.btn-sm{padding:3px 8px;font-size:.73rem;}
-.btn-print{background:#475569;color:white;}.btn-print:hover{background:#334155;}
-.btn-sort{background:#ede9fe;color:#6d28d9;border:1px solid #c4b5fd;}.btn-sort:hover{background:#ddd6fe;}.btn-sort.ativo{background:#7c3aed;color:white;border-color:#7c3aed;}
-
-/* MAIN */
-.main{padding:12px;max-width:1600px;margin:0 auto;}
-
-/* SALDO CARDS */
-.section-title{font-size:.78rem;font-weight:700;color:#64748b;text-transform:uppercase;
-  letter-spacing:.06em;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
-.saldo-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-bottom:12px;}
-
-.saldo-card{background:white;border-radius:12px;padding:10px 13px;
-  box-shadow:0 1px 4px rgba(0,0,0,.07);border-left:5px solid;position:relative;
-  transition:box-shadow .15s;flex:1 1 0;min-width:140px;max-width:185px;}
-.saldo-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.12);}
-.emp-name{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
-  color:#64748b;margin-bottom:5px;white-space:nowrap;padding-right:20px;}
-.saldo-ini{font-size:.95rem;font-weight:800;white-space:nowrap;}
-.saldo-mini{display:flex;flex-direction:column;gap:4px;padding-top:6px;
-  margin-top:6px;border-top:1px solid #f1f5f9;}
-.mini-val{font-size:.95rem;font-weight:800;white-space:nowrap;}
-.edit-saldo-btn{position:absolute;top:7px;right:7px;background:none;border:none;
-  cursor:pointer;opacity:.3;font-size:.7rem;transition:opacity .15s;}
-.edit-saldo-btn:hover{opacity:1;}
-
-/* cores */
-.c-burger{border-color:#f59e0b;}.c-burger .saldo-ini{color:#d97706;}
-.c-gourmet{border-color:#8b5cf6;}.c-gourmet .saldo-ini{color:#7c3aed;}
-.c-sber{border-color:#06b6d4;}.c-sber .saldo-ini{color:#0891b2;}
-.c-grh{border-color:#10b981;}.c-grh .saldo-ini{color:#059669;}
-.c-pizza{border-color:#ef4444;}.c-pizza .saldo-ini{color:#dc2626;}
-.c-sushi{border-color:#f97316;}.c-sushi .saldo-ini{color:#ea580c;}
-.c-service{border-color:#64748b;}.c-service .saldo-ini{color:#475569;}
-
-.total-card{background:linear-gradient(135deg,#1e40af,#1e3a8a);color:white;
-  border-radius:12px;padding:10px 13px;box-shadow:0 4px 14px rgba(30,64,175,.3);
-  flex:1 1 0;min-width:140px;max-width:220px;display:flex;flex-direction:column;gap:4px;}
-.total-card .emp-name{color:rgba(255,255,255,.65);font-size:.65rem;font-weight:700;
-  text-transform:uppercase;letter-spacing:.05em;}
-.total-card .saldo-ini{color:white;font-size:.95rem;font-weight:800;}
-.total-card .saldo-mini{border-color:rgba(255,255,255,.2);}
-.total-card .mini-val{font-size:.95rem;font-weight:800;color:#6ee7b7;}
-.total-card .mini-note{font-size:.72rem;font-weight:700;opacity:.78;white-space:nowrap;}
-.total-card-footer{display:none;}
-
-/* no card total: vermelho → laranja claro, verde → verde água (já ok) */
-.total-card .val-neg{color:#fcd34d !important;}
-.total-card .val-pos{color:#6ee7b7 !important;}
-
-.val-neg{color:#dc2626 !important;}
-.val-pos{color:#059669 !important;}
-
-/* STATUS UPLOAD */
-.upload-status{border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:.83rem;
-  display:none;align-items:center;gap:8px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;}
-.upload-status.ok{background:#f0fdf4;border-color:#bbf7d0;color:#15803d;}
-.upload-status.err{background:#fef2f2;border-color:#fecaca;color:#b91c1c;}
-#fileInput{display:none;}
-
-/* CONTAS POR EMPRESA */
-.empresa-section{background:white;border-radius:12px;overflow:hidden;
-  box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:8px;}
-.empresa-header{padding:8px 14px;display:flex;align-items:center;gap:8px;
-  border-bottom:1px solid #f1f5f9;background:#f8fafc;cursor:pointer;user-select:none;}
-.empresa-header .emp-badge{font-size:.7rem;font-weight:700;padding:2px 9px;
-  border-radius:20px;background:#e8efff;color:#1e40af;white-space:nowrap;}
-.empresa-header .emp-count{font-size:.75rem;color:#94a3b8;}
-.empresa-header .emp-total{margin-left:auto;font-size:.92rem;font-weight:800;color:#1e293b;}
-.empresa-header .toggle-icon{font-size:.75rem;color:#94a3b8;transition:transform .2s;margin-left:4px;}
-.empresa-header.collapsed .toggle-icon{transform:rotate(-90deg);}
-.empresa-header .btn-limpar{margin-left:8px;}
-
-.contas-body{overflow-x:auto;}
-table{width:100%;border-collapse:collapse;font-size:.8rem;}
-thead th{padding:6px 10px;text-align:left;font-size:.68rem;font-weight:700;
-  text-transform:uppercase;letter-spacing:.04em;color:#64748b;
-  border-bottom:2px solid #e2e8f0;background:#f8fafc;white-space:nowrap;}
-th.r,td.r{text-align:right;}
-th.c,td.c{text-align:center;}
-tbody tr{border-bottom:1px solid #e2e8f0;transition:background .1s;}
-tbody tr:hover{background:#eff6ff;}
-tbody tr.paid{opacity:1;}
-tbody td{padding:6px 10px;vertical-align:middle;color:#1e293b !important;}
-td .desc-main{font-size:.8rem;font-weight:600;display:block;}
-td .desc-sub{font-size:.7rem;color:#94a3b8;display:block;margin-top:1px;}
-
-input.val-edit{border:1px solid #e2e8f0;border-radius:6px;padding:3px 7px;
-  font-size:.82rem;font-weight:700;width:110px;text-align:right;font-family:inherit;}
-input.val-edit:focus{outline:none;border-color:#1e40af;background:#eff6ff;}
-
-.badge-cat{display:inline-block;padding:2px 6px;border-radius:20px;
-  font-size:.65rem;font-weight:700;white-space:nowrap;}
-.cat-mb{background:#ede9fe;color:#6d28d9;}
-.cat-bl{background:#dbeafe;color:#1d4ed8;}
-.cat-pix{background:#dcfce7;color:#166534;}
-.cat-ted{background:#cffafe;color:#0e7490;}
-.cat-out{background:#f1f5f9;color:#475569;}
-
-/* status badge — visível na tela, oculto na impressão via .no-print */
-.st-badge{display:inline-block;padding:2px 8px;border-radius:20px;
-  font-size:.67rem;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap;}
-.st-pend{background:#fef3c7;color:#92400e;}
-.st-pago{background:#dcfce7;color:#166534;}
-
-@media print { .no-print{display:none !important;} }
-.val-print{display:none;}
-@media print { .val-print{display:block;font-size:8px;font-weight:700;text-align:right;} }
-.print-only{display:none;}
-@media print { .print-only{display:table-row !important;} }
-
-tfoot td{padding:7px 10px;font-weight:700;background:#e8efff;color:#1e40af !important;}
-.mob-show{display:none;}
-tfoot .lbl{color:#1e40af !important;text-align:right;font-size:.75rem;}
-tfoot tr td[colspan="7"]{text-align:right;color:#1e40af !important;background:#e8efff;font-size:.92rem;}
-tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
-
-/* BUSCA */
-.busca-wrap{display:flex;align-items:center;gap:4px;flex:1;min-width:200px;max-width:340px;}
-.busca-wrap input{flex:1;border:1px solid #cbd5e1;border-radius:8px;padding:6px 10px;
-  font-size:.82rem;color:#1e293b;background:white;}
-.busca-wrap input:focus{outline:none;border-color:#1e40af;}
-
-.busca-panel{background:white;border-bottom:2px solid #e2e8f0;padding:10px 16px;
-  max-width:1600px;margin:0 auto;width:100%;max-height:420px;overflow-y:auto;}
-.busca-header{display:flex;align-items:center;justify-content:space-between;
-  margin-bottom:10px;font-size:.85rem;font-weight:700;color:#1e293b;}
-.busca-grupo{margin-bottom:12px;}
-.busca-data{font-size:.72rem;font-weight:700;color:#1e40af;text-transform:uppercase;
-  letter-spacing:.04em;margin-bottom:4px;padding:2px 8px;background:#eff6ff;
-  border-radius:6px;display:inline-block;}
-.busca-linha{display:flex;align-items:center;gap:8px;padding:5px 8px;
-  border-radius:8px;font-size:.8rem;border-bottom:1px solid #f1f5f9;}
-.busca-linha:hover{background:#f8faff;}
-.busca-emp{font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:20px;
-  background:#e8efff;color:#1e40af;white-space:nowrap;}
-.busca-forn{flex:1;font-weight:600;color:#1e293b;}
-.busca-ref{font-size:.72rem;color:#94a3b8;}
-.busca-val{font-weight:800;color:#059669;white-space:nowrap;}
-.busca-vazio{text-align:center;color:#94a3b8;font-size:.85rem;padding:20px;}
-
-/* ADD ROW */
-.add-row-btn{width:100%;padding:7px;text-align:center;border:none;background:#f8fafc;
-  color:#94a3b8;font-size:.78rem;cursor:pointer;transition:background .15s;}
-.add-row-btn:hover{background:#eff6ff;color:#1e40af;}
-
-/* OVERLAY / MODAL */
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);
-  z-index:1000;align-items:center;justify-content:center;padding:20px;}
-.overlay.open{display:flex;}
-.modal{background:white;border-radius:16px;padding:24px;max-width:480px;width:100%;
-  box-shadow:0 20px 60px rgba(0,0,0,.3);animation:slideUp .2s ease;}
-@keyframes slideUp{from{transform:translateY(20px);opacity:0;}to{transform:translateY(0);opacity:1;}}
-.modal h3{font-size:1rem;font-weight:700;margin-bottom:16px;color:#1e293b;}
-.form-row{margin-bottom:11px;}
-.form-row label{display:block;font-size:.72rem;font-weight:700;color:#475569;
-  margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em;}
-.form-row input,.form-row select{width:100%;border:1px solid #cbd5e1;border-radius:8px;
-  padding:7px 11px;font-size:.86rem;font-family:inherit;transition:border-color .15s;}
-.form-row input:focus,.form-row select:focus{outline:none;border-color:#1e40af;}
-.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
-
-/* TOAST */
-#toast{position:fixed;bottom:24px;right:24px;background:#1e293b;color:white;
-  padding:10px 16px;border-radius:10px;font-size:.84rem;font-weight:500;
-  display:none;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3);}
-
-/* IMPRESSÃO */
-@media print {
-  @page { margin: 8mm 10mm; size: A4 portrait; }
-
-  body{background:white;font-size:9px;}
-  #loadingOverlay,#syncBar,.toolbar,
-  .add-row-btn,.edit-saldo-btn,.btn-limpar,
-  #uploadSection,.overlay,#toast,
-  .empresa-header .btn,
-  .col-status, th.col-status,
-  input.val-edit{display:none !important;}
-
-  .header{background:#1e40af !important;-webkit-print-color-adjust:exact;
-    print-color-adjust:exact;padding:6px 14px;}
-  .header h1{font-size:.95rem;}
-
-  .main{padding:0;}
-
-  .empresa-section{
-    page-break-before:always;
-    page-break-inside:avoid;
-    box-shadow:none;
-    border:1px solid #cbd5e1;
-    margin-bottom:0;
-    border-radius:0;
-  }
-  .empresa-section:first-of-type{page-break-before:auto;}
-  .empresa-section.sem-contas{display:none !important;}
-
-  .empresa-header{
-    padding:4px 10px;
-    border-bottom:1px solid #cbd5e1;
-    background:#f1f5f9 !important;
-    -webkit-print-color-adjust:exact;
-    print-color-adjust:exact;
-  }
-  .empresa-header .emp-badge{font-size:8px;padding:1px 6px;}
-  .empresa-header .emp-count{font-size:8px;}
-  .empresa-header .emp-total{font-size:9px;}
-
-  table{
-    font-size:10px;
-    width:100%;
-    table-layout:fixed;
-    border-collapse:collapse;
-  }
-  col.col-venc   { width:15%;  }
-  col.col-forn   { width:45%;  }
-  col.col-valor  { width:20%;  }
-  col.col-metodo { width:20%;  }
-  col.col-desc   { width:0; display:none; }
-  col.col-cat    { width:0; display:none; }
-  col.col-acao   { width:0; visibility:hidden; }
-
-  thead th{
-    padding:2px 4px;
-    font-size:9px;
-    white-space:nowrap !important;
-    overflow:hidden !important;
-    text-overflow:ellipsis !important;
-  }
-  td, td *{
-    padding:2px 4px;
-    white-space:nowrap !important;
-    overflow:hidden !important;
-    text-overflow:ellipsis !important;
-    max-width:none !important;
-    display:revert;
-    vertical-align:middle;
-  }
-  td span { display:inline !important; }
-  tfoot td, tfoot td *{padding:3px 5px;font-size:9px;white-space:nowrap !important;font-weight:700;}
-  .val-print{font-size:10px;font-weight:700;text-align:right;display:inline !important;}
-
-  .saldo-grid{
-    display:flex !important;
-    flex-direction:row !important;
-    flex-wrap:nowrap !important;
-    gap:3px;
-    margin-bottom:5px;
-    justify-content:flex-start;
-  }
-  .saldo-card{
-    flex:1 1 0 !important;
-    min-width:0 !important;
-    max-width:none !important;
-    padding:3px 5px;
-    box-shadow:none;
-    border-radius:4px;
-  }
-  .total-card{
-    flex:1 1 0 !important;
-    min-width:0 !important;
-    max-width:none !important;
-    padding:3px 5px;
-    border-radius:4px;
-  }
-  .emp-name{font-size:.52rem !important;margin-bottom:2px;}
-  .saldo-ini,.mini-val{font-size:.6rem !important;}
-  .saldo-mini{gap:1px;padding-top:3px;margin-top:3px;}
-  .edit-saldo-btn{display:none !important;}
-  .total-card-footer{display:none !important;}
-
-  table, thead, tbody, tfoot, tr, th, td {
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    max-width: none !important;
-    word-break: keep-all !important;
-    word-wrap: normal !important;
-  }
-  td span, td div {
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    display: inline !important;
-  }
-  .badge-cat {
-    display: inline !important;
-    white-space: nowrap !important;
-    font-size: 7px !important;
-    padding: 1px 3px !important;
-  }
-
-  th.col-desc-th, td.col-desc-td,
-  th.col-cat-th,  td.col-cat-td  { display:none !important; }
-  .mob-hide { display:revert !important; }
-  .mob-show { display:none !important; }
-  .mob-desc-sub { display:none !important; }
-
-  td.col-valor-td,
-  td.col-valor-td *,
-  tfoot td.col-valor-td {
-    overflow: visible !important;
-    text-overflow: clip !important;
-    white-space: nowrap !important;
-    max-width: none !important;
-  }
-}
-
-/* Banner mobile */
-.mobile-total-banner{display:none;}
-
-/* MOBILE */
-@media(max-width:768px){
-  .header{padding:10px 14px;}
-  .header h1{font-size:1rem;}
-  .header .sub{font-size:.7rem;}
-
-  .toolbar{
-    padding:8px 10px;
-    gap:6px;
-    display:flex;
-    flex-wrap:nowrap;
-    align-items:center;
-  }
-  .toolbar label{white-space:nowrap;font-size:.78rem;}
-  .toolbar input[type=date]{flex:1;}
-  .btn-mobile-hide{display:none !important;}
-
-  .mobile-total-banner{
-    display:block;
-    background:linear-gradient(135deg,#1e40af,#1e3a8a);
-    color:white;
-    border-radius:12px;
-    padding:10px 14px;
-    margin-bottom:10px;
-  }
-  .mtb-label{font-size:.65rem;font-weight:700;text-transform:uppercase;
-    letter-spacing:.06em;opacity:.75;margin-bottom:6px;}
-  .mtb-vals{display:flex;gap:4px;justify-content:space-between;}
-  .mtb-item{display:flex;flex-direction:column;align-items:center;flex:1;min-width:0;}
-  .mtb-sub{font-size:.58rem;opacity:.7;margin-bottom:2px;white-space:nowrap;}
-  .mtb-value{font-size:1rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
-  .mtb-extra{font-size:.58rem !important;font-weight:700 !important;opacity:.82;margin-top:2px;}
-
-  .total-card{display:none !important;}
-
-  .main{padding:8px;}
-
-  .saldo-grid{
-    display:grid;
-    grid-template-columns:repeat(2,1fr);
-    gap:8px;
-    margin-bottom:10px;
-  }
-  .saldo-card{
-    min-width:unset;
-    max-width:unset;
-    padding:10px 11px;
-    flex:unset;
-  }
-  .saldo-ini,.mini-val{font-size:.88rem;}
-  .emp-name{font-size:.62rem;}
-
-  .empresa-header{padding:8px 10px;gap:6px;flex-wrap:wrap;}
-  .empresa-header .emp-total{font-size:.82rem;}
-  .empresa-header .btn-limpar{margin-left:auto;}
-
-  .contas-body{overflow-x:hidden;}
-  table{font-size:.78rem;width:100%;table-layout:auto;border-collapse:collapse;}
-  thead th{padding:4px 6px;font-size:.65rem;}
-  td{padding:4px 6px;}
-  .mob-hide{display:none !important;}
-  .mob-show{display:table-cell !important;}
-  input.val-edit{display:none !important;}
-  .val-print{display:inline !important;font-size:.78rem;font-weight:700;white-space:nowrap;}
-  col.col-venc,col.col-desc,col.col-cat,col.col-acao{display:none;}
-  .mob-desc-sub{display:none !important;}
-
-  input.val-edit{width:80px;font-size:.75rem;padding:2px 5px;}
-
-  .overlay{padding:10px;}
-  .modal{padding:18px 14px;border-radius:12px;}
-  .modal h3{font-size:.92rem;}
-
-  #toast{right:12px;left:12px;bottom:16px;text-align:center;}
-
-  .section-title{font-size:.72rem;}
-  .add-row-btn{padding:10px;font-size:.8rem;}
-  .btn-sm{padding:4px 9px;font-size:.7rem;}
-}
-</style>
-</head>
-<body>
-
-<!-- LOADING -->
-<div id="loadingOverlay">
-  <div class="spinner"></div>
-  <h2>💳 Controle de Pagamento Diário</h2>
-  <p>Conectando à nuvem...</p>
-</div>
-
-<!-- SYNC BAR -->
-<div id="syncBar">
-  <span id="syncIcon">☁️</span>
-  <span id="syncMsg">Pronto</span>
-</div>
-
-<!-- HEADER -->
-<div class="header">
-  <div>
-    <h1>💳 Controle de Pagamento Diário</h1>
-    <div class="sub" id="headerSub">Selecione uma data para começar</div>
-  </div>
-</div>
-
-<!-- TOOLBAR -->
-<div class="toolbar">
-  <label>📅 Data:</label>
-  <input type="date" id="selData" onchange="carregarDia()" autocomplete="off">
-  <button class="btn btn-primary btn-mobile-hide" onclick="novoDia()">➕ Novo controle</button>
-  <button class="btn btn-outline btn-mobile-hide" onclick="abrirSaldoModal()">✏️ Editar saldos</button>
-  <button class="btn btn-success btn-mobile-hide" onclick="exportCSV()">⬇️ Exportar CSV</button>
-  <button class="btn btn-outline btn-sm btn-mobile-hide" onclick="document.getElementById('fileInput').click()"
-    title="Nome do arquivo define a empresa. Ex: pizza.xlsx → PIZZA">📂 Upload planilha</button>
-  <button class="btn btn-print btn-sm btn-mobile-hide" onclick="window.print()">🖨️ Imprimir</button>
-  <div class="busca-wrap btn-mobile-hide">
-    <input type="text" id="buscaInput" placeholder="🔍 Buscar fornecedor em todas as datas..." oninput="buscaAoDigitar()" autocomplete="off">
-    <button class="btn btn-outline btn-sm" onclick="limparBusca()" id="btnLimparBusca" style="display:none">✕</button>
-  </div>
-</div>
-
-<!-- PAINEL DE BUSCA -->
-<div id="buscaPanel" class="busca-panel" style="display:none">
-  <div class="busca-header">
-    <span id="buscaTitle">Resultados</span>
-    <button class="btn btn-outline btn-sm" onclick="limparBusca()">✕ Fechar</button>
-  </div>
-  <div id="buscaResultados"></div>
-</div>
-
-<!-- MAIN -->
-<div class="main">
-
-  <!-- RESUMO MOBILE -->
-  <div id="mobileTotalBanner" class="mobile-total-banner" style="display:none">
-    <div class="mtb-label">💰 Total Geral</div>
-    <div class="mtb-vals">
-      <span class="mtb-item"><span class="mtb-sub">Saldo Inicial</span><span id="mtbIni">—</span></span>
-      <span class="mtb-item"><span class="mtb-sub">A Pagar</span><span id="mtbPagar" style="color:#fca5a5">—</span></span>
-      <span class="mtb-item"><span class="mtb-sub">Saldo Final</span><span id="mtbFinal" class="mtb-value">—</span><span id="mtbEntreContas" class="mtb-extra"></span></span>
-    </div>
-  </div>
-
-  <!-- SALDOS -->
-  <div id="saldoSection">
-    <div class="section-title">🏦 Saldos em Conta — <span id="saldoLabel">—</span></div>
-    <div class="saldo-grid" id="saldoGrid"></div>
-  </div>
-
-  <!-- UPLOAD -->
-  <div id="uploadSection">
-    <div id="uploadStatus" class="upload-status"></div>
-    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="onFileSelect(event)">
-    <div style="margin-bottom:8px;">
-      <button class="btn btn-outline btn-sm" onclick="abrirAddConta()">+ Adicionar conta manualmente</button>
-    </div>
-  </div>
-
-  <!-- CONTAS POR EMPRESA -->
-  <div id="contasSection"></div>
-
-</div>
-
-<!-- MODAL SALDOS -->
-<div class="overlay" id="saldoModal">
-  <div class="modal">
-    <h3>✏️ Saldos em Conta — <span id="smData"></span></h3>
-    <div id="smInputs"></div>
-    <div class="modal-btns">
-      <button class="btn btn-outline" onclick="fecharModal('saldoModal')">Cancelar</button>
-      <button class="btn btn-primary" onclick="salvarSaldos()">💾 Salvar</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL ADICIONAR / EDITAR CONTA -->
-<div class="overlay" id="addModal">
-  <div class="modal">
-    <h3 id="addModalTitle">➕ Adicionar Conta</h3>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px;">
-      <div class="form-row"><label>Vencimento</label>
-        <input type="date" id="aVenc"></div>
-      <div class="form-row"><label>Emissão</label>
-        <input type="date" id="aEmis"></div>
-    </div>
-    <div class="form-row"><label>Fornecedor</label>
-      <input type="text" id="aDesc" placeholder="Ex: SPEERS FOODS"></div>
-    <div class="form-row"><label>Descrição / NF</label>
-      <input type="text" id="aRef" placeholder="Ex: BL *NF 123456*"></div>
-    <div class="form-row"><label>Empresa</label>
-      <select id="aEmp">
-        <option value="BURGER_MATRIZ">🍔 BURGER MATRIZ</option>
-        <option value="GOURMET">⭐ GOURMET</option>
-        <option value="SAO_BERNARDO">🏙️ ABC</option>
-        <option value="GUARULHOS">🏢 GUARULHOS</option>
-        <option value="PIZZA">🍕 PIZZA</option>
-        <option value="SUSHI">🍣 SUSHI</option>
-        <option value="SERVICE">🔧 SERVICE</option>
-      </select></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px;">
-      <div class="form-row"><label>Método de Pgto</label>
-        <select id="aCat">
-          <option value="boleto">📄 Boleto</option>
-          <option value="pix">💸 Pix</option>
-          <option value="ted">🏦 TED</option>
-          <option value="motoboy">🏍️ Motoboy</option>
-          <option value="outro">📌 Outro</option>
-        </select></div>
-      <div class="form-row"><label>Categoria</label>
-        <input type="text" id="aCategoria" placeholder="Ex: INSUMOS"></div>
-    </div>
-    <div class="form-row"><label>Valor (R$)</label>
-      <input type="number" id="aValor" step="0.01" min="0" placeholder="0.00"></div>
-    <div class="modal-btns">
-      <button class="btn btn-outline" onclick="fecharModal('addModal')">Cancelar</button>
-      <button class="btn btn-danger btn-sm" id="btnDelAdd" style="margin-right:auto;display:none"
-        onclick="deletarContaModal()">🗑️ Excluir</button>
-      <button class="btn btn-primary" onclick="salvarContaModal()">💾 Salvar</button>
-    </div>
-  </div>
-</div>
-
-<div id="toast"></div>
-
-<script>
-// ══════════════════════════════════════════════════════════
-// DADOS HISTÓRICOS DE SALDO
-// ══════════════════════════════════════════════════════════
-const HIST = {
-  "2026-01-05":{BURGER_MATRIZ:262253.40,GOURMET:157733.36,SAO_BERNARDO:84764.49,GUARULHOS:94539.91,PIZZA:132698.57,SUSHI:43577.82,SERVICE:0},
-  "2026-01-06":{BURGER_MATRIZ:243923.79,GOURMET:161236.01,SAO_BERNARDO:78204.50,GUARULHOS:91592.15,PIZZA:108914.95,SUSHI:42340.03,SERVICE:0},
-  "2026-01-07":{BURGER_MATRIZ:163388.22,GOURMET:105011.42,SAO_BERNARDO:115524.00,GUARULHOS:128749.94,PIZZA:99496.20,SUSHI:41409.85,SERVICE:0},
-  "2026-01-08":{BURGER_MATRIZ:194108.36,GOURMET:168196.88,SAO_BERNARDO:100858.05,GUARULHOS:113908.91,PIZZA:127621.71,SUSHI:33881.23,SERVICE:0},
-  "2026-01-09":{BURGER_MATRIZ:158087.68,GOURMET:125681.59,SAO_BERNARDO:94141.14,GUARULHOS:111739.25,PIZZA:94470.07,SUSHI:30555.30,SERVICE:0},
-  "2026-02-18":{BURGER_MATRIZ:168702.69,GOURMET:144520.92,SAO_BERNARDO:50057.79,GUARULHOS:41843.44,PIZZA:99209.15,SUSHI:46320.64,SERVICE:0},
-  "2026-02-19":{BURGER_MATRIZ:38421.79,GOURMET:81215.49,SAO_BERNARDO:36882.32,GUARULHOS:32086.19,PIZZA:69260.26,SUSHI:15238.86,SERVICE:0},
-  "2026-02-20":{BURGER_MATRIZ:30687.91,GOURMET:85188.82,SAO_BERNARDO:34285.95,GUARULHOS:30503.32,PIZZA:64645.15,SUSHI:13165.84,SERVICE:0},
-  "2026-02-23":{BURGER_MATRIZ:65029.63,GOURMET:28297.48,SAO_BERNARDO:18984.00,GUARULHOS:21321.99,PIZZA:29733.82,SUSHI:3797.79,SERVICE:0},
-  "2026-02-25":{BURGER_MATRIZ:65814.94,GOURMET:138065.27,SAO_BERNARDO:44562.95,GUARULHOS:41362.15,PIZZA:79957.92,SUSHI:21457.98,SERVICE:0},
-  "2026-02-26":{BURGER_MATRIZ:41982.46,GOURMET:100012.13,SAO_BERNARDO:49642.83,GUARULHOS:42097.33,PIZZA:95273.92,SUSHI:15869.16,SERVICE:0},
-  "2026-02-27":{BURGER_MATRIZ:26336.22,GOURMET:119678.25,SAO_BERNARDO:46839.78,GUARULHOS:37092.15,PIZZA:51398.72,SUSHI:15004.58,SERVICE:0},
-  "2026-03-03":{BURGER_MATRIZ:7035.84,GOURMET:80090.09,SAO_BERNARDO:39084.46,GUARULHOS:31410.96,PIZZA:39902.88,SUSHI:1536.24,SERVICE:0},
-  "2026-03-04":{BURGER_MATRIZ:110164.35,GOURMET:172045.85,SAO_BERNARDO:77126.72,GUARULHOS:60213.53,PIZZA:75868.56,SUSHI:722.11,SERVICE:0},
-  "2026-03-09":{BURGER_MATRIZ:94111.56,GOURMET:239704.09,SAO_BERNARDO:47791.42,GUARULHOS:43368.39,PIZZA:201629.40,SUSHI:3698.81,SERVICE:0},
-  "2026-03-10":{BURGER_MATRIZ:75381.75,GOURMET:213673.00,SAO_BERNARDO:92183.71,GUARULHOS:34384.95,PIZZA:191671.03,SUSHI:494.08,SERVICE:929.49},
-  "2026-03-11":{BURGER_MATRIZ:125910.00,GOURMET:229501.88,SAO_BERNARDO:67139.85,GUARULHOS:48920.96,PIZZA:215379.86,SUSHI:22877.38,SERVICE:929.50},
-  "2026-03-12":{BURGER_MATRIZ:43074.25,GOURMET:200833.03,SAO_BERNARDO:40845.82,GUARULHOS:29503.67,PIZZA:204324.53,SUSHI:7795.32,SERVICE:613.33},
-  "2026-03-13":{BURGER_MATRIZ:30885.74,GOURMET:195024.67,SAO_BERNARDO:38006.04,GUARULHOS:25382.97,PIZZA:198030.85,SUSHI:0,SERVICE:411.82},
-  "2026-03-16":{BURGER_MATRIZ:25789.48,GOURMET:182404.57,SAO_BERNARDO:39626.52,GUARULHOS:25621.53,PIZZA:192504.87,SUSHI:5197.12,SERVICE:1761.65},
-  "2026-03-17":{BURGER_MATRIZ:30522.16,GOURMET:173018.86,SAO_BERNARDO:32403.98,GUARULHOS:21960.76,PIZZA:186570.80,SUSHI:2132.50,SERVICE:232.01},
-  "2026-03-18":{BURGER_MATRIZ:159891.20,GOURMET:300023.60,SAO_BERNARDO:68834.20,GUARULHOS:53777.76,PIZZA:246849.56,SUSHI:138.30,SERVICE:0.21},
-};
-
-const EMPRESAS = [
-  {key:'BURGER_MATRIZ',label:'BURGER MATRIZ',cls:'c-burger',emoji:'🍔'},
-  {key:'GOURMET',      label:'GOURMET',       cls:'c-gourmet',emoji:'⭐'},
-  {key:'SAO_BERNARDO', label:'ABC',           cls:'c-sber',   emoji:'🏙️'},
-  {key:'GUARULHOS',    label:'GUARULHOS',     cls:'c-grh',    emoji:'🏢'},
-  {key:'PIZZA',        label:'PIZZA',         cls:'c-pizza',  emoji:'🍕'},
-  {key:'SUSHI',        label:'SUSHI',         cls:'c-sushi',  emoji:'🍣'},
-  {key:'SERVICE',      label:'SERVICE',       cls:'c-service',emoji:'🔧'},
-];
-
-const EMP_MAP = {
-  'BURGER':'BURGER_MATRIZ','BURGER MATRIZ':'BURGER_MATRIZ','BURGER (MATRIZ)':'BURGER_MATRIZ',
-  'BURGER(MATRIZ)':'BURGER_MATRIZ','MATRIZ':'BURGER_MATRIZ',
-  'GOURMET':'GOURMET',
-  'ABC':'SAO_BERNARDO','SAO BERNARDO':'SAO_BERNARDO','S BERNARDO':'SAO_BERNARDO','SAO_BERNARDO':'SAO_BERNARDO',
-  'GUARULHOS':'GUARULHOS','GRU':'GUARULHOS','BURGER GRU':'GUARULHOS',
-  'PIZZA':'PIZZA','JUST PIZZA':'PIZZA',
-  'SUSHI':'SUSHI','JUST SUSHI':'SUSHI',
-  'SERVICE':'SERVICE',
-};
-
-function normEmp(str) {
-  if (!str) return null;
-  const s = String(str).trim().toUpperCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/[-_]/g,' ').replace(/\s+/g,' ');
-  if (EMP_MAP[s]) return EMP_MAP[s];
-  for (const [k,v] of Object.entries(EMP_MAP)) {
-    if (s.includes(k)) return v;
-  }
-  return null;
-}
-
-function empKeyDoNomeArquivo(filename) {
-  const base = filename
-    .replace(/\.[^.]+$/, '')
-    .replace(/\d{2}[.\-\/]\d{2}([.\-\/]\d{2,4})?/g,'')
-    .replace(/[-_]/g,' ').replace(/\d+/g,'')
-    .trim();
-  return normEmp(base) || null;
-}
-
-function parseValorBR(v) {
-  if (v === null || v === undefined || v === '') return 0;
-  if (typeof v === 'number') return Math.abs(v);
-  let s = String(v).trim().replace(/R\$\s*/gi,'').replace(/\s/g,'').replace(/"/g,'');
-  if (!s) return 0;
-  s = s.replace(/^[-( ]+/, '').replace(/[) ]+$/, '');
-  let n = 0;
-  if (s.includes(',')) {
-    n = parseFloat(s.replace(/\./g,'').replace(',','.')) || 0;
-  } else if (/^\d{1,3}(\.\d{3})+$/.test(s)) {
-    n = parseFloat(s.replace(/\./g,'')) || 0;
-  } else {
-    n = parseFloat(s) || 0;
-  }
-  return Math.abs(n);
-}
-
-function fmtData(v) {
-  if (!v) return '';
-  if (typeof v === 'number') {
-    const d = XLSX.SSF.parse_date_code(v);
-    if (d) return `${String(d.d).padStart(2,'0')}/${String(d.m).padStart(2,'0')}/${d.y}`;
-  }
-  const s = String(v).trim();
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
-    const [y,m,d] = s.split('T')[0].split('-');
-    return `${d}/${m}/${y}`;
-  }
-  return s;
-}
-
-// ══════════════════════════════════════════════════════════
-// ESTADO
-// ══════════════════════════════════════════════════════════
-let DB = {};
-let diaAtual = null;
-let editIdx = null;
-let _fbListener = null;
-
-// ══════════════════════════════════════════════════════════
-// SYNC BAR
-// ══════════════════════════════════════════════════════════
-function setSyncBar(type, msg) {
-  const bar = document.getElementById('syncBar');
-  document.getElementById('syncIcon').textContent =
-    type==='ok'?'✅':type==='err'?'❌':type==='saving'?'⏳':'☁️';
-  document.getElementById('syncMsg').textContent = msg;
-  bar.className = 'show ' + type;
-  if (type==='ok') setTimeout(()=>{ bar.className=''; }, 3000);
-}
-
-// ══════════════════════════════════════════════════════════
-// FIREBASE — NUVEM TEMPO REAL
-// ══════════════════════════════════════════════════════════
-function preencherHistorico() {
-  for (const [dt,saldos] of Object.entries(HIST)) {
-    if (!DB[dt]) DB[dt]={saldos:{},contas:{}};
-    if (!Object.values(DB[dt].saldos||{}).some(v=>v>0)) DB[dt].saldos={...saldos};
-  }
-}
-
-async function carregarDadosNuvem() {
-  setSyncBar('','Conectando ao Firebase...');
-  return new Promise(resolve => {
-    let concluido = false;
-
-    function finalizar() {
-      if (concluido) return;
-      concluido = true;
-      resolve();
-    }
-
-    const timeout = setTimeout(() => {
-      if (concluido) return;
-      setSyncBar('err','Conexão lenta/offline — usando dados locais');
-      try {
-        DB = JSON.parse(localStorage.getItem('pagDB_v3') || '{}');
-      } catch (e) {
-        DB = {};
-      }
-      preencherHistorico();
-      finalizar();
-    }, 6000);
-
-    fbDB.ref('pagamentos').once('value')
-      .then(snap => {
-        if (concluido) return;
-        clearTimeout(timeout);
-
-        const data = snap.val() || {};
-        DB = {};
-
-        for (const [dt, val] of Object.entries(data)) {
-          DB[dt] = {
-            saldos: val.saldos || {},
-            contas: val.contas || {}
-          };
-        }
-
-        preencherHistorico();
-        setSyncBar('ok', `${Object.keys(data).length} dia(s) carregado(s)`);
-        finalizar();
-      })
-      .catch(() => {
-        if (concluido) return;
-        clearTimeout(timeout);
-        setSyncBar('err','Offline — usando dados locais');
-        try {
-          DB = JSON.parse(localStorage.getItem('pagDB_v3') || '{}');
-        } catch (e) {
-          DB = {};
-        }
-        preencherHistorico();
-        finalizar();
-      });
-  });
-}
-
-function ativarListenerDia(dt) {
-  if (_fbListener) {
-    fbDB.ref('pagamentos/'+_fbListener).off('value');
-    _fbListener = null;
-  }
-  _fbListener = dt;
-  fbDB.ref('pagamentos/'+dt).on('value', snap => {
-    const val = snap.val();
-    if (!val) return;
-    const remoto = JSON.stringify({saldos:val.saldos||{},contas:val.contas||{}});
-    const local  = JSON.stringify({saldos:DB[dt]?.saldos||{},contas:DB[dt]?.contas||{}});
-    if (remoto !== local) {
-      DB[dt] = { saldos: val.saldos||{}, contas: val.contas||{} };
-      if (diaAtual === dt) renderTudo();
-      setSyncBar('ok','🔄 Atualizado em tempo real');
-    }
-  });
-}
-
-async function salvarNuvem() {
-  if (!diaAtual) return;
-  const d = getDia(diaAtual);
-  setSyncBar('saving','Salvando...');
-  try {
-    await fbDB.ref('pagamentos/'+diaAtual).set({
-      saldos: d.saldos || {},
-      contas: d.contas || {}
-    });
-    localStorage.setItem('pagDB_v3', JSON.stringify(DB));
-    setSyncBar('ok','Salvo ✓');
-  } catch(e) {
-    setSyncBar('err','Erro ao salvar — verifique conexão');
-    localStorage.setItem('pagDB_v3', JSON.stringify(DB));
-  }
-}
-
-// ══════════════════════════════════════════════════════════
-// LOCAL DB
-// ══════════════════════════════════════════════════════════
-function getDia(dt) {
-  if (!DB[dt]) DB[dt]={saldos:{},contas:{}};
-  if (!DB[dt].contas) DB[dt].contas={};
-  return DB[dt];
-}
-function getContas(dt,empKey) {
-  const d=getDia(dt); if (!d.contas[empKey]) d.contas[empKey]=[]; return d.contas[empKey];
-}
-function normTextoBusca(str) {
-  return String(str||'').trim().toUpperCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/\s+/g,' ');
-}
-function isEntreContas(conta) {
-  return normTextoBusca(conta?.ref || '').includes('ENTRE CONTAS');
-}
-function somarEntreContas(d) {
-  let total = 0;
-  for (const emp of EMPRESAS) {
-    if (emp.key === 'SERVICE') continue;
-    const lista = d.contas?.[emp.key] || [];
-    total += lista.reduce((s, conta) => {
-      return s + (isEntreContas(conta) ? (Number(conta?.valor) || 0) : 0);
-    }, 0);
-  }
-  return total;
-}
-
-// ══════════════════════════════════════════════════════════
-// INIT
-// ══════════════════════════════════════════════════════════
-window.addEventListener('resize', ()=>{
-  const banner=document.getElementById('mobileTotalBanner');
-  if(banner) banner.style.display=window.innerWidth<=768?'block':'none';
-});
-
-document.addEventListener('DOMContentLoaded', async ()=>{
-  try {
-    await carregarDadosNuvem();
-  } catch (e) {
-    setSyncBar('err','Erro ao iniciar — usando dados locais');
-    try {
-      DB = JSON.parse(localStorage.getItem('pagDB_v3') || '{}');
-    } catch (x) {
-      DB = {};
-    }
-    preencherHistorico();
-  } finally {
-    const overlay = document.getElementById('loadingOverlay');
-    if (overlay) overlay.style.display='none';
-  }
-
-  const hoje = new Date().toLocaleDateString('sv');
-  document.getElementById('selData').value = hoje;
-  carregarDia();
-});
-
-function carregarDia() {
-  const dt = document.getElementById('selData').value;
-  if (!dt) return;
-  diaAtual = dt;
-  getDia(dt);
-  ativarListenerDia(dt);
-  if (HIST[dt] && !Object.values(DB[dt].saldos||{}).some(v=>v>0))
-    DB[dt].saldos={...HIST[dt]};
-  const temSaldo = Object.values(DB[dt].saldos||{}).some(v=>v>0);
-  const temContas = Object.values(DB[dt].contas||{}).some(l=>l.length>0);
-  if (!temSaldo&&!temContas) { abrirSaldoModal(); } else { renderTudo(); }
-}
-
-function novoDia() {
-  const dt = document.getElementById('selData').value;
-  if (!dt){toast('📅 Selecione uma data');return;}
-  diaAtual=dt; getDia(dt);
-  const tem=Object.values(DB[dt].saldos||{}).some(v=>v>0)||Object.values(DB[dt].contas||{}).some(l=>l.length>0);
-  if (tem&&!confirm('Esta data já tem dados. Editar saldos?')) return;
-  abrirSaldoModal();
-}
-
-// ══════════════════════════════════════════════════════════
-// RENDER
-// ══════════════════════════════════════════════════════════
-function renderTudo() {
-  if (!diaAtual) return;
-  const d=getDia(diaAtual);
-  const [y,m,day]=diaAtual.split('-');
-  const lbl=`${day}/${m}/${y}`;
-  document.getElementById('headerSub').textContent=`Controle — ${lbl}`;
-  document.getElementById('saldoLabel').textContent=lbl;
-  renderSaldos(d);
-  renderContas(d);
-}
-
-function fmt(v){
-  return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-}
-
-// ── SALDOS ──────────────────────────────────────────────
-function renderSaldos(d) {
-  const grid=document.getElementById('saldoGrid');
-  let totalIni=0,totalPagarSemService=0,totalPagarService=0;
-  const totalEntreContas=somarEntreContas(d);
-  let html='';
-
-  for (const emp of EMPRESAS) {
-    const ini=Number(d.saldos[emp.key]||0);
-    const pagar=(d.contas[emp.key]||[]).reduce((s,c)=>s+(Number(c.valor)||0),0);
-    const final=ini-pagar;
-
-    if (emp.key==='SERVICE') { totalPagarService+=pagar; }
-    else { totalIni+=ini; totalPagarSemService+=pagar; }
-
-    const isServ = emp.key === 'SERVICE';
-    html+=`<div class="saldo-card ${emp.cls}"${isServ?' style="opacity:.7;border-style:dashed"':''}
-      ${isServ?' title="SERVICE: valores informativos, não entram no total"':''}>
-      <div class="emp-name">${emp.emoji} ${emp.label}${isServ?' <span style="font-size:.55rem;color:#94a3b8;font-weight:400">(info)</span>':''}</div>
-      <div class="saldo-ini">${fmt(ini)}</div>
-      <div class="saldo-mini">
-        <div class="mini-val val-neg">-${fmt(pagar)}</div>
-        <div class="mini-val ${final<0?'val-neg':'val-pos'}">${fmt(final)}</div>
-      </div>
-      <button class="edit-saldo-btn" onclick="abrirSaldoModal()" title="Editar saldos">✏️</button>
-    </div>`;
-  }
-
-  const totalPagar=totalPagarSemService+totalPagarService;
-  const totalFinal=totalIni-totalPagarSemService;
-  const totalFinalAjustado=totalFinal+totalEntreContas;
-
-  html+=`<div class="total-card">
-    <div class="emp-name">💰 TOTAL GERAL</div>
-    <div class="saldo-ini">${fmt(totalIni)}</div>
-    <div class="saldo-mini">
-      <div class="mini-val" style="color:#fca5a5">-${fmt(totalPagar)}</div>
-      <div class="mini-val ${totalFinalAjustado<0?'val-neg':'val-pos'}">${fmt(totalFinalAjustado)}</div>
-      ${totalEntreContas>0?`<div class="mini-note">Entre Contas: +${fmt(totalEntreContas)}</div>`:''}
-    </div>
-    <div class="total-card-footer">
-      <button class="btn btn-print btn-sm" onclick="window.print()">🖨️ Imprimir</button>
-    </div>
-  </div>`;
-  grid.innerHTML=html;
-
-  const banner=document.getElementById('mobileTotalBanner');
-  if(banner){
-    const isMobile=window.innerWidth<=768;
-    banner.style.display=isMobile?'block':'none';
-    document.getElementById('mtbIni').textContent=fmt(totalIni);
-    document.getElementById('mtbPagar').textContent='-'+fmt(totalPagar);
-    const el=document.getElementById('mtbFinal');
-    el.textContent=fmt(totalFinalAjustado);
-    el.style.color=totalFinalAjustado<0?'#fca5a5':'#6ee7b7';
-    const extra=document.getElementById('mtbEntreContas');
-    if(extra) extra.textContent=totalEntreContas>0?`Entre Contas: +${fmt(totalEntreContas)}`:'';
-  }
-}
-
-// ── CONTAS ──────────────────────────────────────────────
-function renderContas(d) {
-  const sec=document.getElementById('contasSection');
-  let html='';
-  for (const emp of EMPRESAS) {
-    const contas=d.contas[emp.key]||[];
-    const total=contas.reduce((s,c)=>s+(c.valor||0),0);
-    const pago=contas.filter(c=>c.status==='pago').reduce((s,c)=>s+(c.valor||0),0);
-    const semContas=contas.length===0?'sem-contas':'';
-    const isService=emp.key==='SERVICE';
-    html+=`<div class="empresa-section ${semContas}" id="sec_${emp.key}">
-      <div class="empresa-header" onclick="toggleSec('${emp.key}')">
-        <span class="emp-badge
+<!DOCTYPE html><html  lang="pt"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Drive</title>
+<script type="text/javascript">window.__ORIGINAL_HREF__ = window.location.href;</script>
+<script type="text/javascript">
+            window.addEventListener('error', function (event) {
+              if (event.target.tagName === 'SCRIPT') {
+                window.parent.postMessage({
+                  type: 'chrome_extension_refresh_page',
+                }, 'chrome-extension://hmdkfngkncmbgiehonfebecighedjiak')
+              }
+            }, true);</script>
+<script type="text/javascript">window.genspark_page_id = 'version_1775221269500';</script>
+<script type="text/javascript">if(!Object.hasOwn){Object.hasOwn=function(o,p){return Object.prototype.hasOwnProperty.call(o,p)}}</script>
+<link rel="stylesheet" href="/_nuxt/entry.C-56eHHW.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/_...BWEJO29A.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/FullscreenPreview.CfYCuhwf.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/DirectorySelectDialog.Czcfuulp.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/aspect_ratio_canvas.D7BEm9sE.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/QuotaExceed.DKVuYbbG.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/PricingWindowForTeamCreditsClaim.DmgDBIIy.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/PaymentProvider.Bw4ZO2Jb.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/PlanCreditDesc.DiGbJM_M.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/PricingWindowForPlusPlan.CiA5MzWG.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/AidriveDialog.B6swnr5r.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/ShareDialog.BUAYmcfc.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/LoadingAnimation.CsDMNLHu.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/LoadingIcon.D3GgLYtf.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/ImagePreview.BTzVBKPh.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/PreviewLoading.8rjXO0l8.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/ImageGenerating.K-U64ksk.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/message.DsK7H23n.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/menu.sBAeAGaH.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/install_custom_tools.CPYNkRq3.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/StripeApiKeyConfig.DmrpxBR6.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/feedback_dialog.CW-1PXj2.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/ResearchMeModal.C_MnDBUh.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/personalization_dialog.BGSJVYcw.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/SlackIcon.COREu7xZ.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/FileTypeIcon.CjpIhJPl.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/AiDownloaderDialog.BZTaUlQh.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/AidriveTopHeader.DMokEkLC.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/OperationsStatus.DMy-uet9.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/SkillsModal.BmS9nmDg.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/index_layout.Ds5j7t8a.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/AsyncErrorComponent.im-YTQy7.css" crossorigin>
+<link rel="stylesheet" href="/_nuxt/LoginGuidance.DQXPZDnI.css" crossorigin>
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/35si3acH.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/Cjb1Dub2.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/CzgXSa9q.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DootPFt8.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DybMMKPL.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/Br6-Iowj.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/LQOsxr9r.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/BMSJy5_5.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/IoWz8oyM.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DLeLIngy.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/ClBg2Htj.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/CG4qglA-.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/BwFF82-5.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/Cilc37e2.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/D5X4VqtR.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/CBEhPvy-.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/BTCQ8YAk.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/yvYavUa4.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/D3efoLz3.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/Cz4KGdAX.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/C436WLB3.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DlZ-Ywmn.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DtOuvgTb.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/BXHcukU-.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/CaiMJB3P.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/C_FsIqOV.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/CX5zCVE8.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/C8Sz9lze.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/B9ougxfq.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/D58voxed.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/B0VZekNb.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DYGFX6ai.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/EDdr-Pzt.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/BxyzqgQ2.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DkbhVauR.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/CtF9WAhE.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DjHZknJs.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/BhZne5wm.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/w8GMX1Pi.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/CJu6pckn.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/CG-FVxT3.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/CAP8JzHc.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DFYjRiaO.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DhJv1HCL.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DXy6Nlgz.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/BWtFk7fA.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/CF7czKkF.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/CFNGxdf_.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/Buj189NL.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/Bi6SOVTt.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/C5lg2pMu.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/pTTPaT6a.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/BPGLmceT.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DUV9Fz-N.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/BcF1L83s.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/BYJoIA7D.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/BYpbA3md.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/OxW6tT8c.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/BM4raagO.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DXu2Ia7C.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/BmjkWk6n.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/Cxf25lQF.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DbJ7DdjC.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/IknHQs_g.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/BcB_ZJQZ.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DsJyNvfs.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/AgoeqwZG.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/C3Xrvttd.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/BHlVVNQv.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/B6SoJb3o.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/ivn0fNBM.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/B3JzeuFx.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/2zJxZekL.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DsPcIkbs.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/D95gc0hX.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/B3DfbetJ.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/BUgKgjTV.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/Cpqp2Kjv.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/Dvfdluwh.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/Cl49vQRw.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/Dzzr7JJj.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DU4c5HSX.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DUz28qOV.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DF0UxYud.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DB0496Hr.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/D-UDgn7O.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/C8sgivUI.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/Becjgvsi.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DsXFf1Wm.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/AUXTVlCa.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/BORDzH8h.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/C0Y5cTl_.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/D8Ga04OU.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/BcymcA6D.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/-5xAUrRG.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DPdLiMMC.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/zWoX7pgD.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/Bn24LieK.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/BREGzSvx.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/BGj1UBfO.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/CLh-ZEeE.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/Bbxq2dfT.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/RCn4OF2P.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/eUBDHvcu.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/Bmgl9RQr.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/Dt0PQlOQ.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/c9agZs4x.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/D1LxqTFi.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/CExfawgS.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/sJsj8sKY.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/CofV4vHI.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DB2xi8Ep.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DSwW-Nqg.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/Cc9S6sTM.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/CgVtUaaN.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/B61QnwY2.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/B4rdMmvT.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DO1zkScl.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/BUEDaSPu.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DdYjB24v.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/N--8V6_z.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/8_4SUOrS.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/CV6Fuhhj.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DYGqAq6p.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/cwNQO_ga.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/QULIgELP.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/C80h09tX.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/9qfex7b-.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/CYwBxlaV.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DmQRa5y3.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/D2ML0zAo.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/uQaw5B8a.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/BDvtbpLU.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/D6BGCp-U.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/Ci4TzGCS.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/CxqXMWaT.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/Bmro9kXo.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/BblGceJb.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/D68_0lBv.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/D0hvz1Bx.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DtiW87F9.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/D9jL3O7a.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/ZFi6kqEJ.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/YPMjfp2y.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DaAXS5RM.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/D9XXG1Kn.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DSvGNLAc.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/txFMbBZW.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/CfGGI9AS.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/6-d4iTCK.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/qcKSEpHq.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DNRm9gIz.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/Ch4m9TuL.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/Df1tbSWa.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/DzYW1Jtw.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/Bq-rIhi7.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/KW5Oii3h.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/C0nkE8An.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/CuRgaaLE.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/Q7HPmR6U.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/Dcw8rEkh.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/fhpocTvV.js">
+<link rel="modulepreload" as="script" crossorigin href="/_nuxt/UzkN17g7.js">
+<link rel="preload" as="fetch" fetchpriority="low" crossorigin="anonymous" href="/_nuxt/builds/meta/39a280fb-f8dd-4567-84fb-fbece89d65cc.json">
+<script type="module" src="/_nuxt/35si3acH.js" crossorigin></script>
+<link rel="prefetch" as="image" type="image/png" href="/_nuxt/banana.Y-m5YA5Q.png">
+<link rel="prefetch" as="image" type="image/webp" href="/_nuxt/moa_image_preview_cartoon.BR_EcNfY.webp">
+<link rel="prefetch" as="image" type="image/webp" href="/_nuxt/moa_image_preview_watercolor.FDtMfo1W.webp">
+<link rel="prefetch" as="image" type="image/webp" href="/_nuxt/moa_image_preview_anime.V_XznKQj.webp">
+<link rel="prefetch" as="image" type="image/webp" href="/_nuxt/moa_image_preview_oil_painting.CfwAnK5z.webp">
+<link rel="prefetch" as="image" type="image/webp" href="/_nuxt/moa_image_preview_3D.DxhOXiTI.webp">
+<link rel="prefetch" as="image" type="image/webp" href="/_nuxt/moa_image_preview_pop_art.bV-g7kCK.webp">
+<link rel="prefetch" as="image" type="image/webp" href="/_nuxt/moa_image_preview_realistic.CIYFsRPk.webp">
+<link rel="prefetch" as="image" type="image/webp" href="/_nuxt/moa_image_preview_auto.DjgTj5U8.webp">
+<link rel="prefetch" as="image" type="image/png" href="/_nuxt/google.0ZkpJID5.png">
+<link rel="prefetch" as="image" type="image/png" href="/_nuxt/invite_gift_icon.8_bEyi4a.png">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon.ico">
+<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=984530900272144&ev=PageView&noscript=1" /></noscript>
+<meta name="theme-color" content="#fff">
+<meta property="og:title" content="Genspark — Seu Workspace de IA Tudo em Um | Comece Grátis">
+<meta property="og:description" content="O Genspark é seu workspace de inteligência artificial completo. Slides, documentos, imagens, vídeos, código e design — tudo em um só lugar. Experimente grátis.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Genspark">
+<meta property="og:image" content="https://cdn1.genspark.ai/user-upload-image/admin/image/seo/og/pt.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="pt_BR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@genspark_ai">
+<meta name="twitter:title" content="Genspark — Seu Workspace de IA Tudo em Um | Comece Grátis">
+<meta name="twitter:description" content="O Genspark é seu workspace de inteligência artificial completo. Slides, documentos, imagens, vídeos, código e design — tudo em um só lugar. Experimente grátis.">
+<meta name="twitter:image" content="https://cdn1.genspark.ai/user-upload-image/admin/image/seo/og/pt.jpg">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="description" content="AI Drive - Seu armazenamento em nuvem inteligente. Baixe, organize e gerencie arquivos com assistência de IA."></head><body><div id="__nuxt"><!--[--><!----><div class="n-config-provider" style="height:100%;" data-v-4c90a491><div style="height:100%;" data-v-4c90a491><!--[--><!--[--><!--]--><!--[--><!--[--><!--[--><div data-v-5273facb><!--[--><!--[--><div class="index-layout flex h-[100vh]" data-v-9c7cca8c><div class="index-layout-sidebar bg-[#f2f2f2] dark:bg-[#1a1a1a] flex flex-col justify-between items-start flex-shrink-0 transition-[width] duration-300 ease-in-out j-index-layout-sidebar collapsed" data-v-9c7cca8c><div class="sidebar w-full h-full flex flex-col justify-between items-start" data-v-9c7cca8c><div class="sidebar-header w-full" data-v-9c7cca8c><div class="header flex justify-between items-center pt-[16px] max-h-sm:pt-[12px] pr-[8px] pl-[20px]" data-v-9c7cca8c><div class="logo w-[132px] h-[24px] cursor-pointer" data-v-9c7cca8c><!----><svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-[24px] h-[24px]" data-v-9c7cca8c><g id="Group"><path id="Vector" d="M24.3026 0H5.6974C2.55081 0 0 2.55081 0 5.6974V24.3026C0 27.4492 2.55081 30 5.6974 30H24.3026C27.4492 30 30 27.4492 30 24.3026V5.6974C30 2.55081 27.4492 0 24.3026 0Z" fill="black"></path><g id="Group_2"><path id="Vector_2" d="M25.1605 22.9316H4.91513C4.49508 22.9316 4.15457 23.2722 4.15457 23.6922V25.2891C4.15457 25.7091 4.49508 26.0496 4.91513 26.0496H25.1605C25.5806 26.0496 25.9211 25.7091 25.9211 25.2891V23.6922C25.9211 23.2722 25.5806 22.9316 25.1605 22.9316Z" fill="white"></path><g id="Group_3"><path id="Vector_3" d="M10.913 19.676C10.7912 19.676 10.6883 19.5866 10.6694 19.4648C9.87635 14.2221 9.30254 13.7593 4.09774 12.9744C3.93805 12.95 3.81897 12.812 3.81897 12.6496C3.81897 12.4872 3.93805 12.3492 4.09774 12.3248C9.27547 11.5426 9.7356 11.0798 10.5178 5.90476C10.5422 5.74507 10.6802 5.62598 10.8426 5.62598C11.005 5.62598 11.143 5.74507 11.1674 5.90476C11.9496 11.0798 12.4124 11.5426 17.5875 12.3248C17.7471 12.3492 17.8662 12.4872 17.8662 12.6496C17.8662 12.812 17.7471 12.95 17.5875 12.9744C12.3881 13.7593 11.9442 14.2221 11.1566 19.4648C11.1376 19.5839 11.0348 19.676 10.913 19.676Z" fill="white"></path><path id="Vector_4" d="M20.7921 12.7392C20.7163 12.7392 20.6513 12.6824 20.6405 12.6066C20.1452 9.33159 19.7852 9.04199 16.5346 8.55209C16.4344 8.53585 16.3586 8.45195 16.3586 8.34909C16.3586 8.24895 16.4317 8.16234 16.5346 8.1461C19.769 7.65891 20.0586 7.3693 20.5458 4.13491C20.562 4.03477 20.6459 3.95898 20.7488 3.95898C20.8489 3.95898 20.9355 4.03206 20.9518 4.13491C21.4389 7.3693 21.7286 7.65891 24.9629 8.1461C25.0631 8.16234 25.1389 8.24624 25.1389 8.34909C25.1389 8.44924 25.0658 8.53585 24.9629 8.55209C21.715 9.04199 21.4362 9.33159 20.9436 12.6066C20.9328 12.6824 20.8678 12.7392 20.7921 12.7392Z" fill="white"></path><path id="Vector_5" d="M20.7649 20.9126C20.7162 20.9126 20.6756 20.8774 20.6675 20.8287C20.3535 18.7446 20.1235 18.5606 18.0556 18.2493C17.9907 18.2385 17.9446 18.1843 17.9446 18.1194C17.9446 18.0544 17.9907 18.0003 18.0556 17.9895C20.1126 17.6782 20.2967 17.4942 20.6079 15.4371C20.6188 15.3722 20.6729 15.3262 20.7379 15.3262C20.8028 15.3262 20.857 15.3722 20.8678 15.4371C21.179 17.4942 21.3631 17.6782 23.4201 17.9895C23.4851 18.0003 23.5311 18.0544 23.5311 18.1194C23.5311 18.1843 23.4851 18.2385 23.4201 18.2493C21.3523 18.5606 21.1763 18.7446 20.8624 20.8287C20.8542 20.8774 20.8137 20.9126 20.7649 20.9126Z" fill="white"></path></g></g></g></svg></div></div><div class="menu-items w-full box-border flex flex-col gap-[18px] max-h-sm:gap-[6px] mt-[30px] max-h-sm:mt-[12px]" data-v-9c7cca8c><!--[--><!----><div class="flex flex-col items-center justify-center gap-[8px] cursor-pointer group" data-v-9c7cca8c><div class="w-[32px] h-[32px] rounded-[10px] p-[6px] box-border group-hover:bg-white dark:group-hover:bg-white/10" data-v-9c7cca8c><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-[20px] h-[20px] group-hover:scale-[1.2] transition-all duration-300 ease-in-out" data-v-9c7cca8c><path d="M4.5 12H19.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path><path d="M12 19.5L12 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg></div><div class="text-center justify-center text-[#606366] dark:text-[#b0b0b0] text-[11px] font-normal font-[&#39;Arial&#39;] leading-none tracking-tight max-h-sm:hidden" data-v-9c7cca8c> New </div></div><!----><!--]--><template><!----></template><!--[--><!--[--><!--[--><!--[--><!----><div class="menu-item flex flex-col items-center justify-center group" data-v-9c7cca8c><div class="flex items-center justify-center icon w-[32px] h-[32px] rounded-[10px] p-[6px] box-border group-hover:bg-white dark:group-hover:bg-white/10" data-v-9c7cca8c><!--[--><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28" fill="none" class="w-full h-full group-hover:scale-[1.2] transition-all duration-300 ease-in-out" data-v-9c7cca8c><path d="M10.5719 5.63072L3.77896 11.5749C3.19643 12.0847 3.58701 12.99 4.38944 12.99C4.87969 12.99 5.27711 13.357 5.27711 13.8099V17.594C5.27711 20.8495 5.27711 22.4772 6.37205 23.4886C7.467 24.5 9.22929 24.5 12.7539 24.5H15.2461C18.7707 24.5 20.533 24.5 21.6279 23.4886C22.7229 22.4772 22.7229 20.8495 22.7229 17.594V13.8099C22.7229 13.357 23.1203 12.99 23.6105 12.99C24.413 12.99 24.8036 12.0847 24.221 11.5749L17.428 5.63072C15.8047 4.21024 14.9931 3.5 14 3.5C13.0069 3.5 12.1953 4.21024 10.5719 5.63072Z" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"></path><path d="M14 18.668H14.0105" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path></svg><!--]--></div><div class="title text-[11px] mt-[2px] text-[#606366] dark:text-[#b0b0b0] text-center max-h-sm:hidden" data-v-9c7cca8c>Início</div><!----><!----><!----></div><!----><!--]--><!--]--><!--]--><!--[--><!--[--><!--]--><!--]--><!--[--><!--[--><!--[--><!----><div class="menu-item flex flex-col items-center justify-center group" data-v-9c7cca8c><div class="flex items-center justify-center icon w-[32px] h-[32px] rounded-[10px] p-[6px] box-border group-hover:bg-white dark:group-hover:bg-white/10" data-v-9c7cca8c><!--[--><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full group-hover:scale-[1.2] transition-all duration-300 ease-in-out" data-v-9c7cca8c><path d="M5.74205 6.46718C1.38506 12.0985 5.81766 17.1965 8.25528 18.2974C10.6929 19.3982 13.3666 19.296 15.8042 17.5897C17.3768 16.4888 16.3272 16.2276 15.0964 15.2306C14.4748 14.7271 13.7612 13.9519 13.5237 13.1075C13.2862 12.2631 11.7778 8.11471 16.1187 5.40137C20.4595 2.68804 9.69511 1.35797 5.74205 6.46718Z" stroke="currentColor" stroke-width="1.5"></path><path d="M15.9844 16.7997C17.1282 16.2278 18.7303 15.4771 19.9877 12.7963C21.6917 9.16322 20.3357 6.83269 19.4159 7.64906C16.8307 9.9435 17.1456 10.2585 13.236 12.1584" stroke="currentColor" stroke-width="1.5"></path><path d="M4.22695 13.4766C3.46682 14.6823 2.19819 17.6285 3.20471 19.7673C4.46285 22.4409 6.90051 22.5195 8.7091 21.0255C9.69939 20.2074 10.2059 19.4163 10.4354 18.8641" stroke="currentColor" stroke-width="1.5"></path></svg><!--]--></div><div class="title text-[11px] mt-[2px] text-[#606366] dark:text-[#b0b0b0] text-center max-h-sm:hidden" data-v-9c7cca8c>Claw</div><!----><!----><!----></div><!----><!--]--><!--[--><!----><div class="menu-item flex flex-col items-center justify-center group" data-v-9c7cca8c><div class="flex items-center justify-center icon w-[32px] h-[32px] rounded-[10px] p-[6px] box-border group-hover:bg-white dark:group-hover:bg-white/10" data-v-9c7cca8c><!--[--><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full group-hover:scale-[1.2] transition-all duration-300 ease-in-out" data-v-9c7cca8c><path d="M12 7.34375V10.3824" stroke="currentColor" stroke-width="1.5"></path><rect x="2.25" y="16.5735" width="5.5" height="5.5" rx="1.75" stroke="currentColor" stroke-width="1.5"></rect><rect x="16.25" y="16.5735" width="5.5" height="5.5" rx="1.75" stroke="currentColor" stroke-width="1.5"></rect><path d="M5 17.0882V14.2941C5 13.6769 5.50039 13.1765 6.11765 13.1765H9.20594" stroke="currentColor" stroke-width="1.5"></path><path d="M19 17.0882V14.2941C19 13.6769 18.4996 13.1765 17.8824 13.1765H14.7941" stroke="currentColor" stroke-width="1.5"></path><rect x="8.79945" y="13.0806" width="4.52559" height="4.52559" rx="1.30882" transform="rotate(-45 8.79945 13.0806)" stroke="currentColor" stroke-width="1.5"></rect><rect x="7.25" y="2.75" width="9.5" height="4.5" rx="1.59706" stroke="currentColor" stroke-width="1.5"></rect></svg><!--]--></div><div class="title text-[11px] mt-[2px] text-[#606366] dark:text-[#b0b0b0] text-center max-h-sm:hidden" data-v-9c7cca8c>Workflows</div><!----><!----><!----></div><!----><!--]--><!--[--><!----><div class="menu-item flex flex-col items-center justify-center group" data-v-9c7cca8c><div class="flex items-center justify-center icon w-[32px] h-[32px] rounded-[10px] p-[6px] box-border group-hover:bg-white dark:group-hover:bg-white/10" data-v-9c7cca8c><!--[--><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full group-hover:scale-[1.2] transition-all duration-300 ease-in-out" data-v-9c7cca8c><path d="M15.9999 21.0001V19.0001C15.9999 17.9392 15.5784 16.9218 14.8283 16.1716C14.0782 15.4215 13.0607 15.0001 11.9999 15.0001H5.99988C4.93901 15.0001 3.9216 15.4215 3.17145 16.1716C2.42131 16.9218 1.99988 17.9392 1.99988 19.0001V21.0001" stroke="currentColor" stroke-width="1.50082" stroke-linecap="round" stroke-linejoin="round"></path><path d="M16 3.12814C16.8578 3.35051 17.6174 3.85141 18.1597 4.55221C18.702 5.253 18.9962 6.11403 18.9962 7.00014C18.9962 7.88625 18.702 8.74728 18.1597 9.44808C17.6174 10.1489 16.8578 10.6498 16 10.8721" stroke="currentColor" stroke-width="1.50082" stroke-linecap="round" stroke-linejoin="round"></path><path d="M22 20.9998V18.9998C21.9993 18.1135 21.7044 17.2526 21.1614 16.5521C20.6184 15.8516 19.8581 15.3514 19 15.1298" stroke="currentColor" stroke-width="1.50082" stroke-linecap="round" stroke-linejoin="round"></path><path d="M8.99988 11.0001C11.209 11.0001 12.9999 9.2092 12.9999 7.00006C12.9999 4.79092 11.209 3.00006 8.99988 3.00006C6.79074 3.00006 4.99988 4.79092 4.99988 7.00006C4.99988 9.2092 6.79074 11.0001 8.99988 11.0001Z" stroke="currentColor" stroke-width="1.50082" stroke-linecap="round" stroke-linejoin="round"></path></svg><!--]--></div><div class="title text-[11px] mt-[2px] text-[#606366] dark:text-[#b0b0b0] text-center max-h-sm:hidden" data-v-9c7cca8c>Equipes</div><!----><!----><!----></div><!----><!--]--><!--[--><!----><div class="menu-item flex flex-col items-center justify-center group" data-v-9c7cca8c><div class="flex items-center justify-center icon w-[32px] h-[32px] rounded-[10px] p-[6px] box-border group-hover:bg-white dark:group-hover:bg-white/10 bg-white dark:bg-white/10" data-v-9c7cca8c><!--[--><svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" class="group-hover:scale-[1.2] transition-all duration-300 ease-in-out dark:text-white" data-v-9c7cca8c><path d="M22.8 6.33333H12.9L10.7 4H5.2C3.99 4 3 5.05 3 6.33333V9H25V8.66667C25 7.38333 24.01 6.33333 22.8 6.33333Z" fill="currentcolor" stroke="currentcolor" stroke-width="1.75"></path><path d="M17.4 23H14H5.2C3.99 23 3 21.9714 3 20.7143V9.28571C3 8.02857 3.99 7 5.2 7H22.8C24.01 7 25 8.02857 25 9.28571V15V15.8571" stroke="currentcolor" stroke-width="1.75" stroke-linecap="round"></path><path d="M22.5 17L22.7579 17.697C23.0961 18.611 23.2652 19.068 23.5986 19.4014C23.932 19.7348 24.389 19.9039 25.303 20.2421L26 20.5L25.303 20.7579C24.389 21.0961 23.932 21.2652 23.5986 21.5986C23.2652 21.932 23.0961 22.389 22.7579 23.303L22.5 24L22.2421 23.303C21.9039 22.389 21.7348 21.932 21.4014 21.5986C21.068 21.2652 20.611 21.0961 19.697 20.7579L19 20.5L19.697 20.2421C20.611 19.9039 21.068 19.7348 21.4014 19.4014C21.7348 19.068 21.9039 18.611 22.2421 17.697L22.5 17Z" stroke="currentcolor" stroke-width="1.75" stroke-linejoin="round"></path></svg><!--]--></div><div class="title text-[11px] mt-[2px] text-[#606366] dark:text-[#b0b0b0] text-center max-h-sm:hidden" data-v-9c7cca8c>Drive</div><!----><!----><!----></div><!----><!--]--><!--]--><!--]--><!--]--><!--[--><!----><div class="menu-item flex flex-col items-center justify-center group cursor-pointer" data-v-9c7cca8c><div class="icon w-[32px] h-[32px] rounded-[10px] p-[6px] box-border group-hover:bg-white dark:group-hover:bg-white/10" data-v-9c7cca8c><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full group-hover:scale-[1.2] transition-all duration-300 ease-in-out" data-v-9c7cca8c><path d="M21 14C22.1046 14 23 13.1046 23 12C23 10.8954 22.1046 10 21 10C19.8954 10 19 10.8954 19 12C19 13.1046 19.8954 14 21 14Z" fill="currentColor"></path><path d="M12 14C13.1046 14 14 13.1046 14 12C14 10.8954 13.1046 10 12 10C10.8954 10 10 10.8954 10 12C10 13.1046 10.8954 14 12 14Z" fill="currentColor"></path><path d="M3.16406 14C4.26863 14 5.16406 13.1046 5.16406 12C5.16406 10.8954 4.26863 10 3.16406 10C2.05949 10 1.16406 10.8954 1.16406 12C1.16406 13.1046 2.05949 14 3.16406 14Z" fill="currentColor"></path></svg></div><div class="title text-[11px] mt-[2px] text-[#606366] dark:text-[#b0b0b0] text-center max-h-sm:hidden" data-v-9c7cca8c>Mais</div></div><!----><!--]--></div></div><!----></div></div><div class="loading index-layout-content j-index-layout-content" data-v-9c7cca8c><!--[--><span data-v-5273facb></span><!--]--></div></div><!----><!----><!----><!--]--><!----><!--]--></div><span data-v-4c90a491></span><!--]--><!----><!--]--><!--]--><!--]--></div><!----></div><span data-v-4c90a491></span><span data-v-4c90a491></span><!--]--></div><div id="teleports"></div><script>window.__NUXT__={};window.__NUXT__.config={public:{APPLICATIONINSIGHTS_CONNECTION_STRING:"InstrumentationKey=5c09cc03-8ac4-449e-a543-7415b6801d7f;IngestionEndpoint=https://westus2-2.in.applicationinsights.azure.com/;LiveEndpoint=https://westus2.livediagnostics.monitor.azure.com/;ApplicationId=5ffe9c61-a36b-4b1a-8ac5-32d305941a07",GOOGLE_CAPTCHA_SITE_KEY:"6Leq7KYqAAAAAGdd1NaUBJF9dHTPAKP7DcnaRc66",GOOGLE_RECAPTCHA_ENTERPRISE_SITE_KEY:"6LfYyWcsAAAAAK8DUr6Oo1wHl2CJ5kKbO0AK3LIM",GOOGLE_ONE_TAP_CLIENT_ID:"468316177930-dkmnhti8obocc4r8o11vn478j9qqdglt.apps.googleusercontent.com",lineAccountId:"@280iqwci",telegramBotUsername:"GensparkOfficialBot","nuxt-scripts":{version:"",defaultScriptOptions:{trigger:"onNuxtReady"}},i18n:{baseUrl:"",defaultLocale:"en-US",rootRedirect:"",redirectStatusCode:302,skipSettingLocaleOnNavigate:false,locales:[{code:"en-US",language:"en-US",name:"English (English)"},{code:"de-DE",language:"de-DE",name:"German (Deutsch)"},{code:"es-ES",language:"es-ES",name:"Spanish (Español)"},{code:"fr-FR",language:"fr-FR",name:"French (Français)"},{code:"hi-IN",language:"hi-IN",name:"Hindi (हिंदी)"},{code:"it-IT",language:"it-IT",name:"Italian (Italiano)"},{code:"ja-JP",language:"ja-JP",name:"Japanese (日本語)"},{code:"ko-KR",language:"ko-KR",name:"Korean (한국어)"},{code:"pt-BR",language:"pt-BR",name:"Portuguese (Português)"},{code:"zh-CN",language:"zh-CN",name:"Simplified Chinese (简体中文)"},{code:"zh-TW",language:"zh-TW",name:"Traditional Chinese (繁體中文)"},{code:"id-ID",language:"id-ID",name:"Indonesian (Bahasa Indonesia)"},{code:"ms-MY",language:"ms-MY",name:"Malay (Bahasa Melayu)"},{code:"th-TH",language:"th-TH",name:"Thai (ไทย)"},{code:"ar-EG",language:"ar-EG",name:"Arabic (العربية)",dir:"rtl"},{code:"he-IL",language:"he-IL",name:"Hebrew (עברית)",dir:"rtl"},{code:"ru-RU",language:"ru-RU",name:"Russian (Русский)"},{code:"pl-PL",language:"pl-PL",name:"Polish (Polski)"},{code:"nl-NL",language:"nl-NL",name:"Dutch (Nederlands)"}],detectBrowserLanguage:{alwaysRedirect:false,cookieCrossOrigin:false,cookieDomain:"",cookieKey:"i18n_set",cookieSecure:false,fallbackLocale:"en-US",redirectOn:"root",useCookie:true},experimental:{localeDetector:"",typedPages:true,typedOptionsAndMessages:false,alternateLinkCanonicalQueries:true,devCache:false,cacheLifetime:"",stripMessagesPayload:false,preload:false,strictSeo:false,nitroContextDetection:true,httpCacheDuration:10},domainLocales:{"en-US":{domain:""},"de-DE":{domain:""},"es-ES":{domain:""},"fr-FR":{domain:""},"hi-IN":{domain:""},"it-IT":{domain:""},"ja-JP":{domain:""},"ko-KR":{domain:""},"pt-BR":{domain:""},"zh-CN":{domain:""},"zh-TW":{domain:""},"id-ID":{domain:""},"ms-MY":{domain:""},"th-TH":{domain:""},"ar-EG":{domain:""},"he-IL":{domain:""},"ru-RU":{domain:""},"pl-PL":{domain:""},"nl-NL":{domain:""}}}},app:{baseURL:"/",buildId:"39a280fb-f8dd-4567-84fb-fbece89d65cc",buildAssetsDir:"/_nuxt/",cdnURL:""}}</script>
+<script type="application/json" data-nuxt-data="nuxt-app" data-ssr="true" id="__NUXT_DATA__">[["ShallowReactive",1],{"data":2,"state":8,"once":52,"_errors":53,"serverRendered":13,"path":56},["ShallowReactive",3],{"headersValue":4,"IS_CN":6,"IS_JP":6,"gensparkBrowserId":7},["null","user-agent",5],"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",false,"",["Reactive",9],{"$si18n:cached-locale-configs":10,"$si18n:resolved-locale":51},{"en-US":11,"de-DE":14,"es-ES":17,"fr-FR":19,"hi-IN":21,"it-IT":23,"ja-JP":25,"ko-KR":27,"pt-BR":29,"zh-CN":31,"zh-TW":33,"id-ID":35,"ms-MY":37,"th-TH":39,"ar-EG":41,"he-IL":43,"ru-RU":45,"pl-PL":47,"nl-NL":49},{"fallbacks":12,"cacheable":13},[],true,{"fallbacks":15,"cacheable":13},[16],"en-US",{"fallbacks":18,"cacheable":13},[16],{"fallbacks":20,"cacheable":13},[16],{"fallbacks":22,"cacheable":13},[16],{"fallbacks":24,"cacheable":13},[16],{"fallbacks":26,"cacheable":13},[16],{"fallbacks":28,"cacheable":13},[16],{"fallbacks":30,"cacheable":13},[16],{"fallbacks":32,"cacheable":13},[16],{"fallbacks":34,"cacheable":13},[16],{"fallbacks":36,"cacheable":13},[16],{"fallbacks":38,"cacheable":13},[16],{"fallbacks":40,"cacheable":13},[16],{"fallbacks":42,"cacheable":13},[16],{"fallbacks":44,"cacheable":13},[16],{"fallbacks":46,"cacheable":13},[16],{"fallbacks":48,"cacheable":13},[16],{"fallbacks":50,"cacheable":13},[16],"pt-BR",["Set"],["ShallowReactive",54],{"headersValue":55,"IS_CN":55,"IS_JP":55,"gensparkBrowserId":55},null,"/aidrive/files/Financeiro"]</script><script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body></html>
