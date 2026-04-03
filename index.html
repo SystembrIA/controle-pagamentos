@@ -113,8 +113,8 @@ input[type=date]:focus{outline:none;border-color:#1e40af;}
 .total-card-footer{display:none;}
 
 /* no card total: vermelho → laranja claro, verde → verde água (já ok) */
-.total-card .val-neg{color:#fcd34d !important;}  /* amarelo quente — contrasta no azul */
-.total-card .val-pos{color:#6ee7b7 !important;}  /* verde água — já estava ok */
+.total-card .val-neg{color:#fcd34d !important;}
+.total-card .val-pos{color:#6ee7b7 !important;}
 
 .val-neg{color:#dc2626 !important;}
 .val-pos{color:#059669 !important;}
@@ -403,12 +403,10 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
    MOBILE — otimizado para celular
 ══════════════════════════════════════ */
 @media(max-width:768px){
-  /* header compacto */
   .header{padding:10px 14px;}
   .header h1{font-size:1rem;}
   .header .sub{font-size:.7rem;}
 
-  /* toolbar: só data visível, botões desnecessários ocultos */
   .toolbar{
     padding:8px 10px;
     gap:6px;
@@ -420,7 +418,6 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
   .toolbar input[type=date]{flex:1;}
   .btn-mobile-hide{display:none !important;}
 
-  /* banner de total: aparece só em mobile */
   .mobile-total-banner{
     display:block;
     background:linear-gradient(135deg,#1e40af,#1e3a8a);
@@ -437,13 +434,10 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
   .mtb-value{font-size:1rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
   .mtb-extra{font-size:.58rem !important;font-weight:700 !important;opacity:.82;margin-top:2px;}
 
-  /* ocultar o card total-card dentro do saldo-grid em mobile (está no banner) */
   .total-card{display:none !important;}
 
-  /* main sem padding lateral excessivo */
   .main{padding:8px;}
 
-  /* cards de saldo: 2 por linha */
   .saldo-grid{
     display:grid;
     grid-template-columns:repeat(2,1fr);
@@ -459,43 +453,33 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
   .saldo-ini,.mini-val{font-size:.88rem;}
   .emp-name{font-size:.62rem;}
 
-  /* empresa section: header mais compacto */
   .empresa-header{padding:8px 10px;gap:6px;flex-wrap:wrap;}
   .empresa-header .emp-total{font-size:.82rem;}
   .empresa-header .btn-limpar{margin-left:auto;}
 
-  /* tabela mobile: Fornecedor | Valor | Método */
   .contas-body{overflow-x:hidden;}
   table{font-size:.78rem;width:100%;table-layout:auto;border-collapse:collapse;}
   thead th{padding:4px 6px;font-size:.65rem;}
   td{padding:4px 6px;}
   .mob-hide{display:none !important;}
   .mob-show{display:table-cell !important;}
-  /* no mobile: oculta input de valor, mostra texto formatado */
   input.val-edit{display:none !important;}
   .val-print{display:inline !important;font-size:.78rem;font-weight:700;white-space:nowrap;}
-  /* col ocultas: sem largura */
   col.col-venc,col.col-desc,col.col-cat,col.col-acao{display:none;}
   .mob-desc-sub{display:none !important;}
 
-  /* input de valor menor */
   input.val-edit{width:80px;font-size:.75rem;padding:2px 5px;}
 
-  /* modal full-width em mobile */
   .overlay{padding:10px;}
   .modal{padding:18px 14px;border-radius:12px;}
   .modal h3{font-size:.92rem;}
 
-  /* toast centralizado */
   #toast{right:12px;left:12px;bottom:16px;text-align:center;}
 
-  /* section-title menor */
   .section-title{font-size:.72rem;}
 
-  /* add-row-btn maior para toque */
   .add-row-btn{padding:10px;font-size:.8rem;}
 
-  /* botão de ação menor */
   .btn-sm{padding:4px 9px;font-size:.7rem;}
 }
 </style>
@@ -551,7 +535,7 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
 <!-- MAIN -->
 <div class="main">
 
-  <!-- RESUMO MOBILE: total geral no topo (só aparece em mobile) -->
+  <!-- RESUMO MOBILE -->
   <div id="mobileTotalBanner" class="mobile-total-banner" style="display:none">
     <div class="mtb-label">💰 Total Geral</div>
     <div class="mtb-vals">
@@ -579,7 +563,7 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
   <!-- CONTAS POR EMPRESA -->
   <div id="contasSection"></div>
 
-</div><!-- /main -->
+</div>
 
 <!-- MODAL SALDOS -->
 <div class="overlay" id="saldoModal">
@@ -674,11 +658,11 @@ const HIST = {
 const EMPRESAS = [
   {key:'BURGER_MATRIZ',label:'BURGER MATRIZ',cls:'c-burger',emoji:'🍔'},
   {key:'GOURMET',      label:'GOURMET',       cls:'c-gourmet',emoji:'⭐'},
-  {key:'SAO_BERNARDO', label:'ABC',            cls:'c-sber',   emoji:'🏙️'},
-  {key:'GUARULHOS',    label:'GUARULHOS',      cls:'c-grh',    emoji:'🏢'},
-  {key:'PIZZA',        label:'PIZZA',          cls:'c-pizza',  emoji:'🍕'},
-  {key:'SUSHI',        label:'SUSHI',          cls:'c-sushi',  emoji:'🍣'},
-  {key:'SERVICE',      label:'SERVICE',        cls:'c-service',emoji:'🔧'},
+  {key:'SAO_BERNARDO', label:'ABC',           cls:'c-sber',   emoji:'🏙️'},
+  {key:'GUARULHOS',    label:'GUARULHOS',     cls:'c-grh',    emoji:'🏢'},
+  {key:'PIZZA',        label:'PIZZA',         cls:'c-pizza',  emoji:'🍕'},
+  {key:'SUSHI',        label:'SUSHI',         cls:'c-sushi',  emoji:'🍣'},
+  {key:'SERVICE',      label:'SERVICE',       cls:'c-service',emoji:'🔧'},
 ];
 
 const EMP_MAP = {
@@ -704,51 +688,40 @@ function normEmp(str) {
   return null;
 }
 
-// Nome do arquivo → empresa
-// "pizza 18.03.xlsx" → PIZZA | "gourmet 18-03.xlsx" → GOURMET
 function empKeyDoNomeArquivo(filename) {
   const base = filename
     .replace(/\.[^.]+$/, '')
-    .replace(/\d{2}[.\-\/]\d{2}([.\-\/]\d{2,4})?/g,'') // remove datas
+    .replace(/\d{2}[.\-\/]\d{2}([.\-\/]\d{2,4})?/g,'')
     .replace(/[-_]/g,' ').replace(/\d+/g,'')
     .trim();
   return normEmp(base) || null;
 }
 
-// Parse valor: suporta negativos (abs), BR (1.234,56) e americano
 function parseValorBR(v) {
   if (v === null || v === undefined || v === '') return 0;
   if (typeof v === 'number') return Math.abs(v);
   let s = String(v).trim().replace(/R\$\s*/gi,'').replace(/\s/g,'').replace(/"/g,'');
   if (!s) return 0;
-  // negativo → positivo
-  const neg = s.startsWith('-') || s.startsWith('(');
   s = s.replace(/^[-( ]+/, '').replace(/[) ]+$/, '');
   let n = 0;
   if (s.includes(',')) {
-    // formato BR: 1.234,56
     n = parseFloat(s.replace(/\./g,'').replace(',','.')) || 0;
   } else if (/^\d{1,3}(\.\d{3})+$/.test(s)) {
-    // milhar sem centavos: 1.234
     n = parseFloat(s.replace(/\./g,'')) || 0;
   } else {
     n = parseFloat(s) || 0;
   }
-  return Math.abs(n); // sempre positivo
+  return Math.abs(n);
 }
 
-// Formata data yyyy-mm-dd ou serial xlsx → dd/mm/aaaa
 function fmtData(v) {
   if (!v) return '';
-  // se vier como serial numérico do Excel
   if (typeof v === 'number') {
     const d = XLSX.SSF.parse_date_code(v);
     if (d) return `${String(d.d).padStart(2,'0')}/${String(d.m).padStart(2,'0')}/${d.y}`;
   }
   const s = String(v).trim();
-  // dd/mm/aaaa já ok
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
-  // aaaa-mm-dd
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
     const [y,m,d] = s.split('T')[0].split('-');
     return `${d}/${m}/${y}`;
@@ -759,7 +732,6 @@ function fmtData(v) {
 // ══════════════════════════════════════════════════════════
 // ESTADO
 // ══════════════════════════════════════════════════════════
-// Firebase já inicializado acima
 let DB = {};
 let diaAtual = null;
 let editIdx = null;
@@ -790,27 +762,48 @@ function preencherHistorico() {
 async function carregarDadosNuvem() {
   setSyncBar('','Conectando ao Firebase...');
   return new Promise(resolve => {
+    let finalizado = false;
+
+    function concluir() {
+      if (finalizado) return;
+      finalizado = true;
+      resolve();
+    }
+
+    const timer = setTimeout(() => {
+      if (finalizado) return;
+      setSyncBar('err','Conexão lenta/offline — usando dados locais');
+      try { DB = JSON.parse(localStorage.getItem('pagDB_v3') || '{}'); } catch(x){ DB = {}; }
+      preencherHistorico();
+      concluir();
+    }, 6000);
+
     fbDB.ref('pagamentos').once('value')
       .then(snap => {
+        if (finalizado) return;
+        clearTimeout(timer);
+
         const data = snap.val() || {};
         for (const [dt, val] of Object.entries(data)) {
           DB[dt] = { saldos: val.saldos||{}, contas: val.contas||{} };
         }
+
         preencherHistorico();
         setSyncBar('ok', `${Object.keys(data).length} dia(s) carregado(s)`);
-        resolve();
+        concluir();
       })
       .catch(() => {
+        if (finalizado) return;
+        clearTimeout(timer);
+
         setSyncBar('err','Offline — usando dados locais');
-        try { DB=JSON.parse(localStorage.getItem('pagDB_v3')||'{}'); } catch(x){DB={};}
+        try { DB = JSON.parse(localStorage.getItem('pagDB_v3') || '{}'); } catch(x){ DB = {}; }
         preencherHistorico();
-        resolve();
+        concluir();
       });
   });
 }
 
-// Listener em tempo real no dia selecionado
-// Qualquer alteração feita em outro dispositivo aparece instantaneamente
 function ativarListenerDia(dt) {
   if (_fbListener) {
     fbDB.ref('pagamentos/'+_fbListener).off('value');
@@ -941,15 +934,10 @@ function renderSaldos(d) {
     const pagar=(d.contas[emp.key]||[]).reduce((s,c)=>s+(c.valor||0),0);
     const final=ini-pagar;
 
-    if (emp.key==='SERVICE') { 
-      totalPagarService+=pagar; 
-    } else { 
-      totalIni+=ini; 
-      totalPagarSemService+=pagar; 
-    }
+    if (emp.key==='SERVICE') { totalPagarService+=pagar; }
+    else { totalIni+=ini; totalPagarSemService+=pagar; }
 
     const isServ = emp.key === 'SERVICE';
-
     html+=`<div class="saldo-card ${emp.cls}"${isServ?' style="opacity:.7;border-style:dashed"':''}
       ${isServ?' title="SERVICE: valores informativos, não entram no total"':''}>
       <div class="emp-name">${emp.emoji} ${emp.label}${isServ?' <span style="font-size:.55rem;color:#94a3b8;font-weight:400">(info)</span>':''}</div>
@@ -962,8 +950,6 @@ function renderSaldos(d) {
     </div>`;
   }
 
-  // totalPagar = todas as empresas + service (para mostrar compromisso real)
-  // totalFinal  = saldo inicial - apenas empresas sem service (liquido real)
   const totalPagar=totalPagarSemService+totalPagarService;
   const totalFinal=totalIni-totalPagarSemService;
   const totalFinalAjustado=totalFinal+totalEntreContas;
@@ -980,21 +966,17 @@ function renderSaldos(d) {
       <button class="btn btn-print btn-sm" onclick="window.print()">🖨️ Imprimir</button>
     </div>
   </div>`;
-
   grid.innerHTML=html;
 
-  // Atualiza banner mobile de total geral
   const banner=document.getElementById('mobileTotalBanner');
   if(banner){
     const isMobile=window.innerWidth<=768;
     banner.style.display=isMobile?'block':'none';
     document.getElementById('mtbIni').textContent=fmt(totalIni);
     document.getElementById('mtbPagar').textContent='-'+fmt(totalPagar);
-
     const el=document.getElementById('mtbFinal');
     el.textContent=fmt(totalFinalAjustado);
     el.style.color=totalFinalAjustado<0?'#fca5a5':'#6ee7b7';
-
     const extra=document.getElementById('mtbEntreContas');
     if(extra){
       extra.textContent = totalEntreContas > 0
@@ -1051,13 +1033,11 @@ function renderContas(d) {
             ${contas.map((c,i)=>rowHTML(emp.key,c,i)).join('')}
           </tbody>
           <tfoot>
-            <!-- linha de tela -->
             <tr class="no-print">
               <td colspan="7" style="font-weight:700;color:#1e40af !important;text-align:right;white-space:nowrap;background:#e8efff;font-size:.92rem;">
                 Total &nbsp; ${fmt(total)}
               </td>
             </tr>
-            <!-- linha de impressão: Venc(1)+Forn(2) | Valor(3) | Método(4) -->
             <tr class="print-only">
               <td colspan="2" class="lbl">Total →</td>
               <td class="val col-valor-td">${fmt(total)}</td>
@@ -1077,7 +1057,6 @@ function rowHTML(empKey,c,i) {
   const catLbl={motoboy:'Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',outro:'Outro'};
   const st=c.status==='pago';
   const venc=c.venc||'';
-  // Categoria e descrição truncadas para impressão: máx 20 e 25 chars
   return `<tr class="${st?'paid':''}" id="row_${empKey}_${i}">
     <td class="mob-hide" style="white-space:nowrap;overflow:hidden">${esc(venc)}</td>
     <td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px">
@@ -1107,9 +1086,8 @@ function toggleSec(empKey) {
   b.style.display=h.classList.contains('collapsed')?'none':'';
 }
 
-// Limpar todos os lançamentos de uma empresa
 function limparContas(event, empKey) {
-  event.stopPropagation(); // não fecha/abre a seção
+  event.stopPropagation();
   const emp=EMPRESAS.find(e=>e.key===empKey);
   const n=(getDia(diaAtual).contas[empKey]||[]).length;
   if (n===0){toast('Nenhum lançamento para excluir');return;}
@@ -1120,20 +1098,17 @@ function limparContas(event, empKey) {
   toast(`🗑️ ${n} lançamento(s) excluído(s) — ${emp?.label||empKey}`);
 }
 
-// Ordenação por valor: alterna crescente/decrescente a cada clique
 const _sortState={};
 function ordenarPorValor(event, empKey) {
   event.stopPropagation();
   const contas=getDia(diaAtual).contas[empKey]||[];
   if(contas.length===0){toast('Nenhum lançamento para ordenar');return;}
-  // alterna direção a cada clique
   _sortState[empKey]=_sortState[empKey]==='desc'?'asc':'desc';
   const dir=_sortState[empKey];
   contas.sort((a,b)=> dir==='desc' ? (b.valor||0)-(a.valor||0) : (a.valor||0)-(b.valor||0));
   getDia(diaAtual).contas[empKey]=contas;
   renderTudo();
   salvarNuvem();
-  // atualiza visual do botão
   const btn=document.getElementById('btnSort_'+empKey);
   if(btn){
     btn.classList.add('ativo');
@@ -1160,33 +1135,4 @@ function toggleStatus(empKey,i) {
     const st=contas[i].status==='pago';
     tr.className=st?'paid':'';
     const badge=tr.querySelector('.st-badge');
-    if (badge){badge.className='st-badge '+(st?'st-pago':'st-pend');badge.textContent=st?'✅ Pago':'⏳ Pendente';}
-  }
-  renderSaldos(getDia(diaAtual));
-  atualizarRodape(empKey);
-  salvarNuvem();
-}
-
-function atualizarRodape(empKey) {
-  const contas=getContas(diaAtual,empKey);
-  const total=contas.reduce((s,c)=>s+(c.valor||0),0);
-  const pago=contas.filter(c=>c.status==='pago').reduce((s,c)=>s+(c.valor||0),0);
-  const pendente=total-pago;
-  // atualiza linha de tela — pega o primeiro td da linha no-print
-  const trTela=document.querySelector(`#sec_${empKey} tfoot tr.no-print`);
-  if (trTela) { const td=trTela.querySelector('td'); if(td) td.innerHTML='Total &nbsp; '+fmt(total); }
-  // atualiza linha de impressão
-  const tdPrint=document.querySelector(`#sec_${empKey} tfoot tr.print-only .val`);
-  if (tdPrint) tdPrint.textContent=fmt(total);
-  // atualiza total no cabeçalho da empresa
-  const empTotal=document.querySelector(`#sec_${empKey} .emp-total`);
-  if (empTotal) empTotal.textContent=fmt(total);
-  // recalcula saldos
-  renderSaldos(getDia(diaAtual));
-}
-
-// ══════════════════════════════════════════════════════════
-// MODAL SALDOS
-// ══════════════════════════════════════════════════════════
-function abrirSaldoModal() {
-  if (!diaAtual){ const dt=document.getElementById('selData').value; if(!dt){toast('📅 Selecione uma data');return;} diaAtual=dt; getDia(dt);
+    if (badge){badge.className='st-badge '+(st?'st-pago':'st-pend');badge.textContent=st?'✅
