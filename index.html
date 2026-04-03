@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -866,7 +864,7 @@ function normTextoBusca(str) {
     .replace(/\s+/g,' ');
 }
 function isEntreContas(conta) {
-  return /^ENTRE CONTAS\b/.test(normTextoBusca(conta?.desc||''));
+  return normTextoBusca(conta?.ref || '').includes('ENTRE CONTAS');
 }
 function somarEntreContas(d) {
   return Object.values(d.contas||{}).flat().reduce((s,conta)=>{
@@ -937,13 +935,21 @@ function renderSaldos(d) {
   let totalIni=0,totalPagarSemService=0,totalPagarService=0;
   const totalEntreContas=somarEntreContas(d);
   let html='';
+
   for (const emp of EMPRESAS) {
     const ini=d.saldos[emp.key]||0;
     const pagar=(d.contas[emp.key]||[]).reduce((s,c)=>s+(c.valor||0),0);
     const final=ini-pagar;
-    if (emp.key==='SERVICE') { totalPagarService+=pagar; }
-    else { totalIni+=ini; totalPagarSemService+=pagar; }
+
+    if (emp.key==='SERVICE') { 
+      totalPagarService+=pagar; 
+    } else { 
+      totalIni+=ini; 
+      totalPagarSemService+=pagar; 
+    }
+
     const isServ = emp.key === 'SERVICE';
+
     html+=`<div class="saldo-card ${emp.cls}"${isServ?' style="opacity:.7;border-style:dashed"':''}
       ${isServ?' title="SERVICE: valores informativos, não entram no total"':''}>
       <div class="emp-name">${emp.emoji} ${emp.label}${isServ?' <span style="font-size:.55rem;color:#94a3b8;font-weight:400">(info)</span>':''}</div>
@@ -955,23 +961,26 @@ function renderSaldos(d) {
       <button class="edit-saldo-btn" onclick="abrirSaldoModal()" title="Editar saldos">✏️</button>
     </div>`;
   }
+
   // totalPagar = todas as empresas + service (para mostrar compromisso real)
   // totalFinal  = saldo inicial - apenas empresas sem service (liquido real)
   const totalPagar=totalPagarSemService+totalPagarService;
   const totalFinal=totalIni-totalPagarSemService;
   const totalFinalAjustado=totalFinal+totalEntreContas;
+
   html+=`<div class="total-card">
     <div class="emp-name">💰 TOTAL GERAL</div>
     <div class="saldo-ini">${fmt(totalIni)}</div>
     <div class="saldo-mini">
       <div class="mini-val" style="color:#fca5a5">-${fmt(totalPagar)}</div>
       <div class="mini-val ${totalFinalAjustado<0?'val-neg':'val-pos'}">${fmt(totalFinalAjustado)}</div>
-      <div class="mini-note">Entre Contas: +${fmt(totalEntreContas)}</div>
+      ${totalEntreContas > 0 ? `<div class="mini-note">Entre Contas: +${fmt(totalEntreContas)}</div>` : ''}
     </div>
     <div class="total-card-footer">
       <button class="btn btn-print btn-sm" onclick="window.print()">🖨️ Imprimir</button>
     </div>
   </div>`;
+
   grid.innerHTML=html;
 
   // Atualiza banner mobile de total geral
@@ -981,11 +990,17 @@ function renderSaldos(d) {
     banner.style.display=isMobile?'block':'none';
     document.getElementById('mtbIni').textContent=fmt(totalIni);
     document.getElementById('mtbPagar').textContent='-'+fmt(totalPagar);
+
     const el=document.getElementById('mtbFinal');
     el.textContent=fmt(totalFinalAjustado);
     el.style.color=totalFinalAjustado<0?'#fca5a5':'#6ee7b7';
+
     const extra=document.getElementById('mtbEntreContas');
-    if(extra) extra.textContent=`Entre Contas: +${fmt(totalEntreContas)}`;
+    if(extra){
+      extra.textContent = totalEntreContas > 0
+        ? `Entre Contas: +${fmt(totalEntreContas)}`
+        : '';
+    }
   }
 }
 
@@ -1174,349 +1189,4 @@ function atualizarRodape(empKey) {
 // MODAL SALDOS
 // ══════════════════════════════════════════════════════════
 function abrirSaldoModal() {
-  if (!diaAtual){ const dt=document.getElementById('selData').value; if(!dt){toast('📅 Selecione uma data');return;} diaAtual=dt; getDia(dt); }
-  const d=getDia(diaAtual);
-  const [y,m,day]=diaAtual.split('-');
-  document.getElementById('smData').textContent=`${day}/${m}/${y}`;
-  let html='';
-  for (const emp of EMPRESAS) {
-    html+=`<div class="form-row"><label>${emp.emoji} ${emp.label}</label>
-      <input type="number" id="sm_${emp.key}" value="${d.saldos[emp.key]||0}" step="0.01" min="0"></div>`;
-  }
-  document.getElementById('smInputs').innerHTML=html;
-  document.getElementById('saldoModal').classList.add('open');
-}
-
-function salvarSaldos() {
-  const d=getDia(diaAtual);
-  for (const emp of EMPRESAS) {
-    const inp=document.getElementById('sm_'+emp.key);
-    if (inp) d.saldos[emp.key]=parseFloat(inp.value)||0;
-  }
-  fecharModal('saldoModal');
-  renderTudo();
-  salvarNuvem();
-  toast('✅ Saldos atualizados!');
-}
-
-// ══════════════════════════════════════════════════════════
-// MODAL CONTA
-// ══════════════════════════════════════════════════════════
-function abrirAddConta(empKey) {
-  editIdx=null;
-  document.getElementById('addModalTitle').textContent='➕ Adicionar Conta';
-  document.getElementById('aVenc').value='';
-  document.getElementById('aEmis').value='';
-  document.getElementById('aDesc').value='';
-  document.getElementById('aRef').value='';
-  document.getElementById('aEmp').value=empKey||'BURGER_MATRIZ';
-  document.getElementById('aCat').value='boleto';
-  document.getElementById('aCategoria').value='';
-  document.getElementById('aValor').value='';
-  document.getElementById('btnDelAdd').style.display='none';
-  document.getElementById('addModal').classList.add('open');
-}
-
-function abrirEditConta(empKey,i) {
-  editIdx={empKey,i};
-  const c=getContas(diaAtual,empKey)[i]; if (!c) return;
-  document.getElementById('addModalTitle').textContent='✏️ Editar Conta';
-  // converter dd/mm/aaaa → aaaa-mm-dd para input date
-  const toISO=s=>{ if(!s)return''; const p=s.split('/'); return p.length===3?`${p[2]}-${p[1]}-${p[0]}`:s; };
-  document.getElementById('aVenc').value=toISO(c.venc||'');
-  document.getElementById('aEmis').value=toISO(c.emis||'');
-  document.getElementById('aDesc').value=c.desc||'';
-  document.getElementById('aRef').value=c.ref||'';
-  document.getElementById('aEmp').value=empKey;
-  document.getElementById('aCat').value=c.cat||'boleto';
-  document.getElementById('aCategoria').value=c.categoria||'';
-  document.getElementById('aValor').value=(c.valor||0).toFixed(2);
-  document.getElementById('btnDelAdd').style.display='';
-  document.getElementById('addModal').classList.add('open');
-}
-
-function salvarContaModal() {
-  const toDisplay=s=>{ if(!s)return''; const p=s.split('-'); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:s; };
-  const venc=toDisplay(document.getElementById('aVenc').value);
-  const emis=toDisplay(document.getElementById('aEmis').value);
-  const desc=document.getElementById('aDesc').value.trim();
-  const ref=document.getElementById('aRef').value.trim();
-  const empKey=document.getElementById('aEmp').value;
-  const cat=document.getElementById('aCat').value;
-  const categoria=document.getElementById('aCategoria').value.trim();
-  const valor=parseFloat(document.getElementById('aValor').value)||0;
-  if (!desc){toast('⚠️ Informe o fornecedor');return;}
-  const conta={venc,emis,desc,ref,cat,categoria,valor,status:'pendente'};
-  if (editIdx){
-    const contas=getContas(diaAtual,editIdx.empKey);
-    if (editIdx.empKey!==empKey){
-      contas.splice(editIdx.i,1);
-      getContas(diaAtual,empKey).push(conta);
-    } else {
-      contas[editIdx.i]={...contas[editIdx.i],...conta};
-    }
-  } else {
-    getContas(diaAtual,empKey).push(conta);
-  }
-  fecharModal('addModal');
-  renderTudo();
-  salvarNuvem();
-  toast('✅ Conta salva!');
-}
-
-function deletarContaModal() {
-  if (!editIdx) return;
-  if (!confirm('Excluir esta conta?')) return;
-  getContas(diaAtual,editIdx.empKey).splice(editIdx.i,1);
-  fecharModal('addModal');
-  renderTudo();
-  salvarNuvem();
-  toast('🗑️ Conta excluída');
-}
-
-function fecharModal(id){ document.getElementById(id).classList.remove('open'); }
-
-// ══════════════════════════════════════════════════════════
-// UPLOAD — estrutura real dos arquivos:
-// Vencimento | Emissão | Pagamento | Conta | Método de Pagamento
-// Categoria  | Valor   | Pago      | Fornecedor | Descrição
-// Valores vêm NEGATIVOS no arquivo → Math.abs()
-// Empresa vem do NOME DO ARQUIVO
-// ══════════════════════════════════════════════════════════
-function onFileSelect(e) {
-  const f=e.target.files[0]; if (!f) return;
-  const empKeyArquivo=empKeyDoNomeArquivo(f.name);
-  const ext=f.name.split('.').pop().toLowerCase();
-  if (ext==='csv'){ processCSV(f,empKeyArquivo); }
-  else {
-    const reader=new FileReader();
-    reader.onload=ev=>{
-      try {
-        const wb=XLSX.read(ev.target.result,{type:'array',raw:false,cellDates:false});
-        const ws=wb.Sheets[wb.SheetNames[0]];
-        // raw:false para formatar datas e valores
-        const rowsFmt=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
-        // raw:true para pegar números puros nas células de valor
-        const rowsRaw=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
-        processRows(rowsFmt,rowsRaw,empKeyArquivo,f.name);
-      } catch(err){ showUploadStatus('err','❌ Erro: '+err.message); }
-    };
-    reader.readAsArrayBuffer(f);
-  }
-  e.target.value='';
-}
-
-function processCSV(f,empKeyArquivo) {
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    const text=ev.target.result;
-    const sep=text.includes(';')?';':',';
-    const lines=text.split('\n').map(l=>l.split(sep).map(c=>c.replace(/"/g,'').trim()));
-    processRows(lines,lines,empKeyArquivo,f.name);
-  };
-  reader.readAsText(f,'utf-8');
-}
-
-function processRows(rowsFmt, rowsRaw, empKeyArquivo, filename) {
-  if (!diaAtual){showUploadStatus('err','⚠️ Selecione uma data');return;}
-  if (!rowsFmt||rowsFmt.length<2){showUploadStatus('err','⚠️ Arquivo sem dados');return;}
-
-  const header=rowsFmt[0].map(h=>String(h||'').toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim());
-
-  // Detecta colunas pelo header real dos arquivos
-  // Estrutura conhecida: Vencimento|Emissão|Pagamento|Conta|Método de Pagamento|Categoria|Valor|Pago|Fornecedor|Descrição
-  const ci={
-    venc:   findCol(header,['vencimento','venc','data venc','data_venc','data']),
-    emis:   findCol(header,['emissao','emissão','emis','data emis']),
-    pgto:   findCol(header,['pagamento','data pgto','data_pgto']),
-    conta:  findCol(header,['conta','banco']),
-    metodo: findCol(header,['metodo','método','metodo de pagamento','método de pagamento','forma','tipo pgto']),
-    cat:    findCol(header,['categoria','classif','tipo']),
-    valor:  findCol(header,['valor','value','vlr','total','montante']),
-    pago:   findCol(header,['pago','status','situacao','situação','pg']),
-    forn:   findCol(header,['fornecedor','razao','razão','nome','beneficiario','beneficiário']),
-    desc:   findCol(header,['descricao','descrição','descr','historico','histórico','obs','ref','nf','nota']),
-    emp:    findCol(header,['empresa','loja','unidade','filial']),
-  };
-
-  // Limpa lançamentos anteriores da empresa (evita duplicatas)
-  const empKey=empKeyArquivo;
-  if (empKey) {
-    getDia(diaAtual).contas[empKey]=[];
-  }
-
-  let added=0,skip=0;
-  for (let i=1;i<rowsFmt.length;i++) {
-    const rf=rowsFmt[i];
-    const rr=rowsRaw[i]||rf;
-    if (!rf||rf.every(c=>!c&&c!==0)){skip++;continue;}
-
-    // Empresa: nome do arquivo > coluna
-    let ek=empKey;
-    if (!ek && ci.emp<rf.length) ek=normEmp(String(rf[ci.emp]||''));
-    ek=ek||'BURGER_MATRIZ';
-
-    // Valor: usa raw para pegar número puro, depois abs()
-    const rawVal=ci.valor<rr.length?rr[ci.valor]:0;
-    const valor=parseValorBR(rawVal);
-
-    // Datas
-    const venc=ci.venc<rf.length?fmtData(rf[ci.venc]):'';
-    const emis=ci.emis<rf.length?fmtData(rf[ci.emis]):'';
-
-    // Fornecedor e Descrição
-    const desc=ci.forn<rf.length?String(rf[ci.forn]||'').trim():'';
-    const ref=ci.desc<rf.length?String(rf[ci.desc]||'').trim():'';
-
-    // Método de pagamento
-    const metodoRaw=ci.metodo<rf.length?String(rf[ci.metodo]||'').trim():'';
-    const cat=normMetodo(metodoRaw);
-
-    // Categoria
-    const categoria=ci.cat<rf.length?String(rf[ci.cat]||'').trim():'';
-
-    // Status (campo Pago: Sim/Não)
-    const pagoRaw=ci.pago<rf.length?String(rf[ci.pago]||'').trim().toLowerCase():'';
-    const status=(pagoRaw==='sim'||pagoRaw==='s'||pagoRaw==='yes'||pagoRaw==='true'||pagoRaw==='1')?'pago':'pendente';
-
-    if (!desc&&valor===0){skip++;continue;}
-
-    getContas(diaAtual,ek).push({venc,emis,desc,ref,cat,categoria,valor,status});
-    added++;
-  }
-
-  renderTudo();
-  salvarNuvem();
-
-  const empNome=empKey?(EMPRESAS.find(e=>e.key===empKey)?.label||empKey):'coluna empresa';
-  showUploadStatus('ok',`✅ ${added} conta(s) → ${empNome}  |  ${skip} linha(s) ignorada(s)`);
-}
-
-function findCol(header,keywords) {
-  for (let i=0;i<header.length;i++) {
-    if (keywords.some(k=>header[i].includes(k))) return i;
-  }
-  return 9999;
-}
-
-function normMetodo(str) {
-  const s=String(str).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  if (s.includes('boleto')||s.includes('bol')) return 'boleto';
-  if (s.includes('pix')) return 'pix';
-  if (s.includes('ted')||s.includes('transf')) return 'ted';
-  if (s.includes('moto')) return 'motoboy';
-  return 'outro';
-}
-
-function showUploadStatus(type,msg) {
-  const el=document.getElementById('uploadStatus');
-  el.className='upload-status '+type;
-  el.style.display='flex';
-  el.textContent=msg;
-  setTimeout(()=>{el.style.display='none';},8000);
-}
-
-// ══════════════════════════════════════════════════════════
-// ══════════════════════════════════════════════════════════
-// BUSCA GLOBAL
-// ══════════════════════════════════════════════════════════
-function buscaAoDigitar() {
-  const q = document.getElementById('buscaInput').value.trim();
-  document.getElementById('btnLimparBusca').style.display = q ? '' : 'none';
-  if (q.length < 2) { document.getElementById('buscaPanel').style.display='none'; return; }
-  executarBusca(q);
-}
-
-function limparBusca() {
-  document.getElementById('buscaInput').value='';
-  document.getElementById('btnLimparBusca').style.display='none';
-  document.getElementById('buscaPanel').style.display='none';
-}
-
-function executarBusca(q) {
-  const termo = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  const catLbl={motoboy:'Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',outro:'Outro'};
-
-  // agrupa resultados por data
-  const grupos = {};
-  for (const [dt, dia] of Object.entries(DB)) {
-    for (const emp of EMPRESAS) {
-      const contas = dia.contas[emp.key] || [];
-      for (const c of contas) {
-        const haystack = [c.desc||'', c.ref||'', c.categoria||'']
-          .join(' ').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-        if (!haystack.includes(termo)) continue;
-        if (!grupos[dt]) grupos[dt] = [];
-        grupos[dt].push({ emp, c });
-      }
-    }
-  }
-
-  const datas = Object.keys(grupos).sort().reverse();
-  const panel = document.getElementById('buscaPanel');
-  const res   = document.getElementById('buscaResultados');
-  const title = document.getElementById('buscaTitle');
-
-  if (datas.length === 0) {
-    res.innerHTML = `<div class="busca-vazio">Nenhum resultado para "<b>${esc(q)}</b>"</div>`;
-    title.textContent = 'Sem resultados';
-    panel.style.display = '';
-    return;
-  }
-
-  let total = 0;
-  let html = '';
-  for (const dt of datas) {
-    const [y,m,d] = dt.split('-');
-    html += `<div class="busca-grupo"><div class="busca-data">📅 ${d}/${m}/${y}</div>`;
-    for (const {emp, c} of grupos[dt]) {
-      total++;
-      html += `<div class="busca-linha">
-        <span class="busca-emp">${emp.emoji} ${emp.label}</span>
-        <span class="busca-forn">${esc(c.desc||'')}</span>
-        <span class="busca-ref">${esc(c.ref||'')}</span>
-        <span class="busca-val">${fmt(c.valor||0)}</span>
-        <span class="badge-cat cat-${c.cat||'out'}" style="font-size:.65rem">${catLbl[c.cat]||c.cat||''}</span>
-      </div>`;
-    }
-    html += `</div>`;
-  }
-
-  title.textContent = `🔍 "${q}" — ${total} resultado(s) em ${datas.length} data(s)`;
-  res.innerHTML = html;
-  panel.style.display = '';
-}
-
-// ══════════════════════════════════════════════════════════
-// EXPORT CSV
-// ══════════════════════════════════════════════════════════
-function exportCSV() {
-  if (!diaAtual){toast('📅 Selecione uma data');return;}
-  const d=getDia(diaAtual);
-  let lines=['"Empresa";"Vencimento";"Fornecedor";"Descrição";"Método";"Categoria";"Valor";"Status"'];
-  for (const emp of EMPRESAS) {
-    for (const c of (d.contas[emp.key]||[])) {
-      lines.push(`"${emp.label}";"${c.venc||''}";"${c.desc||''}";"${c.ref||''}";"${c.cat||''}";"${c.categoria||''}";"${(c.valor||0).toFixed(2)}";"${c.status||'pendente'}"`);
-    }
-  }
-  const blob=new Blob(['\uFEFF'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`pagamentos_${diaAtual}.csv`;
-  a.click();
-  toast('⬇️ CSV exportado!');
-}
-
-// ══════════════════════════════════════════════════════════
-// TOAST
-// ══════════════════════════════════════════════════════════
-function toast(msg,duration=3000) {
-  const t=document.getElementById('toast');
-  t.textContent=msg; t.style.display='block';
-  clearTimeout(t._t); t._t=setTimeout(()=>{t.style.display='none';},duration);
-}
-</script>
-<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
-</body>
-</html>
+  if (!diaAtual){ const dt=document.getElementById('selData').value; if(!dt){toast('📅 Selecione uma data');return;} diaAtual=dt; getDia(dt);
