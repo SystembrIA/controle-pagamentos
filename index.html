@@ -1,38 +1,4 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-<title>💳 Controle de Pagamento Diário</title>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-<script>
-firebase.initializeApp({
-  apiKey: "AIzaSyDayNUFLVZWI8Ph5K3XV5KRbG5uvEvlGvY",
-  authDomain: "pagamento-diario-f3eba.firebaseapp.com",
-  databaseURL: "https://pagamento-diario-f3eba-default-rtdb.firebaseio.com",
-  projectId: "pagamento-diario-f3eba",
-  storageBucket: "pagamento-diario-f3eba.firebasestorage.app",
-  messagingSenderId: "213871083183",
-  appId: "1:213871083183:web:67ade49c58d05027969e5a"
-});
-const fbDB = firebase.database();
-</script>
-<style>
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1e293b;min-height:100vh;}
 
-/* LOADING */
-#loadingOverlay{position:fixed;inset:0;background:#1e40af;z-index:9999;display:flex;
-  flex-direction:column;align-items:center;justify-content:center;color:white;gap:18px;}
-#loadingOverlay h2{font-size:1.3rem;font-weight:700;}
-#loadingOverlay p{font-size:.9rem;opacity:.75;}
-.spinner{width:44px;height:44px;border:4px solid rgba(255,255,255,.25);
-  border-top-color:white;border-radius:50%;animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 
 /* SYNC BAR */
@@ -44,26 +10,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1e293b;mi
 #syncBar.saving{background:#fffbeb;border-color:#fde68a;color:#92400e;}
 
 /* HEADER */
-.header{background:linear-gradient(135deg,#1e40af,#1e3a8a);color:white;padding:12px 24px;
-  display:flex;align-items:center;gap:16px;box-shadow:0 2px 8px rgba(0,0,0,.2);}
-.header h1{font-size:1.2rem;font-weight:700;}
-.header .sub{font-size:.78rem;opacity:.75;margin-top:2px;}
-
-/* TOOLBAR */
-.toolbar{background:white;border-bottom:1px solid #e2e8f0;padding:9px 12px;
-  display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:1600px;margin:0 auto;width:100%;}
-.toolbar label{font-size:.82rem;font-weight:600;color:#475569;}
-input[type=date]{border:1px solid #cbd5e1;border-radius:8px;padding:6px 10px;
-  font-size:.85rem;color:#1e293b;background:white;cursor:pointer;}
-input[type=date]:focus{outline:none;border-color:#1e40af;}
-
-.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;
-  border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;border:none;transition:all .15s;}
-.btn-primary{background:#1e40af;color:white;}.btn-primary:hover{background:#1d3789;}
-.btn-success{background:#059669;color:white;}.btn-success:hover{background:#047857;}
-.btn-outline{background:white;color:#475569;border:1px solid #cbd5e1;}
-.btn-outline:hover{background:#f8fafc;}
-.btn-danger{background:#dc2626;color:white;}.btn-danger:hover{background:#b91c1c;}
+.header{back
 .btn-danger-soft{background:#fef2f2;color:#dc2626;border:1px solid #fecaca;}
 .btn-danger-soft:hover{background:#fee2e2;}
 .btn-sm{padding:3px 8px;font-size:.73rem;}
