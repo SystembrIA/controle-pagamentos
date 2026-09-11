@@ -1651,7 +1651,7 @@ function parseValorComSinal(v) {
 function ehSaidaSantander(historico, valorComSinal) {
   if (valorComSinal < 0) return true;
   const h = String(historico||'').toUpperCase();
-  const ehEntrada = h.includes('RECEB') || h.includes('DEPOSITO') || h.includes('DEPÓSITO') || h.includes('ESTORNO');
+  const ehEntrada = h.includes('RECEB') || h.includes('DEPOSITO') || h.includes('DEPÓSITO') || h.includes('ESTORNO') || h.includes('RENDIMENTO');
   return !ehEntrada;
 }
 
