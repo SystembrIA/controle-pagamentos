@@ -679,7 +679,7 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
           <option value="ted">🏦 TED</option>
           <option value="motoboy">🏍️ Motoboy</option>
           <option value="cartao">💳 Cartão de Crédito</option>
-          <option value="entrecontas">🔁 Entre Contas</option>
+          <option value="entrecontas">🔁 Cobertura Conta</option>
           <option value="outro">📌 Outro</option>
         </select></div>
       <div class="form-row"><label>Categoria</label>
@@ -1004,9 +1004,11 @@ function fmt(v){
 
 // ── SALDOS ──────────────────────────────────────────────
 // SERVICE: A Pagar soma ao totalPagar, mas NÃO afeta saldo inicial nem saldo final líquido
-// Entre Contas: é só transferência interna do grupo (uma conta pra outra), não é
-// despesa real -- soma normal no "a pagar" (é isso que sai do banco pra autorizar),
-// mas volta a somar no saldo final, senão o saldo líquido cairia à toa.
+// Cobertura Conta: é só transferência interna do grupo (uma conta pra outra), não
+// é despesa real -- soma normal no "a pagar" (é isso que sai do banco pra
+// autorizar), mas volta a somar no saldo final, senão o saldo líquido cairia à
+// toa. Identificada pelo Fornecedor/Descrição (ver ehCoberturaConta), não pelo
+// Método.
 function renderSaldos(d) {
   const grid=document.getElementById('saldoGrid');
   let totalIni=0,totalPagarSemService=0,totalPagarService=0,totalEntreContas=0;
@@ -1042,6 +1044,7 @@ function renderSaldos(d) {
       <div class="mini-val" style="color:#fca5a5">-${fmt(totalPagar)}</div>
       <div class="mini-val">${fmt(totalFinal)}</div>
     </div>
+    ${totalEntreContas>0?`<div style="text-align:center;font-size:.7rem;color:#c7d2fe;margin-top:2px">"Cobertura Conta" do dia: ${fmt(totalEntreContas)}</div>`:''}
     <div class="total-card-footer">
       <button class="btn btn-print btn-sm" onclick="window.print()">🖨️ Imprimir</button>
     </div>
@@ -1136,7 +1139,7 @@ function renderContas(d) {
 
 function rowHTML(empKey,c,i) {
   const catMap={motoboy:'cat-mb',boleto:'cat-bl',pix:'cat-pix',ted:'cat-ted',cartao:'cat-cartao',entrecontas:'cat-entrecontas',outro:'cat-out'};
-  const catLbl={motoboy:'Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre Contas',outro:'Outro'};
+  const catLbl={motoboy:'Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Cobertura Conta',outro:'Outro'};
   const st=c.status==='pago';
   const venc=c.venc||'';
   const pendente = c.origem==='conciliacao' && !c.conciliado;
@@ -1478,9 +1481,10 @@ function processRows(rowsFmt, rowsRaw, empKeyArquivo, filename) {
     const desc=ci.forn<rf.length?String(rf[ci.forn]||'').trim():'';
     const ref=ci.desc<rf.length?String(rf[ci.desc]||'').trim():'';
 
-    // Método de pagamento
+    // Método de pagamento -- "Cobertura Conta" vem escrita na Descrição,
+    // não no Método, então ela tem prioridade sobre o normMetodo
     const metodoRaw=ci.metodo<rf.length?String(rf[ci.metodo]||'').trim():'';
-    const cat=normMetodo(metodoRaw);
+    const cat=ehCoberturaConta(ref) ? 'entrecontas' : normMetodo(metodoRaw);
 
     // Categoria
     const categoria=ci.cat<rf.length?String(rf[ci.cat]||'').trim():'';
@@ -1509,10 +1513,16 @@ function findCol(header,keywords) {
   return 9999;
 }
 
+// "Cobertura Conta" não vem no campo Método -- vem escrito no campo
+// Descrição do lançamento. Quando bate, força a categoria "entrecontas"
+// (rótulo "Cobertura Conta"), independente do que vier no Método.
+function ehCoberturaConta(descricao) {
+  const s=String(descricao||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  return s.includes('cobertura cont');
+}
+
 function normMetodo(str) {
   const s=String(str).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  // checa "entre contas" antes de "transf"/"ted", j\u00e1 que tamb\u00e9m cont\u00e9m essas palavras
-  if (s.includes('entre cont')||s.includes('entrecontas')||s.includes('entre-contas')) return 'entrecontas';
   if (s.includes('boleto')||s.includes('bol')) return 'boleto';
   if (s.includes('pix')) return 'pix';
   if (s.includes('ted')||s.includes('transf')) return 'ted';
@@ -1938,7 +1948,7 @@ function limparBusca() {
 
 function executarBusca(q) {
   const termo = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  const catLbl={motoboy:'Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre Contas',outro:'Outro'};
+  const catLbl={motoboy:'Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Cobertura Conta',outro:'Outro'};
 
   // agrupa resultados por data
   const grupos = {};
