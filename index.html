@@ -623,6 +623,7 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
     <div style="margin-bottom:8px;display:flex;gap:8px;flex-wrap:wrap;">
       <button class="btn btn-outline btn-sm" onclick="abrirAddConta()">+ Adicionar conta manualmente</button>
       <button class="btn btn-outline btn-sm" onclick="abrirConciliacao()">🔍 Conciliação bancária</button>
+      <button class="btn btn-outline btn-sm" onclick="desfazerConciliacaoDia()" title="Remove os checks e as linhas pendentes de conciliação deste dia, pra poder subir o extrato de novo">↩️ Desfazer conciliação</button>
     </div>
   </div>
 
@@ -1549,6 +1550,38 @@ function abrirConciliacao() {
   document.getElementById('concResultado').innerHTML = '';
   document.getElementById('conciliacaoModal').classList.add('open');
 }
+// Desfaz a conciliação bancária do dia selecionado, em todas as empresas:
+// remove os checks (conciliado) e as linhas pendentes que o extrato criou --
+// os lançamentos que ela cadastrou originalmente (fornecedor, valor, etc.)
+// não são tocados. Serve pra quando ela subir o extrato na data errada, por
+// exemplo -- desfaz e sobe de novo na data certa.
+async function desfazerConciliacaoDia() {
+  if (!diaAtual) { toast('📅 Selecione uma data primeiro'); return; }
+  const d = getDia(diaAtual);
+  const temAlgoParaDesfazer = Object.values(d.contas||{}).some(lista =>
+    lista.some(c => c.origem==='conciliacao' || c.conciliado!==undefined));
+  if (!temAlgoParaDesfazer) { toast('ℹ️ Não há conciliação pra desfazer neste dia'); return; }
+
+  if (!confirm(`Desfazer toda a conciliação bancária do dia ${fmtDataLonga(diaAtual)}? Isso remove os checks e as linhas pendentes criadas pelo extrato, em todas as empresas. Os lançamentos originais não são apagados.`)) return;
+
+  const algumTravado = Object.values(d.travados||{}).some(v => v);
+  if (algumTravado) {
+    const ok = await pedirSenhaAdmin();
+    if (!ok) return;
+  }
+
+  for (const empKey of Object.keys(d.contas)) {
+    d.contas[empKey] = d.contas[empKey]
+      .filter(c => c.origem !== 'conciliacao')
+      .map(c => { const {conciliado, ...resto} = c; return resto; });
+  }
+  d.travados = {};
+
+  renderTudo();
+  salvarNuvem();
+  toast('↩️ Conciliação desfeita — pode subir o extrato de novo');
+}
+
 function fmtDataLonga(dt) {
   const [y,m,d] = dt.split('-');
   return `${d}/${m}/${y}`;
