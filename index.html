@@ -201,6 +201,7 @@ input.val-edit:focus{outline:none;border-color:#1e40af;background:#eff6ff;}
 .cat-pix{background:#dcfce7;color:#166534;}
 .cat-ted{background:#cffafe;color:#0e7490;}
 .cat-cartao{background:#fef3c7;color:#b45309;}
+.cat-entrecontas{background:#e0e7ff;color:#4338ca;}
 .cat-out{background:#f1f5f9;color:#475569;}
 
 /* status badge — visível na tela, oculto na impressão via .no-print */
@@ -678,6 +679,7 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
           <option value="ted">🏦 TED</option>
           <option value="motoboy">🏍️ Motoboy</option>
           <option value="cartao">💳 Cartão de Crédito</option>
+          <option value="entrecontas">🔁 Entre Contas</option>
           <option value="outro">📌 Outro</option>
         </select></div>
       <div class="form-row"><label>Categoria</label>
@@ -1002,16 +1004,21 @@ function fmt(v){
 
 // ── SALDOS ──────────────────────────────────────────────
 // SERVICE: A Pagar soma ao totalPagar, mas NÃO afeta saldo inicial nem saldo final líquido
+// Entre Contas: é só transferência interna do grupo (uma conta pra outra), não é
+// despesa real -- soma normal no "a pagar" (é isso que sai do banco pra autorizar),
+// mas volta a somar no saldo final, senão o saldo líquido cairia à toa.
 function renderSaldos(d) {
   const grid=document.getElementById('saldoGrid');
-  let totalIni=0,totalPagarSemService=0,totalPagarService=0;
+  let totalIni=0,totalPagarSemService=0,totalPagarService=0,totalEntreContas=0;
   let html='';
   for (const emp of EMPRESAS) {
     const ini=d.saldos[emp.key]||0;
-    const pagar=(d.contas[emp.key]||[]).reduce((s,c)=>s+(c.valor||0),0);
-    const final=ini-pagar;
+    const contas=d.contas[emp.key]||[];
+    const pagar=contas.reduce((s,c)=>s+(c.valor||0),0);
+    const entreContas=contas.filter(c=>c.cat==='entrecontas').reduce((s,c)=>s+(c.valor||0),0);
+    const final=ini-pagar+entreContas;
     if (emp.key==='SERVICE') { totalPagarService+=pagar; }
-    else { totalIni+=ini; totalPagarSemService+=pagar; }
+    else { totalIni+=ini; totalPagarSemService+=pagar; totalEntreContas+=entreContas; }
     const isServ = emp.key === 'SERVICE';
     html+=`<div class="saldo-card ${emp.cls}"${isServ?' style="opacity:.7;border-style:dashed"':''}
       ${isServ?' title="SERVICE: valores informativos, não entram no total"':''}>
@@ -1025,9 +1032,9 @@ function renderSaldos(d) {
     </div>`;
   }
   // totalPagar = todas as empresas + service (para mostrar compromisso real)
-  // totalFinal  = saldo inicial - apenas empresas sem service (liquido real)
+  // totalFinal  = saldo inicial - apenas empresas sem service + entre contas (liquido real)
   const totalPagar=totalPagarSemService+totalPagarService;
-  const totalFinal=totalIni-totalPagarSemService;
+  const totalFinal=totalIni-totalPagarSemService+totalEntreContas;
   const totalHtml=`<div class="total-card">
     <div class="emp-name">💰 TOTAL GERAL</div>
     <div class="saldo-mini">
@@ -1128,8 +1135,8 @@ function renderContas(d) {
 }
 
 function rowHTML(empKey,c,i) {
-  const catMap={motoboy:'cat-mb',boleto:'cat-bl',pix:'cat-pix',ted:'cat-ted',cartao:'cat-cartao',outro:'cat-out'};
-  const catLbl={motoboy:'Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',outro:'Outro'};
+  const catMap={motoboy:'cat-mb',boleto:'cat-bl',pix:'cat-pix',ted:'cat-ted',cartao:'cat-cartao',entrecontas:'cat-entrecontas',outro:'cat-out'};
+  const catLbl={motoboy:'Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre Contas',outro:'Outro'};
   const st=c.status==='pago';
   const venc=c.venc||'';
   const pendente = c.origem==='conciliacao' && !c.conciliado;
@@ -1504,6 +1511,8 @@ function findCol(header,keywords) {
 
 function normMetodo(str) {
   const s=String(str).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  // checa "entre contas" antes de "transf"/"ted", j\u00e1 que tamb\u00e9m cont\u00e9m essas palavras
+  if (s.includes('entre cont')||s.includes('entrecontas')||s.includes('entre-contas')) return 'entrecontas';
   if (s.includes('boleto')||s.includes('bol')) return 'boleto';
   if (s.includes('pix')) return 'pix';
   if (s.includes('ted')||s.includes('transf')) return 'ted';
@@ -1929,7 +1938,7 @@ function limparBusca() {
 
 function executarBusca(q) {
   const termo = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  const catLbl={motoboy:'Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',outro:'Outro'};
+  const catLbl={motoboy:'Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre Contas',outro:'Outro'};
 
   // agrupa resultados por data
   const grupos = {};
