@@ -1268,12 +1268,11 @@ function abrirSaldoModal() {
   document.getElementById('smData').textContent=`${day}/${m}/${y}`;
   let html='';
   for (const emp of EMPRESAS) {
-    const temConta = emp.key!=='SERVICE';
     html+=`<div class="form-row" style="display:flex;gap:8px;align-items:flex-end">
       <div style="flex:1"><label>${emp.emoji} ${emp.label}</label>
         <input type="number" id="sm_${emp.key}" value="${d.saldos[emp.key]||0}" step="0.01" min="0"></div>
-      ${temConta?`<div style="flex:0 0 150px"><label>Nº da conta (banco)</label>
-        <input type="text" id="smConta_${emp.key}" value="${esc(CONTAS_BANCARIAS[emp.key]||'')}" placeholder="p/ conciliação"></div>`:''}
+      <div style="flex:0 0 150px"><label>Nº da conta (banco)</label>
+        <input type="text" id="smConta_${emp.key}" value="${esc(CONTAS_BANCARIAS[emp.key]||'')}" placeholder="p/ conciliação"></div>
     </div>`;
   }
   document.getElementById('smInputs').innerHTML=html;
@@ -1639,20 +1638,12 @@ function parseValorComSinal(v) {
   return neg ? -Math.abs(n) : n;
 }
 
-// No extrato do Santander (formato real testado), o SINAL do valor não é
-// confiável pra saber se é entrada ou saída -- pagamento de cartão, por
-// exemplo, vem POSITIVO. Só tarifa vem negativa. Por isso: valor negativo
-// é SEMPRE saída (confirmado); valor positivo só conta como entrada (e é
-// ignorado) se o histórico falar "RECEB.../DEPÓSITO/ESTORNO" -- qualquer
-// outra coisa positiva (PAGAMENTO, TRANSF, etc.) é tratada como saída,
-// porque é melhor sobrar um item pra ela classificar do que perder um
-// pagamento de vista. Usa "RECEB" (não "RECEBID") pra pegar tanto
-// "RECEBIDO/RECEBIDA" quanto "RECEBIMENTO".
-function ehSaidaSantander(historico, valorComSinal) {
-  if (valorComSinal < 0) return true;
-  const h = String(historico||'').toUpperCase();
-  const ehEntrada = h.includes('RECEB') || h.includes('DEPOSITO') || h.includes('DEPÓSITO') || h.includes('ESTORNO') || h.includes('RENDIMENTO');
-  return !ehEntrada;
+// Regra confirmada pelo dono: no extrato do Santander, débito vem SEMPRE
+// com sinal de menos, e o que não tem sinal de menos é crédito (entrada) --
+// não computa. Sem exceção por texto: um crédito de maquininha (GetNet
+// crédito/débito, por exemplo) também vem positivo e não é saída.
+function ehSaidaSantander(valorComSinal) {
+  return valorComSinal < 0;
 }
 
 // Acha "CONTA" nas primeiras linhas (metadados do Santander: AGENCIA | xxx
@@ -1700,7 +1691,7 @@ function processarExtratoUmArquivo(rowsFmt, rowsRaw, nomeArquivo) {
     const valorComSinal = parseValorComSinal(rawVal);
     if (valorComSinal === null) continue;
     const historico = ci.historico < rf.length ? String(rf[ci.historico]||'').trim() : '';
-    if (!ehSaidaSantander(historico, valorComSinal)) continue;
+    if (!ehSaidaSantander(valorComSinal)) continue;
     saidasBanco.push({
       data: ci.data < rf.length ? fmtData(rf[ci.data]) : '',
       historico,
@@ -1711,17 +1702,56 @@ function processarExtratoUmArquivo(rowsFmt, rowsRaw, nomeArquivo) {
   return rodarConciliacao(empKey, saidasBanco, nomeArquivo, conta);
 }
 
+// Acha um subconjunto de itens do banco (ainda não usados) cuja soma bate
+// com o alvo, dentro de 1 centavo. Busca em profundidade com poda (soma já
+// passou do alvo, ou nem somando tudo que resta dá) -- rápido pra dezenas
+// de itens, que é o cenário real (vários Pix de motoboy no dia).
+function acharGrupoQueSoma(bancoRestante, alvo, tolerancia=0.01) {
+  const candidatos = bancoRestante.filter(b => !b.usado);
+  if (!candidatos.length || candidatos.length > 30 || alvo<=0) return null;
+  const ordenados = [...candidatos].sort((a,b)=>b.valor-a.valor);
+  const n = ordenados.length;
+  const sufixoSoma = new Array(n+1).fill(0);
+  for (let i=n-1; i>=0; i--) sufixoSoma[i] = sufixoSoma[i+1] + ordenados[i].valor;
+
+  let resultado = null;
+  function dfs(idx, somaAtual, escolhidos) {
+    if (resultado) return;
+    if (Math.abs(somaAtual - alvo) < tolerancia) { resultado = [...escolhidos]; return; }
+    if (idx >= n) return;
+    if (somaAtual > alvo + tolerancia) return;
+    if (somaAtual + sufixoSoma[idx] < alvo - tolerancia) return;
+    escolhidos.push(ordenados[idx]);
+    dfs(idx+1, somaAtual+ordenados[idx].valor, escolhidos);
+    escolhidos.pop();
+    if (resultado) return;
+    dfs(idx+1, somaAtual, escolhidos);
+  }
+  dfs(0, 0, []);
+  return resultado;
+}
+
 function rodarConciliacao(empKey, saidasBanco, nomeArquivo, conta) {
   const cadastrados = getContas(diaAtual, empKey);
   const bancoRestante = saidasBanco.map(s => ({...s, usado:false}));
   let batidos = 0;
 
-  // Cartão de crédito é diferente: ela lança CADA compra da fatura como um
-  // lançamento próprio no dia em que a fatura é paga, mas no banco sai UM
-  // débito só (o total da fatura). Então não casa por valor individual --
-  // soma tudo que estiver marcado "Cartão" e ainda não conciliado, e procura
-  // no extrato um único item cujo valor bata com essa soma. Se achar, todos
-  // os lançamentos daquele grupo viram conciliados de uma vez.
+  // Ordem importa: primeiro casa os lançamentos "normais" (fornecedor, pix
+  // avulso, boleto) 1:1 por valor -- isso "reserva" o item do banco de cada
+  // um antes de qualquer soma em grupo, pra um Pix de fornecedor não ser
+  // "roubado" por engano pela soma do motoboy só porque a conta bate.
+  for (const c of cadastrados) {
+    if (c.conciliado || c.cat==='cartao' || c.cat==='motoboy') continue;
+    const match = bancoRestante.find(b => !b.usado && Math.abs(b.valor - (c.valor||0)) < 0.01);
+    if (match) { match.usado = true; c.conciliado = true; batidos++; }
+  }
+
+  // Cartão de crédito: ela lança CADA compra da fatura como um lançamento
+  // próprio no dia em que a fatura é paga, mas no banco sai UM débito só (o
+  // total da fatura). Soma tudo que estiver marcado "Cartão" e ainda não
+  // conciliado, e procura no extrato um único item cujo valor bata com essa
+  // soma. Se achar, todos os lançamentos daquele grupo viram conciliados de
+  // uma vez.
   const cartaoPendentes = cadastrados.filter(c => c.cat==='cartao' && !c.conciliado);
   if (cartaoPendentes.length) {
     const totalCartao = cartaoPendentes.reduce((s,c)=>s+(c.valor||0),0);
@@ -1732,14 +1762,20 @@ function rodarConciliacao(empKey, saidasBanco, nomeArquivo, conta) {
     }
   }
 
-  // Demais lançamentos: casa cada um (ainda não conciliado) com um item do
-  // banco de valor igual -- "consome" o item do banco pra não usar duas
-  // vezes o mesmo, e marca conciliado=true direto na lista principal.
+  // Motoboy é o caso inverso do cartão: ela lança UM valor total por dia
+  // (soma de vários Pix pros motoboys), mas no banco cada Pix sai separado.
+  // Só sobraram no banco, a essa altura, os itens que ninguém "reclamou"
+  // individualmente -- pra cada lançamento "Motoboy" ainda não conciliado,
+  // procura um GRUPO desses itens cuja soma bata com o valor lançado.
   for (const c of cadastrados) {
-    if (c.conciliado || c.cat==='cartao') continue;
-    const match = bancoRestante.find(b => !b.usado && Math.abs(b.valor - (c.valor||0)) < 0.01);
-    if (match) { match.usado = true; c.conciliado = true; batidos++; }
+    if (c.conciliado || c.cat!=='motoboy') continue;
+    const grupo = acharGrupoQueSoma(bancoRestante, c.valor||0);
+    if (grupo) {
+      for (const item of grupo) item.usado = true;
+      c.conciliado = true; batidos++;
+    }
   }
+
   const extras = bancoRestante.filter(b => !b.usado);
 
   // O que sobrou no banco vira linha nova na lista, pendente de identificar.
