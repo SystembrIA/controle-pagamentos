@@ -143,16 +143,25 @@ input[type=date]:focus{outline:none;border-color:#1e40af;}
 .conc-secao-sub{font-size:.75rem;color:#64748b;margin-bottom:8px;}
 .conc-item{display:flex;justify-content:space-between;gap:10px;padding:7px 10px;
   background:#f8fafc;border-radius:8px;margin-bottom:5px;font-size:.83rem;}
-.conc-extra{background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;
-  padding:10px 12px;margin-bottom:8px;}
-.conc-extra-head{display:flex;justify-content:space-between;gap:10px;font-size:.85rem;margin-bottom:8px;}
-.conc-extra-form{display:flex;gap:6px;flex-wrap:wrap;}
-.conc-extra-form input{flex:1;min-width:120px;padding:7px 10px;border:1px solid #e2e8f0;
-  border-radius:7px;font-size:.82rem;font-family:inherit;}
 @media(max-width:768px){
   .conc-resumo-grid{grid-template-columns:1fr;gap:6px;}
-  .conc-extra-form input{min-width:100%;}
 }
+
+/* Coluna de check da conciliação, na tabela principal de lançamentos */
+.col-check-th,.col-check-td{text-align:center;font-size:.95rem;}
+.conc-check-ok{color:#16a34a;}
+.conc-check-pendente{color:#d97706;}
+tr.pendente-conciliacao{background:#fff7ed;}
+.pend-input{width:100%;padding:6px 8px;border:1px solid #fdba74;border-radius:6px;
+  font-size:.78rem;font-family:inherit;background:#fff;}
+.pend-input+.pend-input{margin-top:4px;}
+
+/* Empresa travada (dia totalmente conciliado) */
+.empresa-section.travado{opacity:.45;}
+.empresa-section.travado .empresa-header,
+.empresa-section.travado .contas-body{pointer-events:none;}
+.empresa-section.travado .btn-destrava{pointer-events:auto;opacity:1;}
+.btn-destrava{margin-left:8px;}
 
 /* CONTAS POR EMPRESA */
 .empresa-section{background:white;border-radius:12px;overflow:hidden;
@@ -191,6 +200,7 @@ input.val-edit:focus{outline:none;border-color:#1e40af;background:#eff6ff;}
 .cat-bl{background:#dbeafe;color:#1d4ed8;}
 .cat-pix{background:#dcfce7;color:#166534;}
 .cat-ted{background:#cffafe;color:#0e7490;}
+.cat-cartao{background:#fef3c7;color:#b45309;}
 .cat-out{background:#f1f5f9;color:#475569;}
 
 /* status badge — visível na tela, oculto na impressão via .no-print */
@@ -325,6 +335,7 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
   col.col-desc   { width:0; display:none; }
   col.col-cat    { width:0; display:none; }
   col.col-acao   { width:0; visibility:hidden; }
+  col.col-check  { width:0; visibility:hidden; }
 
   thead th{
     padding:2px 4px;
@@ -513,7 +524,7 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
   input.val-edit{display:none !important;}
   .val-print{display:inline !important;font-size:.78rem;font-weight:700;white-space:nowrap;}
   /* col ocultas: sem largura */
-  col.col-venc,col.col-desc,col.col-cat,col.col-acao{display:none;}
+  col.col-venc,col.col-desc,col.col-cat,col.col-acao,col.col-check{display:none;}
   .mob-desc-sub{display:none !important;}
 
   /* input de valor menor */
@@ -664,6 +675,7 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
           <option value="pix">💸 Pix</option>
           <option value="ted">🏦 TED</option>
           <option value="motoboy">🏍️ Motoboy</option>
+          <option value="cartao">💳 Cartão de Crédito</option>
           <option value="outro">📌 Outro</option>
         </select></div>
       <div class="form-row"><label>Categoria</label>
@@ -685,25 +697,20 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
   <div class="modal" style="max-width:760px">
     <h3>🔍 Conciliação Bancária — <span id="concData"></span></h3>
 
-    <div class="form-row"><label>Empresa / conta</label>
-      <select id="concEmp" onchange="onConcEmpChange()">
-        <option value="BURGER_MATRIZ">🍔 BURGER MATRIZ</option>
-        <option value="GOURMET">⭐ GOURMET</option>
-        <option value="SAO_BERNARDO">🏙️ ABC</option>
-        <option value="GUARULHOS">🏢 GUARULHOS</option>
-        <option value="PIZZA">🍕 PIZZA</option>
-        <option value="SUSHI">🍣 SUSHI</option>
-        <option value="PIRITUBA">🏪 PIRITUBA</option>
-        <option value="SERVICE">🔧 SERVICE</option>
-      </select></div>
+    <div style="font-size:.75rem;color:#64748b;margin-bottom:10px">
+      ℹ️ Número de conta de cada empresa fica cadastrado em <strong>✏️ Editar saldos</strong> — é ele que identifica sozinho de quem é cada extrato.
+    </div>
 
     <div id="concUploadStatus" class="upload-status"></div>
-    <input type="file" id="concFileInput" accept=".xlsx,.xls,.csv,.txt" onchange="onConciliacaoFileSelect(event)">
+    <input type="file" id="concFileInput" accept=".xlsx,.xls,.csv,.txt" multiple onchange="onConciliacaoFileSelect(event)">
     <div style="font-size:.75rem;color:#64748b;margin-top:4px">
-      Extrato do banco daquele dia (Excel/CSV por enquanto — TXT tenta ler, PDF ainda não é suportado).
+      Pode escolher os extratos de várias empresas de uma vez — cada um é identificado sozinho pelo número da conta (Excel/CSV por enquanto — TXT tenta ler, PDF ainda não é suportado).
     </div>
 
     <div id="concResultado" style="margin-top:14px"></div>
+    <div style="font-size:.72rem;color:#94a3b8;margin-top:10px">
+      O resultado detalhado (o que bateu, o que falta identificar) aparece na lista de lançamentos de cada empresa, na tela principal — pode fechar esse modal e descer a tela.
+    </div>
 
     <div class="modal-btns">
       <button class="btn btn-outline" onclick="fecharModal('conciliacaoModal')">Fechar</button>
@@ -867,7 +874,7 @@ async function carregarDadosNuvem() {
       .then(snap => {
         const data = snap.val() || {};
         for (const [dt, val] of Object.entries(data)) {
-          DB[dt] = { saldos: val.saldos||{}, contas: val.contas||{} };
+          DB[dt] = { saldos: val.saldos||{}, contas: val.contas||{}, travados: val.travados||{} };
         }
         preencherHistorico();
         setSyncBar('ok', `${Object.keys(data).length} dia(s) carregado(s)`);
@@ -893,10 +900,10 @@ function ativarListenerDia(dt) {
   fbDB.ref('pagamentos/'+dt).on('value', snap => {
     const val = snap.val();
     if (!val) return;
-    const remoto = JSON.stringify({saldos:val.saldos||{},contas:val.contas||{}});
-    const local  = JSON.stringify({saldos:DB[dt]?.saldos||{},contas:DB[dt]?.contas||{}});
+    const remoto = JSON.stringify({saldos:val.saldos||{},contas:val.contas||{},travados:val.travados||{}});
+    const local  = JSON.stringify({saldos:DB[dt]?.saldos||{},contas:DB[dt]?.contas||{},travados:DB[dt]?.travados||{}});
     if (remoto !== local) {
-      DB[dt] = { saldos: val.saldos||{}, contas: val.contas||{} };
+      DB[dt] = { saldos: val.saldos||{}, contas: val.contas||{}, travados: val.travados||{} };
       if (diaAtual === dt) renderTudo();
       setSyncBar('ok','🔄 Atualizado em tempo real');
     }
@@ -910,7 +917,8 @@ async function salvarNuvem() {
   try {
     await fbDB.ref('pagamentos/'+diaAtual).set({
       saldos: d.saldos || {},
-      contas: d.contas || {}
+      contas: d.contas || {},
+      travados: d.travados || {}
     });
     localStorage.setItem('pagDB_v3', JSON.stringify(DB));
     setSyncBar('ok','Salvo ✓');
@@ -924,8 +932,9 @@ async function salvarNuvem() {
 // LOCAL DB
 // ══════════════════════════════════════════════════════════
 function getDia(dt) {
-  if (!DB[dt]) DB[dt]={saldos:{},contas:{}};
+  if (!DB[dt]) DB[dt]={saldos:{},contas:{},travados:{}};
   if (!DB[dt].contas) DB[dt].contas={};
+  if (!DB[dt].travados) DB[dt].travados={};
   return DB[dt];
 }
 function getContas(dt,empKey) {
@@ -942,6 +951,7 @@ window.addEventListener('resize', ()=>{
 
 document.addEventListener('DOMContentLoaded', async ()=>{
   await carregarDadosNuvem();
+  await carregarContasBancarias();
   document.getElementById('loadingOverlay').style.display='none';
   const hoje = new Date().toLocaleDateString('sv');
   document.getElementById('selData').value = hoje;
@@ -1052,7 +1062,8 @@ function renderContas(d) {
     const pago=contas.filter(c=>c.status==='pago').reduce((s,c)=>s+(c.valor||0),0);
     const semContas=contas.length===0?'sem-contas':'';
     const isService=emp.key==='SERVICE';
-    html+=`<div class="empresa-section ${semContas}" id="sec_${emp.key}">
+    const travado=!!(d.travados||{})[emp.key];
+    html+=`<div class="empresa-section ${semContas} ${travado?'travado':''}" id="sec_${emp.key}">
       <div class="empresa-header" onclick="toggleSec('${emp.key}')">
         <span class="emp-badge">${emp.emoji} ${emp.label}${isService?' <span style="font-size:.6rem;opacity:.7">(manual)</span>':''}</span>
         <span class="emp-count">${contas.length} conta(s)</span>
@@ -1063,6 +1074,8 @@ function renderContas(d) {
         <button class="btn btn-danger-soft btn-sm btn-limpar"
           onclick="limparContas(event,'${emp.key}')"
           title="Excluir todos os lançamentos desta empresa">🗑️ Limpar</button>
+        ${travado?`<button class="btn btn-outline btn-sm btn-destrava" onclick="destravarEmpresa(event,'${emp.key}')"
+          title="Dia conciliado e travado — clique para destravar com a senha de admin">🔒 Travado</button>`:''}
         <span class="toggle-icon">▼</span>
       </div>
       <div class="contas-body" id="body_${emp.key}">
@@ -1075,6 +1088,7 @@ function renderContas(d) {
             <col class="col-desc">
             <col class="col-cat">
             <col class="col-acao">
+            <col class="col-check">
           </colgroup>
           <thead><tr>
             <th class="mob-hide">Vencimento</th>
@@ -1084,6 +1098,7 @@ function renderContas(d) {
             <th class="col-desc-th mob-hide">Descrição</th>
             <th class="c col-cat-th mob-hide">Categoria</th>
             <th class="c no-print mob-hide">Ação</th>
+            <th class="c no-print mob-hide col-check-th" title="Conciliação bancária">🏦</th>
           </tr></thead>
           <tbody id="tbody_${emp.key}">
             ${contas.map((c,i)=>rowHTML(emp.key,c,i)).join('')}
@@ -1091,7 +1106,7 @@ function renderContas(d) {
           <tfoot>
             <!-- linha de tela -->
             <tr class="no-print">
-              <td colspan="7" style="font-weight:700;color:#1e40af !important;text-align:right;white-space:nowrap;background:#e8efff;font-size:.92rem;">
+              <td colspan="8" style="font-weight:700;color:#1e40af !important;text-align:right;white-space:nowrap;background:#e8efff;font-size:.92rem;">
                 Total &nbsp; ${fmt(total)}
               </td>
             </tr>
@@ -1111,15 +1126,34 @@ function renderContas(d) {
 }
 
 function rowHTML(empKey,c,i) {
-  const catMap={motoboy:'cat-mb',boleto:'cat-bl',pix:'cat-pix',ted:'cat-ted',outro:'cat-out'};
-  const catLbl={motoboy:'Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',outro:'Outro'};
+  const catMap={motoboy:'cat-mb',boleto:'cat-bl',pix:'cat-pix',ted:'cat-ted',cartao:'cat-cartao',outro:'cat-out'};
+  const catLbl={motoboy:'Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',outro:'Outro'};
   const st=c.status==='pago';
   const venc=c.venc||'';
+  const pendente = c.origem==='conciliacao' && !c.conciliado;
+
+  const fornecedorCell = pendente
+    ? `<div style="display:flex;gap:4px;align-items:center">
+        <input class="pend-input" type="text" id="pendDesc_${empKey}_${i}"
+          placeholder="O que é este lançamento?" value="${esc(c.desc||'')}"
+          onkeydown="if(event.key==='Enter')salvarPendente('${empKey}',${i})">
+        <button class="btn btn-primary btn-sm" style="padding:6px 9px;flex:0 0 auto" onclick="salvarPendente('${empKey}',${i})" title="Salvar e confirmar">💾</button>
+      </div>`
+    : esc(c.desc||'');
+
+  const categoriaCell = pendente
+    ? `<input class="pend-input" type="text" id="pendCat_${empKey}_${i}" placeholder="Categoria" value="${esc(c.categoria||'')}">`
+    : esc(c.categoria||'');
+
+  const checkCell = c.conciliado===true
+    ? `<span class="conc-check-ok" title="Conciliado com o extrato bancário">✅</span>`
+    : (c.origem==='conciliacao' ? `<span class="conc-check-pendente" title="Veio do extrato — aguardando identificação">⏳</span>` : '');
+
   // Categoria e descrição truncadas para impressão: máx 20 e 25 chars
-  return `<tr class="${st?'paid':''}" id="row_${empKey}_${i}">
+  return `<tr class="${st?'paid':''} ${pendente?'pendente-conciliacao':''}" id="row_${empKey}_${i}">
     <td class="mob-hide" style="white-space:nowrap;overflow:hidden">${esc(venc)}</td>
-    <td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px">
-      ${esc(c.desc||'')}
+    <td style="${pendente?'':'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'}max-width:220px">
+      ${fornecedorCell}
     </td>
     <td class="r col-valor-td" style="white-space:nowrap">
       <input class="val-edit" type="number" step="0.01" value="${(c.valor||0).toFixed(2)}"
@@ -1128,10 +1162,11 @@ function rowHTML(empKey,c,i) {
     </td>
     <td class="c" style="white-space:nowrap"><span class="badge-cat ${catMap[c.cat]||'cat-out'}" style="white-space:nowrap">${catLbl[c.cat]||c.cat||''}</span></td>
     <td class="col-desc-td mob-hide" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;font-size:.75rem">${esc(c.ref||'')}</td>
-    <td class="c col-cat-td mob-hide" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.7rem;max-width:80px">${esc(c.categoria||'')}</td>
+    <td class="c col-cat-td mob-hide" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.7rem;max-width:80px">${categoriaCell}</td>
     <td class="c no-print mob-hide">
       <button class="btn btn-outline btn-sm" onclick="abrirEditConta('${empKey}',${i})">✏️</button>
     </td>
+    <td class="c no-print mob-hide col-check-td">${checkCell}</td>
   </tr>`;
 }
 
@@ -1233,8 +1268,13 @@ function abrirSaldoModal() {
   document.getElementById('smData').textContent=`${day}/${m}/${y}`;
   let html='';
   for (const emp of EMPRESAS) {
-    html+=`<div class="form-row"><label>${emp.emoji} ${emp.label}</label>
-      <input type="number" id="sm_${emp.key}" value="${d.saldos[emp.key]||0}" step="0.01" min="0"></div>`;
+    const temConta = emp.key!=='SERVICE';
+    html+=`<div class="form-row" style="display:flex;gap:8px;align-items:flex-end">
+      <div style="flex:1"><label>${emp.emoji} ${emp.label}</label>
+        <input type="number" id="sm_${emp.key}" value="${d.saldos[emp.key]||0}" step="0.01" min="0"></div>
+      ${temConta?`<div style="flex:0 0 150px"><label>Nº da conta (banco)</label>
+        <input type="text" id="smConta_${emp.key}" value="${esc(CONTAS_BANCARIAS[emp.key]||'')}" placeholder="p/ conciliação"></div>`:''}
+    </div>`;
   }
   document.getElementById('smInputs').innerHTML=html;
   document.getElementById('saldoModal').classList.add('open');
@@ -1242,10 +1282,18 @@ function abrirSaldoModal() {
 
 function salvarSaldos() {
   const d=getDia(diaAtual);
+  const novasContas={...CONTAS_BANCARIAS};
   for (const emp of EMPRESAS) {
     const inp=document.getElementById('sm_'+emp.key);
     if (inp) d.saldos[emp.key]=parseFloat(inp.value)||0;
+    const contaInp=document.getElementById('smConta_'+emp.key);
+    if (contaInp) {
+      const v=contaInp.value.trim();
+      if (v) novasContas[emp.key]=v; else delete novasContas[emp.key];
+    }
   }
+  CONTAS_BANCARIAS=novasContas;
+  fbDB.ref('config/contasBancarias').set(novasContas);
   fecharModal('saldoModal');
   renderTudo();
   salvarNuvem();
@@ -1459,6 +1507,7 @@ function normMetodo(str) {
   if (s.includes('pix')) return 'pix';
   if (s.includes('ted')||s.includes('transf')) return 'ted';
   if (s.includes('moto')) return 'motoboy';
+  if (s.includes('cart')||s.includes('credito')) return 'cartao';
   return 'outro';
 }
 
@@ -1473,15 +1522,25 @@ function showUploadStatus(type,msg) {
 // ══════════════════════════════════════════════════════════
 // CONCILIAÇÃO BANCÁRIA
 //
-// Fluxo: ela sobe o extrato do banco daquele dia, pra UMA empresa/conta.
-// A gente soma só as SAÍDAS (débitos) do extrato e compara com o total
-// já cadastrado (autorizado) pro dia naquela empresa. Cada lançamento
-// cadastrado tenta "casar" com um lançamento do extrato de valor igual
-// (é o jeito confiável de comparar sem ter um ID de transação em comum).
-// O que sobrar no extrato sem correspondência é o que ela precisa
-// classificar (taxas, tarifas etc.) e lançar no dia.
+// Fluxo: ela sobe os extratos do banco daquele dia, um ou vários de uma
+// vez. Cada arquivo é identificado SOZINHO pela empresa, batendo o número
+// da conta que vem no extrato (linha "AGENCIA/CONTA" do Santander) contra
+// os números cadastrados em CONTAS_BANCARIAS. A gente soma só as SAÍDAS
+// (ver ehSaidaSantander) e casa cada uma com um lançamento já cadastrado
+// de valor igual -- o que bate ganha um ✅ na própria linha da tabela
+// principal; o que sobra no banco vira uma linha nova nessa mesma tabela,
+// com o valor já preenchido, esperando ela digitar "o que é". Quando TODA
+// a lista de uma empresa+dia estiver ✅, a seção trava (só reabre com a
+// senha de admin).
 // ══════════════════════════════════════════════════════════
-let _concExtras = []; // itens do banco sem correspondência, aguardando classificação
+let CONTAS_BANCARIAS = {}; // { empKey: 'numero da conta' }, carregado do Firebase
+
+async function carregarContasBancarias() {
+  try {
+    const snap = await fbDB.ref('config/contasBancarias').once('value');
+    CONTAS_BANCARIAS = snap.val() || {};
+  } catch(e) { CONTAS_BANCARIAS = {}; }
+}
 
 function abrirConciliacao() {
   if (!diaAtual) { toast('📅 Selecione uma data primeiro'); return; }
@@ -1489,21 +1548,79 @@ function abrirConciliacao() {
   document.getElementById('concUploadStatus').style.display = 'none';
   document.getElementById('concFileInput').value = '';
   document.getElementById('concResultado').innerHTML = '';
-  _concExtras = [];
   document.getElementById('conciliacaoModal').classList.add('open');
-}
-function onConcEmpChange() {
-  document.getElementById('concResultado').innerHTML = '';
-  document.getElementById('concFileInput').value = '';
-  _concExtras = [];
 }
 function fmtDataLonga(dt) {
   const [y,m,d] = dt.split('-');
   return `${d}/${m}/${y}`;
 }
 
-// Igual a parseValorBR, mas preserva o sinal — no extrato, débito costuma
-// vir negativo e é isso que usamos pra saber que "saiu" dinheiro.
+function showConcStatus(type,msg) {
+  const el = document.getElementById('concUploadStatus');
+  el.className = 'upload-status '+type;
+  el.style.display = 'flex';
+  el.textContent = msg;
+}
+
+async function onConciliacaoFileSelect(e) {
+  const files = [...e.target.files];
+  e.target.value = '';
+  if (!files.length) return;
+  if (!Object.keys(CONTAS_BANCARIAS).length) {
+    showConcStatus('err','⚠️ Cadastra os números de conta de cada empresa primeiro (⚙️ acima).');
+    return;
+  }
+  showConcStatus('', `⏳ Processando ${files.length} arquivo(s)...`);
+
+  const resumos = [];
+  for (const f of files) {
+    try {
+      const { rowsFmt, rowsRaw } = await lerArquivoExtrato(f);
+      const resumo = processarExtratoUmArquivo(rowsFmt, rowsRaw, f.name);
+      resumos.push(resumo);
+    } catch(err) {
+      resumos.push({ arquivo: f.name, erro: err.message });
+    }
+  }
+
+  renderTudo();
+  salvarNuvem();
+  mostrarResumoUpload(resumos);
+}
+
+function lerArquivoExtrato(f) {
+  const ext = f.name.split('.').pop().toLowerCase();
+  return new Promise((resolve, reject) => {
+    if (ext === 'csv' || ext === 'txt') {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const text = ev.target.result;
+        const sep = text.includes(';') ? ';' : (text.includes('\t') ? '\t' : ',');
+        const lines = text.split('\n').map(l => l.split(sep).map(c => c.replace(/"/g,'').trim()));
+        resolve({ rowsFmt: lines, rowsRaw: lines });
+      };
+      reader.onerror = () => reject(new Error('erro ao ler arquivo'));
+      reader.readAsText(f, 'utf-8');
+    } else if (ext === 'xlsx' || ext === 'xls') {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          const wb = XLSX.read(ev.target.result, {type:'array', raw:false, cellDates:false});
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const rowsFmt = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
+          const rowsRaw = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:true});
+          resolve({ rowsFmt, rowsRaw });
+        } catch(err) { reject(err); }
+      };
+      reader.onerror = () => reject(new Error('erro ao ler arquivo'));
+      reader.readAsArrayBuffer(f);
+    } else {
+      reject(new Error('formato não suportado ainda (PDF, por exemplo)'));
+    }
+  });
+}
+
+// Igual a parseValorBR, mas preserva o sinal.
 function parseValorComSinal(v) {
   if (v === null || v === undefined || v === '') return null;
   if (typeof v === 'number') return v;
@@ -1522,197 +1639,205 @@ function parseValorComSinal(v) {
   return neg ? -Math.abs(n) : n;
 }
 
-function onConciliacaoFileSelect(e) {
-  const f = e.target.files[0]; if (!f) return;
-  const ext = f.name.split('.').pop().toLowerCase();
-  if (ext === 'csv' || ext === 'txt') {
-    const reader = new FileReader();
-    reader.onload = ev => {
-      const text = ev.target.result;
-      const sep = text.includes(';') ? ';' : (text.includes('\t') ? '\t' : ',');
-      const lines = text.split('\n').map(l => l.split(sep).map(c => c.replace(/"/g,'').trim()));
-      processarExtrato(lines, lines);
-    };
-    reader.readAsText(f, 'utf-8');
-  } else if (ext === 'xlsx' || ext === 'xls') {
-    const reader = new FileReader();
-    reader.onload = ev => {
-      try {
-        const wb = XLSX.read(ev.target.result, {type:'array', raw:false, cellDates:false});
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const rowsFmt = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
-        const rowsRaw = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:true});
-        processarExtrato(rowsFmt, rowsRaw);
-      } catch(err) { showConcStatus('err','❌ Erro ao ler o arquivo: '+err.message); }
-    };
-    reader.readAsArrayBuffer(f);
-  } else {
-    showConcStatus('err','❌ Formato não suportado ainda (PDF, por exemplo) — exporta em Excel ou CSV do internet banking.');
+// No extrato do Santander (formato real testado), o SINAL do valor não é
+// confiável pra saber se é entrada ou saída -- pagamento de cartão, por
+// exemplo, vem POSITIVO. Só tarifa vem negativa. Por isso: valor negativo
+// é SEMPRE saída (confirmado); valor positivo só conta como entrada (e é
+// ignorado) se o histórico falar "RECEB.../DEPÓSITO/ESTORNO" -- qualquer
+// outra coisa positiva (PAGAMENTO, TRANSF, etc.) é tratada como saída,
+// porque é melhor sobrar um item pra ela classificar do que perder um
+// pagamento de vista. Usa "RECEB" (não "RECEBID") pra pegar tanto
+// "RECEBIDO/RECEBIDA" quanto "RECEBIMENTO".
+function ehSaidaSantander(historico, valorComSinal) {
+  if (valorComSinal < 0) return true;
+  const h = String(historico||'').toUpperCase();
+  const ehEntrada = h.includes('RECEB') || h.includes('DEPOSITO') || h.includes('DEPÓSITO') || h.includes('ESTORNO');
+  return !ehEntrada;
+}
+
+// Acha "CONTA" nas primeiras linhas (metadados do Santander: AGENCIA | xxx
+// | CONTA | nnnnnnn) e a linha real de cabeçalho (a que tem Data + Valor).
+function extrairMetadadosExtrato(rows) {
+  let conta = null, headerIdx = null;
+  for (let i=0; i<Math.min(rows.length, 8); i++) {
+    const r = rows[i] || [];
+    for (let j=0; j<r.length; j++) {
+      if (String(r[j]||'').trim().toUpperCase()==='CONTA' && j+1<r.length) conta = String(r[j+1]||'').trim();
+    }
+    const vals = r.map(c => String(c||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim());
+    if (vals.includes('data') && vals.some(v=>v.includes('valor'))) { headerIdx = i; break; }
   }
-  e.target.value = '';
+  return { conta, headerIdx };
 }
 
-function showConcStatus(type,msg) {
-  const el = document.getElementById('concUploadStatus');
-  el.className = 'upload-status '+type;
-  el.style.display = 'flex';
-  el.textContent = msg;
-}
+function processarExtratoUmArquivo(rowsFmt, rowsRaw, nomeArquivo) {
+  const { conta, headerIdx } = extrairMetadadosExtrato(rowsFmt);
+  if (headerIdx === null) {
+    return { arquivo: nomeArquivo, erro: 'não achei a linha de cabeçalho (Data/Histórico/Valor) nesse arquivo' };
+  }
 
-function processarExtrato(rowsFmt, rowsRaw) {
-  if (!rowsFmt || rowsFmt.length < 2) { showConcStatus('err','⚠️ Arquivo sem dados'); return; }
+  const empKey = Object.keys(CONTAS_BANCARIAS).find(k => CONTAS_BANCARIAS[k] === conta);
+  if (!empKey) {
+    return { arquivo: nomeArquivo, erro: conta ? `conta ${conta} não está cadastrada em nenhuma empresa` : 'não achei o número da conta nesse arquivo' };
+  }
 
-  const header = rowsFmt[0].map(h => String(h||'').toLowerCase()
+  const header = rowsFmt[headerIdx].map(h => String(h||'').toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g,'').trim());
-
   const ci = {
-    data:      findCol(header, ['data','dt lancamento','dt']),
-    historico: findCol(header, ['historico','descricao','lancamento','complemento','discriminacao']),
-    valor:     findCol(header, ['valor','vlr','valor (r$)']),
-    tipo:      findCol(header, ['tipo','d/c','dc','natureza','deb/cred']),
+    data:      findCol(header, ['data']),
+    historico: findCol(header, ['historico','descricao','lancamento','complemento']),
+    valor:     findCol(header, ['valor']),
   };
-
   if (ci.valor === 9999) {
-    showConcStatus('err','❌ Não achei a coluna de Valor nesse arquivo. Confere se a primeira linha tem os títulos das colunas.');
-    return;
+    return { arquivo: nomeArquivo, erro: 'não achei a coluna de Valor' };
   }
 
-  const saidas = [];
-  let semCerteza = 0;
-  for (let i=1; i<rowsFmt.length; i++) {
+  const saidasBanco = [];
+  for (let i=headerIdx+1; i<rowsFmt.length; i++) {
     const rf = rowsFmt[i], rr = rowsRaw[i] || rf;
     if (!rf || rf.every(c => !c && c!==0)) continue;
-
     const rawVal = ci.valor < rr.length ? rr[ci.valor] : null;
     const valorComSinal = parseValorComSinal(rawVal);
     if (valorComSinal === null) continue;
-
-    let ehSaida = null; // null = não sabemos ainda
-    if (ci.tipo !== 9999 && ci.tipo < rf.length) {
-      const t = String(rf[ci.tipo]||'').trim().toUpperCase();
-      if (t.startsWith('D')) ehSaida = true;
-      else if (t.startsWith('C')) ehSaida = false;
-    }
-    if (ehSaida === null) {
-      // sem coluna de tipo -- usa o sinal do valor (débito costuma vir negativo)
-      if (valorComSinal < 0) ehSaida = true;
-      else if (valorComSinal > 0) { ehSaida = false; semCerteza++; }
-    }
-    if (!ehSaida) continue;
-
-    saidas.push({
+    const historico = ci.historico < rf.length ? String(rf[ci.historico]||'').trim() : '';
+    if (!ehSaidaSantander(historico, valorComSinal)) continue;
+    saidasBanco.push({
       data: ci.data < rf.length ? fmtData(rf[ci.data]) : '',
-      historico: ci.historico < rf.length ? String(rf[ci.historico]||'').trim() : '',
+      historico,
       valor: Math.abs(valorComSinal),
     });
   }
 
-  if (saidas.length === 0) {
-    showConcStatus('err','⚠️ Não encontrei nenhuma saída (débito) nesse arquivo. Se os valores vierem todos positivos sem coluna de Tipo (D/C), não dá pra saber o que é saída com segurança -- confere o formato do extrato.');
-    return;
-  }
-
-  showConcStatus('ok', `✅ ${saidas.length} saída(s) lida(s) do extrato` + (semCerteza ? ` (havia valores positivos sem coluna de tipo, tratados como entrada e ignorados)` : ''));
-  rodarConciliacao(saidas);
+  return rodarConciliacao(empKey, saidasBanco, nomeArquivo, conta);
 }
 
-function rodarConciliacao(saidasBanco) {
-  const empKey = document.getElementById('concEmp').value;
-  const cadastrados = (getContas(diaAtual, empKey) || []).map((c,idx) => ({...c, idx}));
-
-  const totalCadastrado = cadastrados.reduce((s,c) => s+(c.valor||0), 0);
-  const totalBanco = saidasBanco.reduce((s,c) => s+c.valor, 0);
-
-  // Casa cada lançamento cadastrado com um item do banco de valor igual
-  // (dentro de 1 centavo, por causa de arredondamento) -- "consome" o item
-  // do banco pra não usar duas vezes o mesmo.
+function rodarConciliacao(empKey, saidasBanco, nomeArquivo, conta) {
+  const cadastrados = getContas(diaAtual, empKey);
   const bancoRestante = saidasBanco.map(s => ({...s, usado:false}));
-  const naoEncontrados = [];
+  let batidos = 0;
+
+  // Cartão de crédito é diferente: ela lança CADA compra da fatura como um
+  // lançamento próprio no dia em que a fatura é paga, mas no banco sai UM
+  // débito só (o total da fatura). Então não casa por valor individual --
+  // soma tudo que estiver marcado "Cartão" e ainda não conciliado, e procura
+  // no extrato um único item cujo valor bata com essa soma. Se achar, todos
+  // os lançamentos daquele grupo viram conciliados de uma vez.
+  const cartaoPendentes = cadastrados.filter(c => c.cat==='cartao' && !c.conciliado);
+  if (cartaoPendentes.length) {
+    const totalCartao = cartaoPendentes.reduce((s,c)=>s+(c.valor||0),0);
+    const faturaMatch = bancoRestante.find(b => !b.usado && Math.abs(b.valor - totalCartao) < 0.01);
+    if (faturaMatch) {
+      faturaMatch.usado = true;
+      for (const c of cartaoPendentes) { c.conciliado = true; batidos++; }
+    }
+  }
+
+  // Demais lançamentos: casa cada um (ainda não conciliado) com um item do
+  // banco de valor igual -- "consome" o item do banco pra não usar duas
+  // vezes o mesmo, e marca conciliado=true direto na lista principal.
   for (const c of cadastrados) {
+    if (c.conciliado || c.cat==='cartao') continue;
     const match = bancoRestante.find(b => !b.usado && Math.abs(b.valor - (c.valor||0)) < 0.01);
-    if (match) match.usado = true;
-    else naoEncontrados.push(c);
+    if (match) { match.usado = true; c.conciliado = true; batidos++; }
   }
   const extras = bancoRestante.filter(b => !b.usado);
 
-  _concExtras = extras;
-  renderResultadoConciliacao({
-    empKey, totalCadastrado, totalBanco,
-    qtdCadastrado: cadastrados.length, qtdBanco: saidasBanco.length,
-    naoEncontrados, extras,
-  });
+  // O que sobrou no banco vira linha nova na lista, pendente de identificar.
+  for (const ex of extras) {
+    cadastrados.push({
+      venc: fmtData(diaAtual), emis: fmtData(diaAtual),
+      desc: '', ref: ex.historico||'', cat: 'outro', categoria: '',
+      valor: ex.valor, status: 'pago',
+      origem: 'conciliacao', conciliado: false,
+    });
+  }
+
+  atualizarTravaEmpresa(empKey);
+
+  return {
+    arquivo: nomeArquivo, empKey, conta,
+    empNome: EMPRESAS.find(e=>e.key===empKey)?.label || empKey,
+    totalBanco: saidasBanco.reduce((s,c)=>s+c.valor,0),
+    qtdBanco: saidasBanco.length, batidos, pendentes: extras.length,
+  };
 }
 
-function renderResultadoConciliacao(r) {
-  const bateu = Math.abs(r.totalBanco - r.totalCadastrado) < 0.01;
-  const diff = r.totalBanco - r.totalCadastrado;
-  const empNome = EMPRESAS.find(e=>e.key===r.empKey)?.label || r.empKey;
-
-  let html = `
-    <div class="conc-resumo ${bateu?'ok':'divergente'}">
-      <div class="conc-resumo-titulo">${bateu ? '✅ Bateu certinho' : '⚠️ Não bateu'} — ${empNome}</div>
+function mostrarResumoUpload(resumos) {
+  const ok = resumos.filter(r=>!r.erro);
+  const erros = resumos.filter(r=>r.erro);
+  let html = ok.map(r => `
+    <div class="conc-resumo ${r.pendentes?'divergente':'ok'}">
+      <div class="conc-resumo-titulo">${r.pendentes?'⚠️':'✅'} ${r.empNome} — ${esc(r.arquivo)}</div>
       <div class="conc-resumo-grid">
-        <div><span class="conc-label">Cadastrado (${r.qtdCadastrado})</span><span class="conc-valor">${fmt(r.totalCadastrado)}</span></div>
         <div><span class="conc-label">Saiu do banco (${r.qtdBanco})</span><span class="conc-valor">${fmt(r.totalBanco)}</span></div>
-        <div><span class="conc-label">Diferença</span><span class="conc-valor" style="color:${bateu?'#16a34a':'#dc2626'}">${diff>=0?'+':''}${fmt(diff)}</span></div>
+        <div><span class="conc-label">Identificado</span><span class="conc-valor" style="color:#16a34a">${r.batidos}</span></div>
+        <div><span class="conc-label">Pendente</span><span class="conc-valor" style="color:${r.pendentes?'#dc2626':'#16a34a'}">${r.pendentes}</span></div>
       </div>
-    </div>`;
-
-  if (r.naoEncontrados.length) {
-    html += `<div class="conc-secao">
-      <div class="conc-secao-titulo">📋 Cadastrados que não achei no banco (${r.naoEncontrados.length})</div>
-      <div class="conc-secao-sub">Pode ser que ainda não tenham processado, ou tenham saído de outra conta.</div>
-      ${r.naoEncontrados.map(c => `<div class="conc-item">
-        <span>${esc(c.desc||'(sem fornecedor)')} — ${esc(c.ref||'')}</span>
-        <strong>${fmt(c.valor||0)}</strong>
-      </div>`).join('')}
+    </div>`).join('');
+  if (erros.length) {
+    html += `<div class="conc-secao"><div class="conc-secao-titulo">❌ Não processados</div>
+      ${erros.map(r=>`<div class="conc-item"><span>${esc(r.arquivo)}</span><span>${esc(r.erro)}</span></div>`).join('')}
     </div>`;
   }
-
-  if (r.extras.length) {
-    html += `<div class="conc-secao">
-      <div class="conc-secao-titulo">🆕 Saídas do banco sem cadastro (${r.extras.length})</div>
-      <div class="conc-secao-sub">Classifica cada uma pra lançar no dia (taxas, tarifas etc.)</div>
-      ${r.extras.map((ex,i) => `
-      <div class="conc-extra" id="concExtra_${i}">
-        <div class="conc-extra-head">
-          <span>${esc(ex.historico||'(sem histórico)')} ${ex.data?('— '+esc(ex.data)):''}</span>
-          <strong>${fmt(ex.valor)}</strong>
-        </div>
-        <div class="conc-extra-form">
-          <input type="text" id="concExtraDesc_${i}" placeholder="O que é? Ex: Tarifa bancária">
-          <input type="text" id="concExtraCat_${i}" placeholder="Categoria. Ex: TAXAS">
-          <button class="btn btn-primary btn-sm" onclick="adicionarExtraAoDia(${i})">+ Lançar</button>
-        </div>
-      </div>`).join('')}
-    </div>`;
-  } else if (r.naoEncontrados.length === 0 && bateu) {
-    html += `<div class="conc-secao"><div class="conc-secao-sub">Nenhuma pendência — tudo cadastrado saiu, e não sobrou nada estranho no extrato. 🎉</div></div>`;
-  }
-
   document.getElementById('concResultado').innerHTML = html;
+  showConcStatus('ok', `Pronto — desce a tela principal pra ver o detalhe em cada empresa.`);
 }
 
-function adicionarExtraAoDia(i) {
-  const ex = _concExtras[i];
-  if (!ex) return;
-  const desc = document.getElementById(`concExtraDesc_${i}`).value.trim();
-  const categoria = document.getElementById(`concExtraCat_${i}`).value.trim();
+// ── Preencher item pendente direto na linha da tabela ──────
+function salvarPendente(empKey, i) {
+  const contas = getContas(diaAtual, empKey);
+  const c = contas[i]; if (!c) return;
+  const desc = document.getElementById(`pendDesc_${empKey}_${i}`)?.value.trim();
+  const categoria = document.getElementById(`pendCat_${empKey}_${i}`)?.value.trim() || '';
   if (!desc) { toast('⚠️ Descreve o que é esse lançamento'); return; }
-
-  const empKey = document.getElementById('concEmp').value;
-  getContas(diaAtual, empKey).push({
-    venc: fmtData(diaAtual), emis: fmtData(diaAtual),
-    desc, ref: ex.historico||'', cat: 'outro', categoria,
-    valor: ex.valor, status: 'pago',
-    origem: 'conciliacao',
-  });
+  c.desc = desc; c.categoria = categoria; c.conciliado = true;
+  atualizarTravaEmpresa(empKey);
   renderTudo();
   salvarNuvem();
+  toast('✅ Identificado');
+}
 
-  const card = document.getElementById(`concExtra_${i}`);
-  if (card) { card.style.opacity = '.4'; card.querySelector('.conc-extra-form').innerHTML = '✅ Lançado'; }
-  toast('✅ Lançamento adicionado ao dia');
+// ── Trava por empresa+dia: quando tudo tiver conciliado=true, trava. ──
+function empresaEstaTravada(empKey) {
+  return !!(getDia(diaAtual).travados||{})[empKey];
+}
+function atualizarTravaEmpresa(empKey) {
+  const contas = getContas(diaAtual, empKey);
+  const d = getDia(diaAtual);
+  if (!d.travados) d.travados = {};
+  const tudoConciliado = contas.length>0 && contas.every(c=>c.conciliado===true);
+  d.travados[empKey] = tudoConciliado;
+}
+async function destravarEmpresa(event, empKey) {
+  event.stopPropagation();
+  const ok = await pedirSenhaAdmin();
+  if (!ok) return;
+  getDia(diaAtual).travados[empKey] = false;
+  renderTudo();
+  salvarNuvem();
+  toast('🔓 Desbloqueado pra edição');
+}
+
+// ── Senha de admin: primeira vez que precisar, cria; depois, confirma. ──
+async function pedirSenhaAdmin() {
+  let snap;
+  try { snap = await fbDB.ref('config/senhaAdmin').once('value'); } catch(e) { snap = null; }
+  const hashSalvo = snap ? snap.val() : null;
+
+  if (!hashSalvo) {
+    const nova = prompt('Ainda não existe senha de admin. Cria uma agora (só você vai usar pra destravar dias conciliados):');
+    if (!nova) return false;
+    const confirma = prompt('Confirma a senha:');
+    if (nova !== confirma) { alert('As senhas não bateram.'); return false; }
+    await fbDB.ref('config/senhaAdmin').set(btoa(unescape(encodeURIComponent(nova))));
+    return true;
+  }
+
+  const tentativa = prompt('Senha de admin:');
+  if (tentativa === null) return false;
+  const bate = btoa(unescape(encodeURIComponent(tentativa))) === hashSalvo;
+  if (!bate) alert('Senha incorreta.');
+  return bate;
 }
 
 // ══════════════════════════════════════════════════════════
