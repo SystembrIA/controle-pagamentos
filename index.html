@@ -1534,13 +1534,16 @@ function normMetodo(str) {
   return 'outro';
 }
 
-// Identifica no extrato do Santander os Pix pagos aos motoboys via Pag4Pix
-// (gateway usado pro m\u00e9todo "Pix Motoboys" da Saipos) -- restringe a soma em
-// grupo do motoboy (rodarConciliacao) s\u00f3 a esses itens, em vez de qualquer
-// sa\u00edda que sobrar, pra n\u00e3o casar por coincid\u00eancia com um Pix de fornecedor.
-function ehPag4PixMotoboy(historico) {
+// Identifica no extrato do Santander os Pix pagos aos motoboys, pelo
+// hist\u00f3rico "Pagfor Pix Outra Inst..." (Pix pra OUTRA institui\u00e7\u00e3o --
+// motoboy nunca \u00e9 da mesma institui\u00e7\u00e3o banc\u00e1ria da empresa) -- restringe a
+// soma em grupo do motoboy (rodarConciliacao) s\u00f3 a esses itens, em vez de
+// qualquer sa\u00edda que sobrar, pra n\u00e3o casar por coincid\u00eancia com um Pix de
+// fornecedor. Exclui de prop\u00f3sito "Pagfor Pix Mesma Inst..." (transfer\u00eancia
+// entre contas da pr\u00f3pria empresa, nunca \u00e9 pagamento a motoboy).
+function ehPagforPixOutraInst(historico) {
   const s = String(historico||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  return s.includes('pag4pix') && s.includes('ultra');
+  return s.includes('pagfor') && s.includes('pix') && s.includes('outra');
 }
 
 function showUploadStatus(type,msg) {
@@ -1832,10 +1835,10 @@ function rodarConciliacao(empKey, saidasBanco, nomeArquivo, conta) {
   // Só sobraram no banco, a essa altura, os itens que ninguém "reclamou"
   // individualmente -- pra cada lançamento "Motoboy" ainda não conciliado,
   // procura um GRUPO desses itens cuja soma bata com o valor lançado.
-  const bancoPag4Pix = bancoRestante.filter(b => ehPag4PixMotoboy(b.historico));
+  const bancoPagforOutraInst = bancoRestante.filter(b => ehPagforPixOutraInst(b.historico));
   for (const c of cadastrados) {
     if (c.conciliado || c.cat!=='motoboy') continue;
-    const grupo = acharGrupoQueSoma(bancoPag4Pix, c.valor||0);
+    const grupo = acharGrupoQueSoma(bancoPagforOutraInst, c.valor||0);
     if (grupo) {
       for (const item of grupo) item.usado = true;
       c.conciliado = true; batidos++;
