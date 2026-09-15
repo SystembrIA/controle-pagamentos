@@ -1524,11 +1524,23 @@ function ehCoberturaConta(descricao) {
 function normMetodo(str) {
   const s=String(str).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   if (s.includes('boleto')||s.includes('bol')) return 'boleto';
+  // "moto" antes de "pix": o m\u00e9todo "Pix Motoboys" (Saipos) cont\u00e9m as duas
+  // palavras, e precisa cair em 'motoboy' (soma em grupo no extrato) e n\u00e3o
+  // em 'pix' gen\u00e9rico (match individual 1:1).
+  if (s.includes('moto')) return 'motoboy';
   if (s.includes('pix')) return 'pix';
   if (s.includes('ted')||s.includes('transf')) return 'ted';
-  if (s.includes('moto')) return 'motoboy';
   if (s.includes('cart')||s.includes('credito')) return 'cartao';
   return 'outro';
+}
+
+// Identifica no extrato do Santander os Pix pagos aos motoboys via Pag4Pix
+// (gateway usado pro m\u00e9todo "Pix Motoboys" da Saipos) -- restringe a soma em
+// grupo do motoboy (rodarConciliacao) s\u00f3 a esses itens, em vez de qualquer
+// sa\u00edda que sobrar, pra n\u00e3o casar por coincid\u00eancia com um Pix de fornecedor.
+function ehPag4PixMotoboy(historico) {
+  const s = String(historico||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  return s.includes('pag4pix') && s.includes('ultra');
 }
 
 function showUploadStatus(type,msg) {
@@ -1820,9 +1832,10 @@ function rodarConciliacao(empKey, saidasBanco, nomeArquivo, conta) {
   // Só sobraram no banco, a essa altura, os itens que ninguém "reclamou"
   // individualmente -- pra cada lançamento "Motoboy" ainda não conciliado,
   // procura um GRUPO desses itens cuja soma bata com o valor lançado.
+  const bancoPag4Pix = bancoRestante.filter(b => ehPag4PixMotoboy(b.historico));
   for (const c of cadastrados) {
     if (c.conciliado || c.cat!=='motoboy') continue;
-    const grupo = acharGrupoQueSoma(bancoRestante, c.valor||0);
+    const grupo = acharGrupoQueSoma(bancoPag4Pix, c.valor||0);
     if (grupo) {
       for (const item of grupo) item.usado = true;
       c.conciliado = true; batidos++;
