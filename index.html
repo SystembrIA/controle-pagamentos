@@ -1535,15 +1535,18 @@ function normMetodo(str) {
 }
 
 // Identifica no extrato do Santander os Pix pagos aos motoboys, pelo
-// hist\u00f3rico "Pagfor Pix Outra Inst..." (Pix pra OUTRA institui\u00e7\u00e3o --
-// motoboy nunca \u00e9 da mesma institui\u00e7\u00e3o banc\u00e1ria da empresa) -- restringe a
-// soma em grupo do motoboy (rodarConciliacao) s\u00f3 a esses itens, em vez de
-// qualquer sa\u00edda que sobrar, pra n\u00e3o casar por coincid\u00eancia com um Pix de
-// fornecedor. Exclui de prop\u00f3sito "Pagfor Pix Mesma Inst..." (transfer\u00eancia
-// entre contas da pr\u00f3pria empresa, nunca \u00e9 pagamento a motoboy).
+// hist\u00f3rico "Pagfor Pix ... Inst..." -- restringe a soma em grupo do
+// motoboy (rodarConciliacao) s\u00f3 a esses itens, em vez de qualquer sa\u00edda
+// que sobrar, pra n\u00e3o casar por coincid\u00eancia com um Pix de fornecedor.
+// Inclui tanto "Outra Inst" quanto "Mesma Inst": a suposi\u00e7\u00e3o inicial era
+// que motoboy nunca recebe por Mesma Inst (mesmo banco da empresa), mas
+// conferindo um dia real (14/09/2026) os 32 "Outra Inst" somavam
+// R$10.474,10 e s\u00f3 bateram com o lan\u00e7amento da Saipos (R$10.855,65) somando
+// tamb\u00e9m os 2 "Mesma Inst" (R$381,55) -- confirmado com o dono: pelo menos
+// 1 motoboy tem conta no mesmo banco, ent\u00e3o Mesma Inst entra tamb\u00e9m.
 function ehPagforPixOutraInst(historico) {
   const s = String(historico||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  return s.includes('pagfor') && s.includes('pix') && s.includes('outra');
+  return s.includes('pagfor') && s.includes('pix');
 }
 
 function showUploadStatus(type,msg) {
@@ -1776,7 +1779,10 @@ function processarExtratoUmArquivo(rowsFmt, rowsRaw, nomeArquivo) {
 // de itens, que é o cenário real (vários Pix de motoboy no dia).
 function acharGrupoQueSoma(bancoRestante, alvo, tolerancia=0.01) {
   const candidatos = bancoRestante.filter(b => !b.usado);
-  if (!candidatos.length || candidatos.length > 30 || alvo<=0) return null;
+  // Limite subiu de 30 pra 60 -- um dia real (14/09/2026) teve 34 Pix de
+  // motoboy separados no extrato e o grupo não era nem tentado por causa
+  // desse teto. A poda (abaixo) mantém a busca rápida mesmo com mais itens.
+  if (!candidatos.length || candidatos.length > 60 || alvo<=0) return null;
   const ordenados = [...candidatos].sort((a,b)=>b.valor-a.valor);
   const n = ordenados.length;
   const sufixoSoma = new Array(n+1).fill(0);
