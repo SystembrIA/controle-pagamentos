@@ -115,6 +115,11 @@ input[type=date]:focus{outline:none;border-color:#1e40af;}
 .total-card .mini-val{font-size:.82rem;font-weight:800;color:#6ee7b7;white-space:nowrap;}
 .total-card-footer{display:none;}
 
+/* linha "real" (desconsiderando Cobertura Conta) abaixo do total oficial */
+.saldo-mini-real{opacity:.8;border-top:1px dashed rgba(255,255,255,.25);padding-top:5px;}
+.mini-val-real{font-size:.66rem;font-weight:700;white-space:nowrap;}
+.mini-val-real-label{color:#c7d2fe;font-weight:800;text-transform:uppercase;letter-spacing:.05em;}
+
 /* no card total: vermelho → laranja claro, verde → verde água (já ok) */
 .total-card .val-neg{color:#fcd34d !important;}  /* amarelo quente — contrasta no azul */
 .total-card .val-pos{color:#6ee7b7 !important;}  /* verde água — já estava ok */
@@ -202,6 +207,7 @@ input.val-edit:focus{outline:none;border-color:#1e40af;background:#eff6ff;}
 .cat-ted{background:#cffafe;color:#0e7490;}
 .cat-cartao{background:#fef3c7;color:#b45309;}
 .cat-entrecontas{background:#e0e7ff;color:#4338ca;}
+.cat-transfconta{background:#fae8ff;color:#86198f;}
 .cat-out{background:#f1f5f9;color:#475569;}
 
 /* status badge — visível na tela, oculto na impressão via .no-print */
@@ -481,6 +487,10 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
   .mtb-item{display:flex;flex-direction:column;align-items:center;flex:1;min-width:0;}
   .mtb-sub{font-size:.58rem;opacity:.7;margin-bottom:2px;white-space:nowrap;}
   .mtb-item span:last-child{font-size:1rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+  .mtb-vals-real{display:flex;gap:4px;justify-content:space-between;margin-top:6px;
+    padding-top:6px;border-top:1px dashed rgba(255,255,255,.25);opacity:.8;}
+  .mtb-vals-real .mtb-sub{font-size:.55rem;}
+  .mtb-vals-real .mtb-item span:last-child{font-size:.78rem;font-weight:800;}
 
   /* ocultar o card total-card dentro do saldo-grid em mobile (está no banner) */
   .total-card{display:none !important;}
@@ -610,6 +620,12 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
       <span class="mtb-item"><span class="mtb-sub">A Pagar</span><span id="mtbPagar" style="color:#fca5a5">—</span></span>
       <span class="mtb-item"><span class="mtb-sub">Saldo Final</span><span id="mtbFinal">—</span></span>
     </div>
+    <div id="mtbTransfContaNote" style="display:none;text-align:center;font-size:.58rem;opacity:.75;margin-top:4px" title="Transferências das empresas pra Just Service pagar o fornecedor real (ex.: vale, adiantamento) — já descontadas do Total a Pagar pra não contar o mesmo gasto duas vezes">🔁 Entre Contas (já descontado): <span id="mtbTransfConta">—</span></div>
+    <div class="mtb-vals-real" id="mtbRealRow" style="display:none" title="Total 'real' desconsidera a Cobertura Conta (transferência interna entre empresas do grupo)">
+      <span class="mtb-item"><span class="mtb-sub">🔁 Cobertura</span><span id="mtbEntreContas">—</span></span>
+      <span class="mtb-item"><span class="mtb-sub">A Pagar Real</span><span id="mtbPagarReal" style="color:#fca5a5">—</span></span>
+      <span class="mtb-item"><span class="mtb-sub">Saldo Real</span><span id="mtbFinalReal">—</span></span>
+    </div>
   </div>
 
   <!-- SALDOS -->
@@ -680,6 +696,7 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
           <option value="motoboy">🏍️ Motoboy</option>
           <option value="cartao">💳 Cartão de Crédito</option>
           <option value="entrecontas">🔁 Cobertura Conta</option>
+          <option value="transfconta">🔁 Entre Contas</option>
           <option value="outro">📌 Outro</option>
         </select></div>
       <div class="form-row"><label>Categoria</label>
@@ -1011,16 +1028,17 @@ function fmt(v){
 // Método.
 function renderSaldos(d) {
   const grid=document.getElementById('saldoGrid');
-  let totalIni=0,totalPagarSemService=0,totalPagarService=0,totalEntreContas=0;
+  let totalIni=0,totalPagarSemService=0,totalPagarService=0,totalEntreContas=0,totalTransfConta=0;
   let html='';
   for (const emp of EMPRESAS) {
     const ini=d.saldos[emp.key]||0;
     const contas=d.contas[emp.key]||[];
     const pagar=contas.reduce((s,c)=>s+(c.valor||0),0);
     const entreContas=contas.filter(c=>c.cat==='entrecontas').reduce((s,c)=>s+(c.valor||0),0);
+    const transfConta=contas.filter(c=>c.cat==='transfconta').reduce((s,c)=>s+(c.valor||0),0);
     const final=ini-pagar+entreContas;
     if (emp.key==='SERVICE') { totalPagarService+=pagar; }
-    else { totalIni+=ini; totalPagarSemService+=pagar; totalEntreContas+=entreContas; }
+    else { totalIni+=ini; totalPagarSemService+=pagar; totalEntreContas+=entreContas; totalTransfConta+=transfConta; }
     const isServ = emp.key === 'SERVICE';
     html+=`<div class="saldo-card ${emp.cls}"${isServ?' style="opacity:.7;border-style:dashed"':''}
       ${isServ?' title="SERVICE: valores informativos, não entram no total"':''}>
@@ -1033,10 +1051,17 @@ function renderSaldos(d) {
       <button class="edit-saldo-btn" onclick="abrirSaldoModal()" title="Editar saldos">✏️</button>
     </div>`;
   }
-  // totalPagar = todas as empresas + service (para mostrar compromisso real)
-  // totalFinal  = saldo inicial - apenas empresas sem service + entre contas (liquido real)
-  const totalPagar=totalPagarSemService+totalPagarService;
+  // totalPagar = todas as empresas + service (compromisso real), já SEM contar duas vezes o
+  // mesmo gasto de "Entre Contas" (empresa manda pra Just Service, Just Service paga o
+  // fornecedor real — são duas pernas registradas, mas é um gasto só).
+  // totalFinal  = saldo inicial - apenas empresas sem service + entre contas [Cobertura] (liquido real)
+  const totalPagarBruto=totalPagarSemService+totalPagarService;
+  const totalPagar=totalPagarBruto-totalTransfConta;
   const totalFinal=totalIni-totalPagarSemService+totalEntreContas;
+  // "Real" = desconsiderando também a "Cobertura Conta" (não é dinheiro saindo do grupo nem
+  // precisa ser somado de volta) — útil pra ver o compromisso e o saldo sem esse ruído.
+  const totalPagarReal=totalPagar-totalEntreContas;
+  const totalFinalReal=totalFinal-totalEntreContas;
   const totalHtml=`<div class="total-card">
     <div class="emp-name">💰 TOTAL GERAL</div>
     <div class="saldo-mini">
@@ -1044,7 +1069,12 @@ function renderSaldos(d) {
       <div class="mini-val" style="color:#fca5a5">-${fmt(totalPagar)}</div>
       <div class="mini-val">${fmt(totalFinal)}</div>
     </div>
-    ${totalEntreContas>0?`<div style="text-align:center;font-size:.7rem;color:#c7d2fe;margin-top:2px">"Cobertura Conta" do dia: ${fmt(totalEntreContas)}</div>`:''}
+    ${totalTransfConta>0?`<div style="text-align:center;font-size:.62rem;color:#c7d2fe;margin-top:1px" title="Transferências das empresas pra Just Service pagar o fornecedor real (ex.: vale, adiantamento) — já descontadas do Total a Pagar pra não contar o mesmo gasto duas vezes">🔁 Entre Contas (já descontado do Total a Pagar): ${fmt(totalTransfConta)}</div>`:''}
+    ${totalEntreContas>0?`<div class="saldo-mini saldo-mini-real" title="Total 'real' desconsidera a Cobertura Conta (transferência interna entre empresas do grupo)">
+      <div class="mini-val-real mini-val-real-label">🔁 ${fmt(totalEntreContas)}</div>
+      <div class="mini-val-real" style="color:#fca5a5">-${fmt(totalPagarReal)}</div>
+      <div class="mini-val-real" style="color:#86efac">${fmt(totalFinalReal)}</div>
+    </div>`:''}
     <div class="total-card-footer">
       <button class="btn btn-print btn-sm" onclick="window.print()">🖨️ Imprimir</button>
     </div>
@@ -1061,6 +1091,20 @@ function renderSaldos(d) {
     const el=document.getElementById('mtbFinal');
     el.textContent=fmt(totalFinal);
     el.style.color=totalFinal<0?'#fca5a5':'#6ee7b7';
+    const transfNote=document.getElementById('mtbTransfContaNote');
+    if(transfNote){
+      transfNote.style.display=totalTransfConta>0?'block':'none';
+      document.getElementById('mtbTransfConta').textContent=fmt(totalTransfConta);
+    }
+    const realRow=document.getElementById('mtbRealRow');
+    if(realRow){
+      realRow.style.display=totalEntreContas>0?'flex':'none';
+      document.getElementById('mtbEntreContas').textContent=fmt(totalEntreContas);
+      document.getElementById('mtbPagarReal').textContent='-'+fmt(totalPagarReal);
+      const elR=document.getElementById('mtbFinalReal');
+      elR.textContent=fmt(totalFinalReal);
+      elR.style.color=totalFinalReal<0?'#fca5a5':'#6ee7b7';
+    }
   }
 }
 
@@ -1138,8 +1182,8 @@ function renderContas(d) {
 }
 
 function rowHTML(empKey,c,i) {
-  const catMap={motoboy:'cat-mb',boleto:'cat-bl',pix:'cat-pix',ted:'cat-ted',cartao:'cat-cartao',entrecontas:'cat-entrecontas',outro:'cat-out'};
-  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Cobertura Conta',outro:'Outro'};
+  const catMap={motoboy:'cat-mb',boleto:'cat-bl',pix:'cat-pix',ted:'cat-ted',cartao:'cat-cartao',entrecontas:'cat-entrecontas',transfconta:'cat-transfconta',outro:'cat-out'};
+  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Cobertura Conta',transfconta:'Entre Contas',outro:'Outro'};
   const st=c.status==='pago';
   const venc=c.venc||'';
   const pendente = c.origem==='conciliacao' && !c.conciliado;
@@ -1484,7 +1528,9 @@ function processRows(rowsFmt, rowsRaw, empKeyArquivo, filename) {
     // Método de pagamento -- "Cobertura Conta" vem escrita na Descrição,
     // não no Método, então ela tem prioridade sobre o normMetodo
     const metodoRaw=ci.metodo<rf.length?String(rf[ci.metodo]||'').trim():'';
-    const cat=ehCoberturaConta(ref) ? 'entrecontas' : normMetodo(metodoRaw);
+    const cat=ehCoberturaConta(ref) ? 'entrecontas'
+      : (ehEntreContas(ref)||ehEntreContas(desc)) ? 'transfconta'
+      : normMetodo(metodoRaw);
 
     // Categoria
     const categoria=ci.cat<rf.length?String(rf[ci.cat]||'').trim():'';
@@ -1519,6 +1565,16 @@ function findCol(header,keywords) {
 function ehCoberturaConta(descricao) {
   const s=String(descricao||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
   return s.includes('cobertura cont');
+}
+
+// "Entre Contas" (ex.: dia de vale, adiantamento salarial) é a empresa transferindo pra Just
+// Service, que paga o fornecedor real -- duas pernas registradas pro MESMO gasto (saída da
+// empresa + saída da Service). Diferente de "Cobertura Conta": aqui a grana sai do total do
+// grupo (vai pra Service, que já é excluída do saldo/total geral), então NÃO volta a somar no
+// saldo -- só precisa ser descontada do Total a Pagar pra não contar o mesmo gasto duas vezes.
+function ehEntreContas(descricao) {
+  const s=String(descricao||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  return s.includes('entre contas');
 }
 
 function normMetodo(str) {
@@ -1984,7 +2040,7 @@ function limparBusca() {
 
 function executarBusca(q) {
   const termo = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Cobertura Conta',outro:'Outro'};
+  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Cobertura Conta',transfconta:'Entre Contas',outro:'Outro'};
 
   // agrupa resultados por data
   const grupos = {};
