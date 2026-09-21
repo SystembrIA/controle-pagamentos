@@ -620,9 +620,8 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
       <span class="mtb-item"><span class="mtb-sub">A Pagar</span><span id="mtbPagar" style="color:#fca5a5">—</span></span>
       <span class="mtb-item"><span class="mtb-sub">Saldo Final</span><span id="mtbFinal">—</span></span>
     </div>
-    <div id="mtbTransfContaNote" style="display:none;text-align:center;font-size:.58rem;opacity:.75;margin-top:4px" title="Transferências das empresas pra Just Service pagar o fornecedor real (ex.: vale, adiantamento) — já descontadas do Total a Pagar pra não contar o mesmo gasto duas vezes">🔁 Entre Contas (já descontado): <span id="mtbTransfConta">—</span></div>
-    <div class="mtb-vals-real" id="mtbRealRow" style="display:none" title="Total 'real' desconsidera a Cobertura Conta (transferência interna entre empresas do grupo)">
-      <span class="mtb-item"><span class="mtb-sub">🔁 Cobertura</span><span id="mtbEntreContas">—</span></span>
+    <div class="mtb-vals-real" id="mtbRealRow" style="display:none" title="Total 'real' desconsidera Cobertura Conta e Entre Contas (transferências internas entre empresas do grupo, incluindo pra Just Service)">
+      <span class="mtb-item"><span class="mtb-sub">🔁 Interno</span><span id="mtbEntreContas">—</span></span>
       <span class="mtb-item"><span class="mtb-sub">A Pagar Real</span><span id="mtbPagarReal" style="color:#fca5a5">—</span></span>
       <span class="mtb-item"><span class="mtb-sub">Saldo Real</span><span id="mtbFinalReal">—</span></span>
     </div>
@@ -1034,8 +1033,8 @@ function renderSaldos(d) {
     const ini=d.saldos[emp.key]||0;
     const contas=d.contas[emp.key]||[];
     const pagar=contas.reduce((s,c)=>s+(c.valor||0),0);
-    const entreContas=contas.filter(c=>c.cat==='entrecontas').reduce((s,c)=>s+(c.valor||0),0);
-    const transfConta=contas.filter(c=>c.cat==='transfconta').reduce((s,c)=>s+(c.valor||0),0);
+    const entreContas=contas.filter(c=>catEfetiva(c)==='entrecontas').reduce((s,c)=>s+(c.valor||0),0);
+    const transfConta=contas.filter(c=>catEfetiva(c)==='transfconta').reduce((s,c)=>s+(c.valor||0),0);
     const final=ini-pagar+entreContas;
     if (emp.key==='SERVICE') { totalPagarService+=pagar; }
     else { totalIni+=ini; totalPagarSemService+=pagar; totalEntreContas+=entreContas; totalTransfConta+=transfConta; }
@@ -1051,16 +1050,17 @@ function renderSaldos(d) {
       <button class="edit-saldo-btn" onclick="abrirSaldoModal()" title="Editar saldos">✏️</button>
     </div>`;
   }
-  // totalPagar = todas as empresas + service (compromisso real), já SEM contar duas vezes o
-  // mesmo gasto de "Entre Contas" (empresa manda pra Just Service, Just Service paga o
-  // fornecedor real — são duas pernas registradas, mas é um gasto só).
+  // totalPagar = todas as empresas + service, valor BRUTO (o mesmo de sempre, bate com o
+  // banco — cada transferência realmente saiu da conta de origem, mesmo as internas).
   // totalFinal  = saldo inicial - apenas empresas sem service + entre contas [Cobertura] (liquido real)
-  const totalPagarBruto=totalPagarSemService+totalPagarService;
-  const totalPagar=totalPagarBruto-totalTransfConta;
+  const totalPagar=totalPagarSemService+totalPagarService;
   const totalFinal=totalIni-totalPagarSemService+totalEntreContas;
-  // "Real" = desconsiderando também a "Cobertura Conta" (não é dinheiro saindo do grupo nem
-  // precisa ser somado de volta) — útil pra ver o compromisso e o saldo sem esse ruído.
-  const totalPagarReal=totalPagar-totalEntreContas;
+  // "Real" = desconsiderando as transferências internas do grupo: Cobertura Conta (não é
+  // dinheiro saindo do grupo) e Entre Contas (mesmo gasto contado 2x -- saída da empresa +
+  // saída da Just Service pro fornecedor real). Só uma referência; o total de cima continua
+  // sendo o valor cheio, pra bater com o extrato bancário.
+  const totalDesconsiderado=totalEntreContas+totalTransfConta;
+  const totalPagarReal=totalPagar-totalDesconsiderado;
   const totalFinalReal=totalFinal-totalEntreContas;
   const totalHtml=`<div class="total-card">
     <div class="emp-name">💰 TOTAL GERAL</div>
@@ -1069,9 +1069,8 @@ function renderSaldos(d) {
       <div class="mini-val" style="color:#fca5a5">-${fmt(totalPagar)}</div>
       <div class="mini-val">${fmt(totalFinal)}</div>
     </div>
-    ${totalTransfConta>0?`<div style="text-align:center;font-size:.62rem;color:#c7d2fe;margin-top:1px" title="Transferências das empresas pra Just Service pagar o fornecedor real (ex.: vale, adiantamento) — já descontadas do Total a Pagar pra não contar o mesmo gasto duas vezes">🔁 Entre Contas (já descontado do Total a Pagar): ${fmt(totalTransfConta)}</div>`:''}
-    ${totalEntreContas>0?`<div class="saldo-mini saldo-mini-real" title="Total 'real' desconsidera a Cobertura Conta (transferência interna entre empresas do grupo)">
-      <div class="mini-val-real mini-val-real-label">🔁 ${fmt(totalEntreContas)}</div>
+    ${totalDesconsiderado>0?`<div class="saldo-mini saldo-mini-real" title="Total 'real' desconsidera Cobertura Conta (${fmt(totalEntreContas)}) e Entre Contas (${fmt(totalTransfConta)}) -- transferências internas entre empresas do grupo, incluindo pra Just Service">
+      <div class="mini-val-real mini-val-real-label">🔁 ${fmt(totalDesconsiderado)}</div>
       <div class="mini-val-real" style="color:#fca5a5">-${fmt(totalPagarReal)}</div>
       <div class="mini-val-real" style="color:#86efac">${fmt(totalFinalReal)}</div>
     </div>`:''}
@@ -1091,15 +1090,10 @@ function renderSaldos(d) {
     const el=document.getElementById('mtbFinal');
     el.textContent=fmt(totalFinal);
     el.style.color=totalFinal<0?'#fca5a5':'#6ee7b7';
-    const transfNote=document.getElementById('mtbTransfContaNote');
-    if(transfNote){
-      transfNote.style.display=totalTransfConta>0?'block':'none';
-      document.getElementById('mtbTransfConta').textContent=fmt(totalTransfConta);
-    }
     const realRow=document.getElementById('mtbRealRow');
     if(realRow){
-      realRow.style.display=totalEntreContas>0?'flex':'none';
-      document.getElementById('mtbEntreContas').textContent=fmt(totalEntreContas);
+      realRow.style.display=totalDesconsiderado>0?'flex':'none';
+      document.getElementById('mtbEntreContas').textContent=fmt(totalDesconsiderado);
       document.getElementById('mtbPagarReal').textContent='-'+fmt(totalPagarReal);
       const elR=document.getElementById('mtbFinalReal');
       elR.textContent=fmt(totalFinalReal);
@@ -1216,7 +1210,7 @@ function rowHTML(empKey,c,i) {
         onchange="editValor('${empKey}',${i},this.value)" onblur="editValor('${empKey}',${i},this.value)">
       <span class="val-print">${fmt(c.valor||0)}</span>
     </td>
-    <td class="c" style="white-space:nowrap"><span class="badge-cat ${catMap[c.cat]||'cat-out'}" style="white-space:nowrap">${catLbl[c.cat]||c.cat||''}</span></td>
+    <td class="c" style="white-space:nowrap"><span class="badge-cat ${catMap[catEfetiva(c)]||'cat-out'}" style="white-space:nowrap">${catLbl[catEfetiva(c)]||c.cat||''}</span></td>
     <td class="col-desc-td mob-hide" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;font-size:.75rem">${esc(c.ref||'')}</td>
     <td class="c col-cat-td mob-hide" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.7rem;max-width:80px">${categoriaCell}</td>
     <td class="c no-print mob-hide">
@@ -1384,7 +1378,7 @@ function abrirEditConta(empKey,i) {
   document.getElementById('aDesc').value=c.desc||'';
   document.getElementById('aRef').value=c.ref||'';
   document.getElementById('aEmp').value=empKey;
-  document.getElementById('aCat').value=c.cat||'boleto';
+  document.getElementById('aCat').value=catEfetiva(c)||'boleto';
   document.getElementById('aCategoria').value=c.categoria||'';
   document.getElementById('aValor').value=(c.valor||0).toFixed(2);
   document.getElementById('btnDelAdd').style.display='';
@@ -1575,6 +1569,16 @@ function ehCoberturaConta(descricao) {
 function ehEntreContas(descricao) {
   const s=String(descricao||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
   return s.includes('entre contas');
+}
+
+// Categoria "efetiva" de um lançamento: usa o texto (Fornecedor/Descrição) como fonte da
+// verdade pra Cobertura Conta / Entre Contas, mesmo quando o campo cat salvo é outro --
+// cobre lançamentos cadastrados antes dessas categorias existirem (ficaram salvos como
+// TED/Pix/etc. pelo Método), sem precisar reimportar ou corrigir nada manualmente.
+function catEfetiva(c) {
+  if (ehCoberturaConta(c.ref)||ehCoberturaConta(c.desc)) return 'entrecontas';
+  if (ehEntreContas(c.ref)||ehEntreContas(c.desc)) return 'transfconta';
+  return c.cat;
 }
 
 function normMetodo(str) {
@@ -2081,7 +2085,7 @@ function executarBusca(q) {
         <span class="busca-forn">${esc(c.desc||'')}</span>
         <span class="busca-ref">${esc(c.ref||'')}</span>
         <span class="busca-val">${fmt(c.valor||0)}</span>
-        <span class="badge-cat cat-${c.cat||'out'}" style="font-size:.65rem">${catLbl[c.cat]||c.cat||''}</span>
+        <span class="badge-cat cat-${catEfetiva(c)||'out'}" style="font-size:.65rem">${catLbl[catEfetiva(c)]||c.cat||''}</span>
       </div>`;
     }
     html += `</div>`;
