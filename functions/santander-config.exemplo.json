@@ -1,0 +1,16 @@
+{
+  "ambiente": "producao",
+  "credenciais": [
+    {
+      "nome": "Just Burger Matriz LTDA (CNPJ 00.000.000/0001-00)",
+      "clientId": "COLE_AQUI_O_CLIENT_ID",
+      "clientSecret": "COLE_AQUI_O_CLIENT_SECRET",
+      "certificado": "certificado.crt",
+      "chavePrivada": "chave-privada.pem",
+      "contas": [
+        { "id": "0000.000000000000", "empresa": "BURGER_MATRIZ" },
+        { "id": "0000.000000000000", "empresa": "GOURMET" }
+      ]
+    }
+  ]
+}

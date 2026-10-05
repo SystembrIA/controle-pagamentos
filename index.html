@@ -722,6 +722,12 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
     </div>
 
     <div id="concUploadStatus" class="upload-status"></div>
+    <button class="btn btn-primary" id="btnPuxarSantander" onclick="puxarExtratoSantander()" style="width:100%;margin-bottom:6px">
+      🏦 Puxar extrato do Santander (automático)
+    </button>
+    <div style="font-size:.75rem;color:#64748b;margin-bottom:12px">
+      Busca direto no banco as saídas do dia em todas as contas — sem precisar baixar arquivo. Ou, se preferir, sobe o arquivo abaixo:
+    </div>
     <input type="file" id="concFileInput" accept=".xlsx,.xls,.csv,.txt" multiple onchange="onConciliacaoFileSelect(event)">
     <div style="font-size:.75rem;color:#64748b;margin-top:4px">
       Pode escolher os extratos de várias empresas de uma vez — cada um é identificado sozinho pelo número da conta (Excel/CSV por enquanto — TXT tenta ler, PDF ainda não é suportado).
@@ -1716,6 +1722,84 @@ async function onConciliacaoFileSelect(e) {
   renderTudo();
   salvarNuvem();
   mostrarResumoUpload(resumos);
+}
+
+// ── Extrato automático via API do Santander ─────────────────
+// O navegador não fala direto com o banco (precisa de senha da API +
+// certificado A1, que não podem ficar no site). Quem fala é a função
+// "extratoSantander" no servidor do Firebase (pasta functions/): o site
+// grava um pedido em extratoPedidos, a função busca as saídas do dia e
+// grava em extratosApi/{dia}, e aqui a gente roda a MESMA conciliação do
+// upload de arquivo. Passo a passo da ativação: docs/INTEGRACAO-SANTANDER.md
+const TEMPO_MAX_API_SANTANDER = 90000;
+
+function soDigitosConta(v) {
+  return String(v||'').replace(/\D/g,'').replace(/^0+/,'');
+}
+
+function esperarPedidoSantander(ref) {
+  return new Promise(resolve => {
+    const timer = setTimeout(() => { ref.off('value', ouvinte); resolve({ status: 'timeout' }); },
+      TEMPO_MAX_API_SANTANDER);
+    const ouvinte = ref.on('value', snap => {
+      const v = snap.val();
+      if (!v || !v.status) return;
+      clearTimeout(timer);
+      ref.off('value', ouvinte);
+      resolve(v);
+    });
+  });
+}
+
+async function puxarExtratoSantander() {
+  const dt = diaAtual;
+  if (!dt) { toast('📅 Selecione uma data primeiro'); return; }
+
+  // Rodar duas vezes no mesmo dia duplicaria as linhas pendentes (o que já
+  // foi conciliado não "consome" de novo o item do banco). Mesmo cuidado
+  // de quando sobe o arquivo duas vezes: desfaz antes.
+  const jaConciliado = Object.values(getDia(dt).contas||{}).some(lista =>
+    lista.some(c => c.origem==='conciliacao' || c.conciliado!==undefined));
+  if (jaConciliado && !confirm('Esse dia já tem conciliação. Puxar de novo pode duplicar as linhas pendentes — o certo é clicar em "↩️ Desfazer conciliação" antes. Continuar mesmo assim?')) return;
+
+  const btn = document.getElementById('btnPuxarSantander');
+  btn.disabled = true;
+  showConcStatus('', '⏳ Buscando extrato no Santander... (pode levar até 1 minuto)');
+  try {
+    const ref = fbDB.ref('extratoPedidos').push();
+    await ref.set({ data: dt, criadoEm: Date.now() });
+    const r = await esperarPedidoSantander(ref);
+
+    if (r.status === 'timeout') {
+      showConcStatus('err', '⚠️ O Santander não respondeu. Se a integração ainda não foi ativada no servidor, siga o passo a passo (docs/INTEGRACAO-SANTANDER.md). Enquanto isso, dá pra subir o arquivo do extrato abaixo.');
+      return;
+    }
+    if (diaAtual !== dt) { showConcStatus('err', '⚠️ A data foi trocada no meio da busca — abre a conciliação de novo.'); return; }
+
+    const snap = await fbDB.ref('extratosApi/'+dt).once('value');
+    const contas = snap.val() || {};
+    const resumos = [];
+    for (const item of Object.values(contas)) {
+      const nome = `API Santander — conta ${item.id}`;
+      const empKey = item.empresa ||
+        Object.keys(CONTAS_BANCARIAS).find(k => soDigitosConta(CONTAS_BANCARIAS[k]) === soDigitosConta(item.conta));
+      if (!empKey || !EMPRESAS.some(e => e.key===empKey)) {
+        resumos.push({ arquivo: nome, erro: 'conta não ligada a nenhuma empresa (configure "empresa" no SANTANDER_CONFIG ou o nº da conta em ✏️ Editar saldos)' });
+        continue;
+      }
+      resumos.push(rodarConciliacao(empKey, item.saidas || [], nome, item.conta));
+    }
+    if (r.erro) resumos.push({ arquivo: 'API Santander', erro: r.erro });
+
+    renderTudo();
+    salvarNuvem();
+    mostrarResumoUpload(resumos);
+    if (!resumos.some(x => !x.erro)) showConcStatus('err', '❌ Não deu pra conciliar pela API — veja o motivo abaixo.');
+  } catch (err) {
+    showConcStatus('err', '❌ Erro ao falar com o servidor: ' + err.message);
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // Extratos CSV do Santander costumam vir em Windows-1252 (Latin-1), não

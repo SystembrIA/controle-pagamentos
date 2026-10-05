@@ -1,0 +1,7 @@
+node_modules/
+santander-config.json
+*.pem
+*.crt
+*.key
+*.pfx
+santander-config.pronto.json
