@@ -24,7 +24,7 @@ firebase.initializeApp({
 });
 const _fbRaiz = firebase.database();
 const fbDB = { ref: function (p) { return _fbRaiz.ref('pagamentos_diarios' + (p ? '/' + p : '')); } };
-const PG_PERMITIDOS = ['justadm', 'maikon', 'juliana', 'pedro', 'jaqueline'];
+const PG_PERMITIDOS = ['justadm', 'juliana', 'pedro', 'jaqueline'];
 const PG_HUB = 'https://systembria.github.io/hub/';
 async function _pgConferirAcesso() {
   var u = (window.JbLogin && JbLogin.pronto) ? await JbLogin.pronto() : null, nome = '';
