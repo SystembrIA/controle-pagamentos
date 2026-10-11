@@ -11,18 +11,36 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script>
+/* Banco fechado (pedido do Maikon 11/10): os dados ficam em pagamentos_diarios/ no banco do Hub e a regra do banco
+   só libera Maikon, Juliana, Pedro e Jaqueline. Entra com o login do Hub (sem segunda senha). */
 firebase.initializeApp({
-  apiKey: "AIzaSyDayNUFLVZWI8Ph5K3XV5KRbG5uvEvlGvY",
-  authDomain: "pagamento-diario-f3eba.firebaseapp.com",
-  databaseURL: "https://pagamento-diario-f3eba-default-rtdb.firebaseio.com",
-  projectId: "pagamento-diario-f3eba",
-  storageBucket: "pagamento-diario-f3eba.firebasestorage.app",
-  messagingSenderId: "213871083183",
-  appId: "1:213871083183:web:67ade49c58d05027969e5a"
+  apiKey: "AIzaSyDt1yzxGGzuT2cSdten1bFuXG7yeDQ90Po",
+  authDomain: "justburger-producao-e9b27.firebaseapp.com",
+  databaseURL: "https://justburger-producao-e9b27-default-rtdb.firebaseio.com",
+  projectId: "justburger-producao-e9b27",
+  appId: "1:387070713910:web:f156d3247a1715a58ab897"
 });
-const fbDB = firebase.database();
+const _fbRaiz = firebase.database();
+const fbDB = { ref: function (p) { return _fbRaiz.ref('pagamentos_diarios' + (p ? '/' + p : '')); } };
+const PG_PERMITIDOS = ['maikon', 'juliana', 'pedro', 'jaqueline'];
+const PG_HUB = 'https://systembria.github.io/hub/';
+async function _pgConferirAcesso() {
+  var u = (window.JbLogin && JbLogin.pronto) ? await JbLogin.pronto() : null, nome = '';
+  if (u) { try { nome = String((await u.getIdTokenResult()).claims.username || '').toLowerCase(); } catch (e) {} }
+  if (u && PG_PERMITIDOS.indexOf(nome) >= 0) return;
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10000;background:linear-gradient(160deg,#1a1d2e,#0b1020);display:flex;align-items:center;justify-content:center;padding:20px;font-family:Inter,"Segoe UI",Arial,sans-serif';
+  ov.innerHTML = '<div style="background:#fff;border-radius:20px;max-width:360px;width:100%;padding:26px 24px;text-align:center;border-bottom:4px solid #e6a800">'
+    + '<div style="font-size:40px">🔒</div><div style="font-size:18px;font-weight:900;color:#1a1d2e;margin-top:8px">Pagamentos Diários</div>'
+    + '<div style="font-size:14px;color:#475569;font-weight:600;margin:8px 0 18px">' + (u ? 'Seu usuário não tem acesso a esta tela.' : 'Entre no Hub com seu usuário e senha para abrir esta tela.') + '</div>'
+    + '<a href="' + PG_HUB + '" style="display:block;padding:13px;border-radius:12px;background:#1a1d2e;color:#fff;font-weight:800;text-decoration:none">Ir para o Hub</a></div>';
+  document.body.appendChild(ov);
+  return new Promise(function () {}); // não carrega nada
+}
 </script>
+<script src="https://systembria.github.io/just-burger-producao/js/hub-login.js?v=20261011"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1e293b;min-height:100vh;}
@@ -1038,6 +1056,7 @@ window.addEventListener('resize', ()=>{
 });
 
 document.addEventListener('DOMContentLoaded', async ()=>{
+  await _pgConferirAcesso();
   await carregarDadosNuvem();
   await carregarContasBancarias();
   document.getElementById('loadingOverlay').style.display='none';
