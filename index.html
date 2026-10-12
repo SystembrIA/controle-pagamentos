@@ -636,6 +636,40 @@ tfoot td{background:#fafbfd}
 .modal{box-shadow:0 30px 70px rgba(15,23,42,.3)}
 .form-row input,.form-row select{border-radius:10px;border:1px solid #dfe4ee;background:#f8fafc;font-family:inherit}
 }
+/* ══ Cards por empresa no celular em pé (Maikon 12/10) ══ */
+.mc-info{display:none}
+@media screen and (max-width:768px) and (orientation:portrait){
+  body.modo-cards #saldoGrid,body.modo-cards .saldo-titulo-wrap{display:none !important}
+  body.modo-cards .empresa-section{border:1px solid #edf0f6;border-left:5px solid var(--cor);border-radius:18px;box-shadow:0 4px 16px rgba(15,23,42,.06);margin-bottom:12px;background:#fff}
+  body.modo-cards .empresa-section.sem-contas{opacity:.75}
+  body.modo-cards .empresa-header{display:block;position:relative;background:#fff;border-bottom:none;padding:14px 16px;cursor:pointer}
+  body.modo-cards .empresa-header > .emp-badge,body.modo-cards .empresa-header > .emp-count,body.modo-cards .empresa-header > .emp-total{display:none}
+  body.modo-cards .mc-info{display:block;padding-right:26px}
+  body.modo-cards .mc-topo{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  body.modo-cards .mc-nome{font-size:.78rem;font-weight:900;letter-spacing:.04em;color:var(--cor)}
+  body.modo-cards .mc-qtd{font-size:.72rem;font-weight:700;color:#94a3b8}
+  body.modo-cards .mc-rot{font-size:.68rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-top:8px}
+  body.modo-cards .mc-total{font-size:1.6rem;font-weight:900;color:#1a1d2e;line-height:1.15}
+  body.modo-cards .mc-saldos{display:flex;gap:14px;margin-top:6px;font-size:.75rem;color:#64748b;font-weight:600}
+  body.modo-cards .mc-saldos b{color:#1a1d2e}
+  body.modo-cards .mc-saldos b.neg{color:#dc2626} body.modo-cards .mc-saldos b.pos{color:#15803d}
+  body.modo-cards .empresa-header .toggle-icon{position:absolute;right:14px;top:50%;transform:translateY(-50%) rotate(0);font-size:.9rem}
+  body.modo-cards .empresa-header.collapsed .toggle-icon{transform:translateY(-50%) rotate(-90deg)}
+  body.modo-cards .empresa-header .btn-sort,body.modo-cards .empresa-header .btn-limpar{margin-top:10px}
+  body.modo-cards .empresa-header.collapsed .btn-sort,body.modo-cards .empresa-header.collapsed .btn-limpar{display:none}
+  body.modo-cards .contas-body{border-top:1px solid #f1f4f8}
+}
+/* celular deitado: tabela completa, rolando para o lado */
+@media screen and (max-width:900px) and (orientation:landscape){
+  .contas-body{overflow-x:auto !important}
+  .contas-body table{min-width:860px}
+  .mob-hide{display:table-cell !important}
+  col.col-venc,col.col-desc,col.col-cat,col.col-acao,col.col-check{display:table-column !important}
+  input.val-edit{display:inline-block !important}
+  .contas-body .val-print{display:none !important}
+  .saldo-cards-row{display:grid !important;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+  .saldo-card{min-width:0 !important;max-width:none !important}
+}
 /* ══ Versão 2 no celular (Maikon 12/10): o resumo e o topo seguiam o visual antigo ══ */
 @media screen and (max-width:768px){
   .header{padding:10px 12px;gap:10px}
@@ -725,7 +759,7 @@ tfoot td{background:#fafbfd}
 
   <!-- SALDOS -->
   <div id="saldoSection">
-    <div class="section-title" style="justify-content:flex-start;"><i class="fa-solid fa-building-columns"></i> Saldos em Conta — <span id="saldoLabel">—</span></div>
+    <div class="section-title saldo-titulo-wrap" style="justify-content:flex-start;"><i class="fa-solid fa-building-columns"></i> Saldos em Conta — <span id="saldoLabel">—</span></div>
     <div class="saldo-grid" id="saldoGrid"></div>
   </div>
 
@@ -1200,8 +1234,15 @@ function renderSaldos(d) {
 }
 
 // ── CONTAS ──────────────────────────────────────────────
+/* Celular em pé (Maikon 12/10): cada empresa vira um card com o total a pagar do dia; tocar abre a lista.
+   Deitado, volta a tabela completa (com rolagem para o lado). */
+const COR_EMP={BURGER_MATRIZ:'#ea580c',GOURMET:'#7c3aed',SAO_BERNARDO:'#0891b2',GUARULHOS:'#059669',PIZZA:'#dc2626',SUSHI:'#e11d48',PIRITUBA:'#be123c',SERVICE:'#64748b'};
+const _mobAbertos=new Set();
+function modoCards(){ return window.matchMedia('(max-width:768px) and (orientation:portrait)').matches; }
 function renderContas(d) {
   const sec=document.getElementById('contasSection');
+  const cards=modoCards();
+  document.body.classList.toggle('modo-cards', cards);
   let html='';
   for (const emp of EMPRESAS) {
     const contas=d.contas[emp.key]||[];
@@ -1210,8 +1251,18 @@ function renderContas(d) {
     const semContas=contas.length===0?'sem-contas':'';
     const isService=emp.key==='SERVICE';
     const travado=!!(d.travados||{})[emp.key];
-    html+=`<div class="empresa-section ${semContas} ${travado?'travado':''}" id="sec_${emp.key}">
-      <div class="empresa-header" onclick="toggleSec('${emp.key}')">
+    const ini=(d.saldos||{})[emp.key]||0;
+    const entreContas=contas.filter(c=>catEfetiva(c)==='entrecontas').reduce((s,c)=>s+(c.valor||0),0);
+    const final=ini-total+entreContas;
+    const fechado=cards && !_mobAbertos.has(emp.key);
+    html+=`<div class="empresa-section ${semContas} ${travado?'travado':''}" id="sec_${emp.key}" style="--cor:${COR_EMP[emp.key]||'#e6a800'}">
+      <div class="empresa-header${fechado?' collapsed':''}" onclick="toggleSec('${emp.key}')">
+        <div class="mc-info">
+          <div class="mc-topo"><span class="mc-nome">${emp.emoji} ${emp.label}</span><span class="mc-qtd">${contas.length} conta(s)${isService?' · informativo':''}</span></div>
+          <div class="mc-rot">A pagar hoje</div>
+          <div class="mc-total">${fmt(total)}</div>
+          <div class="mc-saldos"><span>Saldo <b>${fmt(ini)}</b></span><span>Final <b class="${final<0?'neg':'pos'}">${fmt(final)}</b></span></div>
+        </div>
         <span class="emp-badge">${emp.emoji} ${emp.label}${isService?' <span style="font-size:.6rem;opacity:.7">(manual)</span>':''}</span>
         <span class="emp-count">${contas.length} conta(s)</span>
         <span class="emp-total">${fmt(total)}</span>
@@ -1225,7 +1276,7 @@ function renderContas(d) {
           title="Dia conciliado e travado — clique para destravar com a senha de admin">🔒 Travado</button>`:''}
         <span class="toggle-icon">▼</span>
       </div>
-      <div class="contas-body" id="body_${emp.key}">
+      <div class="contas-body" id="body_${emp.key}"${fechado?' style="display:none"':''}>
         <table>
           <colgroup>
             <col class="col-venc">
@@ -1325,7 +1376,10 @@ function toggleSec(empKey) {
   if (!h||!b) return;
   h.classList.toggle('collapsed');
   b.style.display=h.classList.contains('collapsed')?'none':'';
+  if (h.classList.contains('collapsed')) _mobAbertos.delete(empKey); else _mobAbertos.add(empKey);
 }
+// girou o celular: refaz (em pé = cards, deitado = tabela completa)
+window.matchMedia('(orientation:portrait)').addEventListener('change', ()=>{ if (diaAtual) renderTudo(); });
 
 // Limpar todos os lançamentos de uma empresa
 function limparContas(event, empKey) {
