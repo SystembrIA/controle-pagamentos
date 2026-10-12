@@ -654,6 +654,12 @@ tr.linha-total td{font-weight:800;color:#1e40af !important;background:#e8efff;fo
   body.modo-cards .mc-total small{font-size:.8rem;font-weight:800;color:#64748b}
   body.modo-cards .mc-saldos{margin-top:6px;font-size:.85rem;color:#64748b;font-weight:600}
   body.modo-cards .mc-saldos b{color:#1a1d2e}
+  /* valores numa coluna alinhada à direita, nome do valor do lado direito (Maikon 12/10) */
+  body.modo-cards .mc-linhas{display:grid;grid-template-columns:max-content 1fr;align-items:baseline;column-gap:8px;row-gap:2px;margin-top:8px}
+  body.modo-cards .mc-v{text-align:right;font-size:.95rem;font-weight:800;color:#1a1d2e;font-variant-numeric:tabular-nums;white-space:nowrap}
+  body.modo-cards .mc-v.mc-pagar{font-size:1.45rem;font-weight:900;color:#dc2626}
+  body.modo-cards .mc-v.neg{color:#dc2626} body.modo-cards .mc-v.pos{color:#15803d}
+  body.modo-cards .mc-l{font-size:.8rem;font-weight:700;color:#64748b}
   /* no celular em pé não aparecem: adicionar conta manualmente, conciliação e desfazer conciliação */
   body.modo-cards .acoes-dia{display:none !important}
   body.modo-cards .mc-saldos b.neg{color:#dc2626} body.modo-cards .mc-saldos b.pos{color:#15803d}
@@ -1264,9 +1270,11 @@ function renderContas(d) {
       <div class="empresa-header${fechado?' collapsed':''}" onclick="toggleSec('${emp.key}')">
         <div class="mc-info">
           <div class="mc-topo"><span class="mc-nome">${emp.emoji} ${emp.label}</span><span class="mc-qtd">${contas.length} conta(s)${isService?' · informativo':''}</span></div>
-          <div class="mc-saldos">Saldo <b>${fmt(ini)}</b></div>
-          <div class="mc-total">-${fmt(total)} <small>a pagar</small></div>
-          <div class="mc-saldos">Saldo final <b class="${final<0?'neg':'pos'}">${fmt(final)}</b></div>
+          <div class="mc-linhas">
+            <b class="mc-v">${fmt(ini)}</b><span class="mc-l">saldo</span>
+            <b class="mc-v mc-pagar">-${fmt(total)}</b><span class="mc-l">a pagar</span>
+            <b class="mc-v ${final<0?'neg':'pos'}">${fmt(final)}</b><span class="mc-l">saldo final</span>
+          </div>
         </div>
         <span class="emp-badge">${emp.emoji} ${emp.label}${isService?' <span style="font-size:.6rem;opacity:.7">(manual)</span>':''}</span>
         <span class="emp-count">${contas.length} conta(s)</span>
