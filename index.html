@@ -659,7 +659,8 @@ tfoot td{background:#fafbfd}
   body.modo-cards .empresa-header .toggle-icon{position:absolute;right:14px;top:50%;transform:translateY(-50%) rotate(0);font-size:.9rem}
   body.modo-cards .empresa-header.collapsed .toggle-icon{transform:translateY(-50%) rotate(-90deg)}
   body.modo-cards .empresa-header .btn-sort,body.modo-cards .empresa-header .btn-limpar{margin-top:10px}
-  body.modo-cards .empresa-header.collapsed .btn-sort,body.modo-cards .empresa-header.collapsed .btn-limpar{display:none}
+  /* no card aberto: sem Ordenar/Limpar — a lista já vem do maior valor para o menor */
+  body.modo-cards .empresa-header .btn-sort,body.modo-cards .empresa-header .btn-limpar{display:none !important}
   body.modo-cards .contas-body{border-top:1px solid #f1f4f8}
 }
 /* celular deitado: tabela completa, rolando para o lado */
@@ -1302,7 +1303,7 @@ function renderContas(d) {
             <th class="c no-print mob-hide col-check-th" title="Conciliação bancária">🏦</th>
           </tr></thead>
           <tbody id="tbody_${emp.key}">
-            ${contas.map((c,i)=>rowHTML(emp.key,c,i)).join('')}
+            ${(cards ? contas.map((c,i)=>[c,i]).sort((a,b)=>(b[0].valor||0)-(a[0].valor||0)) : contas.map((c,i)=>[c,i])).map(([c,i])=>rowHTML(emp.key,c,i)).join('')}
           </tbody>
           <tfoot>
             <!-- linha de tela -->
