@@ -636,6 +636,23 @@ tfoot td{background:#fafbfd}
 .modal{box-shadow:0 30px 70px rgba(15,23,42,.3)}
 .form-row input,.form-row select{border-radius:10px;border:1px solid #dfe4ee;background:#f8fafc;font-family:inherit}
 }
+/* ══ Versão 2 no celular (Maikon 12/10): o resumo e o topo seguiam o visual antigo ══ */
+@media screen and (max-width:768px){
+  .header{padding:10px 12px;gap:10px}
+  .hdr-voltar{width:34px;height:34px}
+  .hdr-logo{height:30px}
+  .header > div{min-width:0}
+  .header h1{font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .header .sub{font-size:.72rem}
+  .toolbar{margin:10px auto 0;width:calc(100% - 16px);border-radius:14px}
+  .mobile-total-banner{background:linear-gradient(135deg,#1a1d2e,#2a2f48);border-radius:16px;border-bottom:4px solid #e6a800;box-shadow:0 10px 24px rgba(26,29,46,.22);padding:12px 14px}
+  .mtb-label{color:#fde68a;opacity:1;letter-spacing:.08em}
+  .mtb-item span:last-child{font-size:.95rem}
+  .saldo-card{border-radius:14px;box-shadow:0 2px 10px rgba(15,23,42,.06)}
+  .empresa-section{border-radius:16px}
+  .empresa-header{padding:10px 12px}
+  .section-title{margin:12px 2px 8px}
+}
 </style>
 </head>
 <body>
