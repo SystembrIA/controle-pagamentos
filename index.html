@@ -649,9 +649,12 @@ tfoot td{background:#fafbfd}
   body.modo-cards .mc-nome{font-size:.78rem;font-weight:900;letter-spacing:.04em;color:var(--cor)}
   body.modo-cards .mc-qtd{font-size:.72rem;font-weight:700;color:#94a3b8}
   body.modo-cards .mc-rot{font-size:.68rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-top:8px}
-  body.modo-cards .mc-total{font-size:1.6rem;font-weight:900;color:#1a1d2e;line-height:1.15}
-  body.modo-cards .mc-saldos{display:flex;gap:14px;margin-top:6px;font-size:.75rem;color:#64748b;font-weight:600}
+  body.modo-cards .mc-total{font-size:1.5rem;font-weight:900;color:#dc2626;line-height:1.2;margin:4px 0}
+  body.modo-cards .mc-total small{font-size:.8rem;font-weight:800;color:#64748b}
+  body.modo-cards .mc-saldos{margin-top:6px;font-size:.85rem;color:#64748b;font-weight:600}
   body.modo-cards .mc-saldos b{color:#1a1d2e}
+  /* no celular em pé não aparecem: adicionar conta manualmente, conciliação e desfazer conciliação */
+  body.modo-cards .acoes-dia{display:none !important}
   body.modo-cards .mc-saldos b.neg{color:#dc2626} body.modo-cards .mc-saldos b.pos{color:#15803d}
   body.modo-cards .empresa-header .toggle-icon{position:absolute;right:14px;top:50%;transform:translateY(-50%) rotate(0);font-size:.9rem}
   body.modo-cards .empresa-header.collapsed .toggle-icon{transform:translateY(-50%) rotate(-90deg)}
@@ -768,9 +771,9 @@ tfoot td{background:#fafbfd}
     <div id="uploadStatus" class="upload-status"></div>
     <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="onFileSelect(event)">
     <div style="margin-bottom:8px;display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="btn btn-outline btn-sm" onclick="abrirAddConta()">+ Adicionar conta manualmente</button>
-      <button class="btn btn-outline btn-sm" onclick="abrirConciliacao()"><i class="fa-solid fa-magnifying-glass"></i> Conciliação bancária</button>
-      <button class="btn btn-outline btn-sm" onclick="desfazerConciliacaoDia()" title="Remove os checks e as linhas pendentes de conciliação deste dia, pra poder subir o extrato de novo"><i class="fa-solid fa-rotate-left"></i> Desfazer conciliação</button>
+      <button class="btn btn-outline btn-sm acoes-dia" onclick="abrirAddConta()">+ Adicionar conta manualmente</button>
+      <button class="btn btn-outline btn-sm acoes-dia" onclick="abrirConciliacao()"><i class="fa-solid fa-magnifying-glass"></i> Conciliação bancária</button>
+      <button class="btn btn-outline btn-sm acoes-dia" onclick="desfazerConciliacaoDia()" title="Remove os checks e as linhas pendentes de conciliação deste dia, pra poder subir o extrato de novo"><i class="fa-solid fa-rotate-left"></i> Desfazer conciliação</button>
     </div>
   </div>
 
@@ -1259,9 +1262,9 @@ function renderContas(d) {
       <div class="empresa-header${fechado?' collapsed':''}" onclick="toggleSec('${emp.key}')">
         <div class="mc-info">
           <div class="mc-topo"><span class="mc-nome">${emp.emoji} ${emp.label}</span><span class="mc-qtd">${contas.length} conta(s)${isService?' · informativo':''}</span></div>
-          <div class="mc-rot">A pagar hoje</div>
-          <div class="mc-total">${fmt(total)}</div>
-          <div class="mc-saldos"><span>Saldo <b>${fmt(ini)}</b></span><span>Final <b class="${final<0?'neg':'pos'}">${fmt(final)}</b></span></div>
+          <div class="mc-saldos">Saldo <b>${fmt(ini)}</b></div>
+          <div class="mc-total">-${fmt(total)} <small>a pagar</small></div>
+          <div class="mc-saldos">Saldo final <b class="${final<0?'neg':'pos'}">${fmt(final)}</b></div>
         </div>
         <span class="emp-badge">${emp.emoji} ${emp.label}${isService?' <span style="font-size:.6rem;opacity:.7">(manual)</span>':''}</span>
         <span class="emp-count">${contas.length} conta(s)</span>
