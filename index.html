@@ -637,6 +637,10 @@ tfoot td{background:#fafbfd}
 .form-row input,.form-row select{border-radius:10px;border:1px solid #dfe4ee;background:#f8fafc;font-family:inherit}
 }
 tr.linha-total td{font-weight:800;color:#1e40af !important;background:#e8efff;font-size:.92rem}
+.filtro-met{display:flex;gap:6px;flex-wrap:wrap;padding:8px 10px 6px}
+.fm-chip{border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:999px;padding:4px 11px;font-size:.78rem;font-weight:700;cursor:pointer;line-height:1.3}
+.fm-chip small{opacity:.6;font-weight:700;margin-left:2px}
+.fm-chip.on{background:#1e40af;border-color:#1e40af;color:#fff}
 /* ══ Cards por empresa no celular em pé (Maikon 12/10) ══ */
 .mc-info{display:none}
 @media screen and (max-width:768px) and (orientation:portrait){
@@ -1249,6 +1253,11 @@ function renderSaldos(d) {
    Deitado, volta a tabela completa (com rolagem para o lado). */
 const COR_EMP={BURGER_MATRIZ:'#ea580c',GOURMET:'#7c3aed',SAO_BERNARDO:'#0891b2',GUARULHOS:'#059669',PIZZA:'#dc2626',SUSHI:'#e11d48',PIRITUBA:'#be123c',SERVICE:'#64748b'};
 const _mobAbertos=new Set();
+/* Filtro por forma de pagamento dentro do card (Maikon 13/10): Boleto · Pix · Cartão; mostra só esses
+   lançamentos e o total deles embaixo da coluna Valor. Toca de novo (ou "Todos") para voltar. */
+const _filtroMet={};
+const FILTROS_MET=[['boleto','Boleto',['boleto']],['pix','Pix',['pix','motoboy']],['cartao','Cartão',['cartao']]];
+function filtrarMetodo(ev,empKey,f){ ev.stopPropagation(); _filtroMet[empKey]=(_filtroMet[empKey]===f||!f)?'':f; _mobAbertos.add(empKey); renderContas(getDia(diaAtual)); }
 function modoCards(){ return window.matchMedia('(max-width:768px) and (orientation:portrait)').matches; }
 function renderContas(d) {
   const sec=document.getElementById('contasSection');
@@ -1266,6 +1275,12 @@ function renderContas(d) {
     const entreContas=contas.filter(c=>catEfetiva(c)==='entrecontas').reduce((s,c)=>s+(c.valor||0),0);
     const final=ini-total+entreContas;
     const fechado=cards && !_mobAbertos.has(emp.key);
+    const fSel=FILTROS_MET.find(x=>x[0]===_filtroMet[emp.key]);
+    const listaVis=fSel ? contas.map((c,i)=>[c,i]).filter(([c])=>fSel[2].includes(catEfetiva(c))) : contas.map((c,i)=>[c,i]);
+    const totalVis=listaVis.reduce((s,[c])=>s+(c.valor||0),0);
+    const chips=contas.length ? `<div class="filtro-met no-print">${FILTROS_MET.map(([k,l,cs])=>{
+        const n=contas.filter(c=>cs.includes(catEfetiva(c))).length; if(!n) return '';
+        return `<button type="button" class="fm-chip${fSel&&fSel[0]===k?' on':''}" onclick="filtrarMetodo(event,'${emp.key}','${k}')">${l} <small>${n}</small></button>`; }).join('')}${fSel?`<button type="button" class="fm-chip" onclick="filtrarMetodo(event,'${emp.key}','')">Todos</button>`:''}</div>` : '';
     html+=`<div class="empresa-section ${semContas} ${travado?'travado':''}" id="sec_${emp.key}" style="--cor:${COR_EMP[emp.key]||'#e6a800'}">
       <div class="empresa-header${fechado?' collapsed':''}" onclick="toggleSec('${emp.key}')">
         <div class="mc-info">
@@ -1290,6 +1305,7 @@ function renderContas(d) {
         <span class="toggle-icon">▼</span>
       </div>
       <div class="contas-body" id="body_${emp.key}"${fechado?' style="display:none"':''}>
+        ${chips}
         <table>
           <colgroup>
             <col class="col-venc">
@@ -1312,15 +1328,15 @@ function renderContas(d) {
             <th class="c no-print mob-hide col-check-th" title="Conciliação bancária">🏦</th>
           </tr></thead>
           <tbody id="tbody_${emp.key}">
-            ${(cards ? contas.map((c,i)=>[c,i]).sort((a,b)=>(b[0].valor||0)-(a[0].valor||0)) : contas.map((c,i)=>[c,i])).map(([c,i])=>rowHTML(emp.key,c,i)).join('')}
+            ${(cards ? listaVis.slice().sort((a,b)=>(b[0].valor||0)-(a[0].valor||0)) : listaVis).map(([c,i])=>rowHTML(emp.key,c,i)).join('')}
           </tbody>
           <tfoot>
             <!-- linha de tela -->
             <!-- total embaixo da coluna Valor (Maikon 12/10) -->
             <tr class="no-print linha-total">
               <td class="mob-hide"></td>
-              <td style="text-align:right">Total</td>
-              <td class="r" style="white-space:nowrap">${fmt(total)}</td>
+              <td style="text-align:right">${fSel?'Total '+fSel[1]:'Total'}</td>
+              <td class="r" style="white-space:nowrap">${fmt(totalVis)}</td>
               <td></td>
               <td class="mob-hide" colspan="4"></td>
             </tr>
