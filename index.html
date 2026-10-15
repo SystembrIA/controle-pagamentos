@@ -41,6 +41,7 @@ async function _pgConferirAcesso() {
 }
 </script>
 <script src="https://systembria.github.io/just-burger-producao/js/hub-login.js?v=20261011"></script>
+<script src="categorias.js?v=20261015"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1e293b;min-height:100vh;}
@@ -846,7 +847,7 @@ tr.linha-total td{font-weight:800;color:#1e40af !important;background:#e8efff;fo
           <option value="outro">📌 Outro</option>
         </select></div>
       <div class="form-row"><label>Categoria</label>
-        <input type="text" id="aCategoria" placeholder="Ex: INSUMOS"></div>
+        <select id="aCategoria"></select></div>
     </div>
     <div class="form-row"><label>Valor (R$)</label>
       <input type="number" id="aValor" step="0.01" min="0" placeholder="0.00"></div>
@@ -1450,8 +1451,8 @@ function rowHTML(empKey,c,i) {
     : esc(c.desc||'');
 
   const categoriaCell = pendente
-    ? `<input class="pend-input" type="text" id="pendCat_${empKey}_${i}" placeholder="Categoria" value="${esc(c.categoria||'')}">`
-    : esc(c.categoria||'');
+    ? `<select class="pend-input" id="pendCat_${empKey}_${i}">${opcoesCategoria(c.categoria||'')}</select>`
+    : esc(catOficial(c.categoria||''));
 
   const checkCell = c.conciliado===true
     ? `<span class="conc-check-ok" title="Conciliado com o extrato bancário">✅</span>`
@@ -1613,6 +1614,15 @@ function salvarSaldos() {
 // ══════════════════════════════════════════════════════════
 // MODAL CONTA
 // ══════════════════════════════════════════════════════════
+/* Categoria escolhida de uma lista (Maikon 15/10): os nomes ficam iguais e o Dashboard soma certo.
+   Nome antigo fora da lista vira o nome oficial (JbCategorias.unifica). */
+function catOficial(v){ return (window.JbCategorias && v) ? JbCategorias.unifica(v) : (v||''); }
+function opcoesCategoria(sel){
+  const L = (window.JbCategorias && JbCategorias.LISTA) || [];
+  const v = catOficial(sel);
+  const extra = v && !L.includes(v) ? [v] : [];
+  return `<option value="">— escolha a categoria —</option>` + extra.concat(L).map(n=>`<option value="${esc(n)}"${n===v?' selected':''}>${esc(n)}</option>`).join('');
+}
 function abrirAddConta(empKey) {
   editIdx=null;
   document.getElementById('addModalTitle').textContent='➕ Adicionar Conta';
@@ -1622,7 +1632,7 @@ function abrirAddConta(empKey) {
   document.getElementById('aRef').value='';
   document.getElementById('aEmp').value=empKey||'BURGER_MATRIZ';
   document.getElementById('aCat').value='boleto';
-  document.getElementById('aCategoria').value='';
+  document.getElementById('aCategoria').innerHTML=opcoesCategoria('');
   document.getElementById('aValor').value='';
   document.getElementById('btnDelAdd').style.display='none';
   document.getElementById('addModal').classList.add('open');
@@ -1640,7 +1650,7 @@ function abrirEditConta(empKey,i) {
   document.getElementById('aRef').value=c.ref||'';
   document.getElementById('aEmp').value=empKey;
   document.getElementById('aCat').value=catEfetiva(c)||'boleto';
-  document.getElementById('aCategoria').value=c.categoria||'';
+  document.getElementById('aCategoria').innerHTML=opcoesCategoria(c.categoria||'');
   document.getElementById('aValor').value=(c.valor||0).toFixed(2);
   document.getElementById('btnDelAdd').style.display='';
   document.getElementById('addModal').classList.add('open');
@@ -1788,7 +1798,7 @@ function processRows(rowsFmt, rowsRaw, empKeyArquivo, filename) {
       : normMetodo(metodoRaw);
 
     // Categoria
-    const categoria=ci.cat<rf.length?String(rf[ci.cat]||'').trim():'';
+    const categoria=catOficial(ci.cat<rf.length?String(rf[ci.cat]||'').trim():'');
 
     // Status (campo Pago: Sim/Não)
     const pagoRaw=ci.pago<rf.length?String(rf[ci.pago]||'').trim().toLowerCase():'';
