@@ -1406,9 +1406,9 @@ function imprimir(soEmp, ev, juntas) {
       <table class="saldo"><tr><td>Saldo</td><td class="n">${fmt(gIni)}</td></tr><tr><td>A pagar</td><td class="n">- ${fmt(gPagar)}</td></tr>
       <tr class="fim"><td>Saldo final</td><td class="n">${fmt(gFinal)}</td></tr></table></section>`);
   }
-  const css = `@page{size:A4 portrait;margin:14mm 14mm}
+  const css = `@page{size:A4 portrait;margin:12mm 0}
     *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#111;font-size:12.5px}
-    .pg{page-break-after:always}.pg:last-child{page-break-after:auto}
+    .pg{page-break-after:always;padding:0 14mm 0 28mm}.pg:last-child{page-break-after:auto}
     body.juntas .pg{page-break-after:auto;page-break-inside:avoid;margin-bottom:22px;padding-bottom:14px;border-bottom:3px double #111}
     body.juntas .pg:not(:first-child) h1{display:none}
     body.juntas .pg.total-geral{border-bottom:none}
