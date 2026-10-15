@@ -182,6 +182,9 @@ tr.pendente-conciliacao{background:#fff7ed;}
 
 /* Empresa travada (dia totalmente conciliado) */
 .empresa-section.travado{opacity:.45;}
+.falta-cat{margin:8px 10px;padding:9px 12px;border-radius:8px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;font-size:.82rem;line-height:1.4}
+tr.sem-cat td{background:#fff7f7}
+select.cat-obrig{border-color:#f87171 !important;background:#fff;min-width:150px}
 .empresa-section.travado .empresa-header,
 .empresa-section.travado .contas-body{pointer-events:none;}
 .empresa-section.travado .btn-destrava{pointer-events:auto;opacity:1;}
@@ -1337,6 +1340,8 @@ function renderContas(d) {
         <span class="toggle-icon">▼</span>
       </div>
       <div class="contas-body" id="body_${emp.key}"${fechado?' style="display:none"':''}>
+        ${(()=>{ const nf=contas.filter(semCategoria).length, conc=contas.length>0&&contas.every(c=>c.conciliado===true);
+          return nf && (conc || contas.some(c=>c.conciliado)) ? `<div class="falta-cat no-print">⚠️ ${conc?'A conciliação bateu, mas ':''}<b>${nf} lançamento(s) sem categoria</b>. A categoria é <b>obrigatória</b>: escolha nas linhas marcadas em vermelho${conc?' para finalizar o dia desta empresa':''}.</div>` : ''; })()}
         ${chips}
         <table>
           <colgroup>
@@ -1483,14 +1488,14 @@ function rowHTML(empKey,c,i) {
 
   const categoriaCell = pendente
     ? `<select class="pend-input" id="pendCat_${empKey}_${i}">${opcoesCategoria(c.categoria||'')}</select>`
-    : esc(catOficial(c.categoria||''));
+    : (semCategoria(c) ? `<select class="pend-input cat-obrig" title="Categoria obrigatória" onchange="definirCategoria('${empKey}',${i},this.value)">${opcoesCategoria('')}</select>` : esc(catOficial(c.categoria||'')));
 
   const checkCell = c.conciliado===true
     ? `<span class="conc-check-ok" title="Conciliado com o extrato bancário">✅</span>`
     : (c.origem==='conciliacao' ? `<span class="conc-check-pendente" title="Veio do extrato — aguardando identificação">⏳</span>` : '');
 
   // Categoria e descrição truncadas para impressão: máx 20 e 25 chars
-  return `<tr class="${st?'paid':''} ${pendente?'pendente-conciliacao':''}" id="row_${empKey}_${i}">
+  return `<tr class="${st?'paid':''} ${pendente?'pendente-conciliacao':''} ${!pendente&&semCategoria(c)?'sem-cat':''}" id="row_${empKey}_${i}">
     <td class="mob-hide" style="white-space:nowrap;overflow:hidden">${esc(venc)}</td>
     <td style="${pendente?'':'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'}max-width:220px">
       ${fornecedorCell}
@@ -1700,6 +1705,7 @@ function salvarContaModal() {
   const valor=parseFloat(document.getElementById('aValor').value)||0;
   if (!desc){toast('⚠️ Informe o fornecedor');return;}
   const conta={venc,emis,desc,ref,cat,categoria,valor,status:'pendente'};
+  if (editIdx) { const ant=getContas(diaAtual,editIdx.empKey)[editIdx.i]||{}; ['status','conciliado','origem'].forEach(k=>{ if(ant[k]!==undefined) conta[k]=ant[k]; }); }
   if (editIdx){
     const contas=getContas(diaAtual,editIdx.empKey);
     if (editIdx.empKey!==empKey){
@@ -1711,10 +1717,11 @@ function salvarContaModal() {
   } else {
     getContas(diaAtual,empKey).push(conta);
   }
+  [...new Set([empKey, editIdx && editIdx.empKey].filter(Boolean))].forEach(k=>{ if (getContas(diaAtual,k).some(c=>c.conciliado)) atualizarTravaEmpresa(k); });
   fecharModal('addModal');
   renderTudo();
   salvarNuvem();
-  toast('✅ Conta salva!');
+  toast(empresaEstaTravada(empKey) ? '🔒 Conta salva — conciliado e com todas as categorias, dia finalizado' : '✅ Conta salva!');
 }
 
 function deletarContaModal() {
@@ -2312,6 +2319,7 @@ function salvarPendente(empKey, i) {
   const desc = document.getElementById(`pendDesc_${empKey}_${i}`)?.value.trim();
   const categoria = document.getElementById(`pendCat_${empKey}_${i}`)?.value.trim() || '';
   if (!desc) { toast('⚠️ Descreve o que é esse lançamento'); return; }
+  if (!categoria) { toast('⚠️ Escolha a categoria (obrigatório)'); document.getElementById(`pendCat_${empKey}_${i}`)?.focus(); return; }
   c.desc = desc; c.categoria = categoria; c.conciliado = true;
   atualizarTravaEmpresa(empKey);
   renderTudo();
@@ -2328,7 +2336,20 @@ function atualizarTravaEmpresa(empKey) {
   const d = getDia(diaAtual);
   if (!d.travados) d.travados = {};
   const tudoConciliado = contas.length>0 && contas.every(c=>c.conciliado===true);
-  d.travados[empKey] = tudoConciliado;
+  // Maikon 15/10: categoria é obrigatória — sem ela o dia da empresa não fecha
+  const faltaCat = contas.filter(semCategoria).length;
+  d.travados[empKey] = tudoConciliado && !faltaCat;
+  return { tudoConciliado, faltaCat };
+}
+function semCategoria(c){ const v=String((c&&c.categoria)||'').trim(); return !v || catOficial(v)==='Sem categoria'; }
+// categoria escolhida direto na linha (lançamento sem categoria)
+function definirCategoria(empKey, i, v){
+  const c = getContas(diaAtual, empKey)[i]; if (!c || !v) return;
+  c.categoria = v;
+  const r = atualizarTravaEmpresa(empKey);
+  renderTudo(); salvarNuvem();
+  if (empresaEstaTravada(empKey)) toast('🔒 Conciliado e com todas as categorias — finalizado');
+  else if (r.tudoConciliado && r.faltaCat) toast(`Falta categoria em ${r.faltaCat} lançamento(s)`);
 }
 async function destravarEmpresa(event, empKey) {
   event.stopPropagation();
