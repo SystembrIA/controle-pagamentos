@@ -235,6 +235,10 @@ input.val-edit:focus{outline:none;border-color:#1e40af;background:#eff6ff;}
 .st-pend{background:#fef3c7;color:#92400e;}
 .st-pago{background:#dcfce7;color:#166534;}
 
+/* Pago no Saipos (Maikon 15/10): ✓ verde pago, ● vermelho pendente */
+.st-pago{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#dcfce7;color:#15803d;font-weight:900;font-size:.8rem}
+.st-pend{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#fee2e2;color:#dc2626;font-size:.9rem}
+col.col-pago{width:46px}
 /* no-print: oculta na impressão */
 @media print { .no-print{display:none !important;} }
 /* val-print: só aparece na impressão */
@@ -364,6 +368,7 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
   col.col-cat    { width:0; display:none; }
   col.col-acao   { width:0; visibility:hidden; }
   col.col-check  { width:0; visibility:hidden; }
+  col.col-pago   { width:0; visibility:hidden; }
 
   thead th{
     padding:2px 4px;
@@ -1338,6 +1343,7 @@ function renderContas(d) {
             <col class="col-venc">
             <col class="col-forn">
             <col class="col-valor">
+            <col class="col-pago">
             <col class="col-metodo">
             <col class="col-desc">
             <col class="col-cat">
@@ -1348,6 +1354,7 @@ function renderContas(d) {
             <th class="mob-hide">Vencimento</th>
             <th>Fornecedor</th>
             <th class="r">Valor</th>
+            <th class="c no-print" title="Pago no Saipos?">Pago</th>
             <th class="c">Método</th>
             <th class="col-desc-th mob-hide">Descrição</th>
             <th class="c col-cat-th mob-hide">Categoria</th>
@@ -1364,6 +1371,7 @@ function renderContas(d) {
               <td class="mob-hide"></td>
               <td style="text-align:right">${fSel?'Total '+fSel[1]:'Total'}</td>
               <td class="r" style="white-space:nowrap">${fmt(totalVis)}</td>
+              <td class="no-print"></td>
               <td></td>
               <td class="mob-hide" colspan="4"></td>
             </tr>
@@ -1492,6 +1500,7 @@ function rowHTML(empKey,c,i) {
         onchange="editValor('${empKey}',${i},this.value)" onblur="editValor('${empKey}',${i},this.value)">
       <span class="val-print">${fmt(c.valor||0)}</span>
     </td>
+    <td class="c no-print">${st ? '<span class="st-pago" title="Pago no Saipos">✓</span>' : '<span class="st-pend" title="Não está marcado como pago no Saipos">●</span>'}</td>
     <td class="c" style="white-space:nowrap"><span class="badge-cat ${catMap[catEfetiva(c)]||'cat-out'}" style="white-space:nowrap">${catLbl[catEfetiva(c)]||c.cat||''}</span></td>
     <td class="col-desc-td mob-hide" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;font-size:.75rem">${esc(c.ref||'')}</td>
     <td class="c col-cat-td mob-hide" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.7rem;max-width:80px">${categoriaCell}</td>
@@ -1784,8 +1793,24 @@ function processRows(rowsFmt, rowsRaw, empKeyArquivo, filename) {
     emp:    findCol(header,['empresa','loja','unidade','filial']),
   };
 
-  // Limpa lançamentos anteriores da empresa (evita duplicatas)
   const empKey=empKeyArquivo;
+  // Saipos: se o arquivo tem a coluna Pago e algum lançamento não está pago, não sobe nada (Maikon 15/10).
+  // A Jaque marca como pago no Saipos, exporta de novo e sobe — assim não fica conta pendente aqui.
+  if (ci.pago!==9999) {
+    const pend=[];
+    for (let i=1;i<rowsFmt.length;i++) {
+      const rf=rowsFmt[i], rr=rowsRaw[i]||rf;
+      if (!rf||rf.every(c=>!c&&c!==0)) continue;
+      const desc=ci.forn<rf.length?String(rf[ci.forn]||'').trim():'';
+      const valor=parseValorBR(ci.valor<rr.length?rr[ci.valor]:0);
+      if (!desc&&valor===0) continue;
+      const p=String(rf[ci.pago]||'').trim().toLowerCase();
+      if (!(p==='sim'||p==='s'||p==='yes'||p==='true'||p==='1')) pend.push({desc,valor,ref:ci.desc<rf.length?String(rf[ci.desc]||'').trim():''});
+    }
+    if (pend.length) { avisoNaoPago(pend, filename, empKey); showUploadStatus('err',`⛔ Arquivo não subiu: ${pend.length} lançamento(s) não pago(s) no Saipos.`); return; }
+  }
+
+  // Limpa lançamentos anteriores da empresa (evita duplicatas)
   if (empKey) {
     getDia(diaAtual).contas[empKey]=[];
   }
@@ -1838,6 +1863,24 @@ function processRows(rowsFmt, rowsRaw, empKeyArquivo, filename) {
 
   const empNome=empKey?(EMPRESAS.find(e=>e.key===empKey)?.label||empKey):'coluna empresa';
   showUploadStatus('ok',`✅ ${added} conta(s) → ${empNome}  |  ${skip} linha(s) ignorada(s)`);
+}
+
+function avisoNaoPago(pend, filename, empKey){
+  const empNome=empKey?(EMPRESAS.find(e=>e.key===empKey)?.label||empKey):'';
+  const tot=pend.reduce((s,p)=>s+(p.valor||0),0);
+  let ov=document.getElementById('naoPagoModal');
+  if (!ov) { ov=document.createElement('div'); ov.className='overlay'; ov.id='naoPagoModal'; document.body.appendChild(ov); }
+  ov.innerHTML=`<div class="modal" style="max-width:560px">
+    <h3 style="color:#dc2626">⛔ Tem conta não paga no Saipos</h3>
+    <p style="font-size:.88rem;color:#334155;margin:6px 0 10px;line-height:1.45">O arquivo <b>${esc(filename||'')}</b>${empNome?` (${esc(empNome)})`:''} tem <b>${pend.length} lançamento(s)</b> que ainda não estão marcados como <b>pagos no Saipos</b>. Nada foi lançado.<br>Marque como pago lá, exporte de novo e suba o arquivo.</p>
+    <div style="max-height:260px;overflow:auto;border:1px solid #fecaca;border-radius:8px">
+      <table style="width:100%;border-collapse:collapse;font-size:.82rem">
+        <thead><tr style="background:#fef2f2"><th style="text-align:left;padding:6px 8px">Fornecedor</th><th style="text-align:right;padding:6px 8px">Valor</th><th style="text-align:left;padding:6px 8px">Descrição</th></tr></thead>
+        <tbody>${pend.map(p=>`<tr><td style="padding:5px 8px;border-top:1px solid #fee2e2"><span class="st-pend">●</span> ${esc(p.desc||'—')}</td><td style="padding:5px 8px;border-top:1px solid #fee2e2;text-align:right;white-space:nowrap">${fmt(p.valor||0)}</td><td style="padding:5px 8px;border-top:1px solid #fee2e2;color:#64748b">${esc(p.ref||'')}</td></tr>`).join('')}</tbody>
+        <tfoot><tr><td style="padding:6px 8px;text-align:right;font-weight:800">Total não pago</td><td style="padding:6px 8px;text-align:right;font-weight:800;white-space:nowrap">${fmt(tot)}</td><td></td></tr></tfoot>
+      </table></div>
+    <div class="modal-btns"><button class="btn btn-primary" onclick="fecharModal('naoPagoModal')">Entendi</button></div></div>`;
+  ov.classList.add('open');
 }
 
 function findCol(header,keywords) {
