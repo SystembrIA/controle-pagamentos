@@ -1391,9 +1391,9 @@ function imprimir(soEmp, ev, juntas) {
         <tr><td>A pagar</td><td class="n">- ${fmt(total)}</td></tr>
         <tr class="fim"><td>Saldo final</td><td class="n">${fmt(final)}</td></tr></table>
       <h2>Relação de contas${fSel ? ' · ' + fSel[1] : ''}</h2>
-      <table class="contas"><thead><tr><th>Fornecedor</th><th class="n">Valor</th><th>Método</th></tr></thead>
-        <tbody>${lista.map(c=>`<tr><td>${esc(c.desc||'')}</td><td class="n">${fmt(c.valor||0)}</td><td>${catLbl[catEfetiva(c)]||esc(c.cat||'')}</td></tr>`).join('') || '<tr><td colspan="3" class="vazio">Sem contas.</td></tr>'}</tbody>
-        <tfoot><tr><td class="r">${fSel ? 'Total ' + fSel[1] : 'Total'}</td><td class="n">${fmt(totalLista)}</td><td></td></tr></tfoot></table>
+      <table class="contas"><thead><tr><th>Fornecedor</th><th class="n">Valor</th><th>Método</th><th>Descrição</th></tr></thead>
+        <tbody>${lista.map(c=>`<tr><td>${esc(c.desc||'')}</td><td class="n">${fmt(c.valor||0)}</td><td>${catLbl[catEfetiva(c)]||esc(c.cat||'')}</td><td class="ds">${esc(c.ref||'')}</td></tr>`).join('') || '<tr><td colspan="4" class="vazio">Sem contas.</td></tr>'}</tbody>
+        <tfoot><tr><td class="r">${fSel ? 'Total ' + fSel[1] : 'Total'}</td><td class="n">${fmt(totalLista)}</td><td></td><td></td></tr></tfoot></table>
     </section>`);
   }
   if (!paginas.length) { toast && toast('Nenhuma conta para imprimir.'); return; }
@@ -1408,7 +1408,7 @@ function imprimir(soEmp, ev, juntas) {
   }
   const css = `@page{size:A4 portrait;margin:12mm 0}
     *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#111;font-size:12.5px}
-    .pg{page-break-after:always;padding:0 14mm 0 28mm}.pg:last-child{page-break-after:auto}
+    .pg{page-break-after:always;padding:0 10mm 0 20mm}.pg:last-child{page-break-after:auto}
     body.juntas .pg{page-break-after:auto;page-break-inside:avoid;margin-bottom:22px;padding-bottom:14px;border-bottom:3px double #111}
     body.juntas .pg:not(:first-child) h1{display:none}
     body.juntas .pg.total-geral{border-bottom:none}
@@ -1420,7 +1420,8 @@ function imprimir(soEmp, ev, juntas) {
     .saldo tr.fim td{border-top:1px solid #111;font-weight:700;padding-top:5px}
     .contas{width:100%}.contas th,.contas td{padding:5px 6px;border-bottom:1px solid #ccc;text-align:left}
     .contas th{font-size:11px;text-transform:uppercase;border-bottom:2px solid #111}
-    .contas th:nth-child(2),.contas td:nth-child(2){width:120px}.contas th:nth-child(3),.contas td:nth-child(3){width:120px}
+    .contas{table-layout:fixed;font-size:11.5px}.contas th:nth-child(1){width:34%}.contas th:nth-child(2){width:105px}.contas th:nth-child(3){width:88px}
+    .contas td{word-wrap:break-word;vertical-align:top}.contas td.ds{font-size:10.5px;color:#333}
     .contas .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
     .contas tfoot td{font-weight:700;border-bottom:none;border-top:2px solid #111}.contas td.r{text-align:right}
     .vazio{color:#777;text-align:center}`;
