@@ -305,6 +305,7 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
 ══════════════════════════════════════ */
 @media print {
   @page { margin: 8mm 10mm; size: A4 portrait; }
+  .hdr-logo{display:none !important;}
 
   body{background:white;font-size:9px;}
   #loadingOverlay,#syncBar,.toolbar,
@@ -738,7 +739,7 @@ tr.linha-total td{font-weight:800;color:#1e40af !important;background:#e8efff;fo
   <button class="btn btn-success btn-mobile-hide" onclick="exportCSV()"><i class="fa-solid fa-download"></i> Exportar CSV</button>
   <button class="btn btn-outline btn-sm btn-mobile-hide" onclick="document.getElementById('fileInput').click()"
     title="Nome do arquivo define a empresa. Ex: pizza.xlsx → PIZZA"><i class="fa-solid fa-folder-open"></i> Upload planilha</button>
-  <button class="btn btn-print btn-sm btn-mobile-hide" onclick="window.print()"><i class="fa-solid fa-print"></i> Imprimir</button>
+  <button class="btn btn-print btn-sm btn-mobile-hide" onclick="imprimir()"><i class="fa-solid fa-print"></i> Imprimir</button>
   <div class="busca-wrap btn-mobile-hide">
     <input type="text" id="buscaInput" placeholder="Buscar fornecedor em todas as datas..." oninput="buscaAoDigitar()" autocomplete="off">
     <button class="btn btn-outline btn-sm" onclick="limparBusca()" id="btnLimparBusca" style="display:none">✕</button>
@@ -1221,7 +1222,7 @@ function renderSaldos(d) {
       <div class="mini-val-real" style="color:#86efac">${fmt(totalFinalReal)}</div>
     </div>`:''}
     <div class="total-card-footer">
-      <button class="btn btn-print btn-sm" onclick="window.print()">🖨️ Imprimir</button>
+      <button class="btn btn-print btn-sm" onclick="imprimir()">🖨️ Imprimir</button>
     </div>
   </div>`;
   grid.innerHTML=totalHtml+'<div class="saldo-cards-row">'+html+'</div>';
@@ -1294,6 +1295,7 @@ function renderContas(d) {
         <span class="emp-badge">${emp.emoji} ${emp.label}${isService?' <span style="font-size:.6rem;opacity:.7">(manual)</span>':''}</span>
         <span class="emp-count">${contas.length} conta(s)</span>
         <span class="emp-total">${fmt(total)}</span>
+        ${contas.length?`<button class="btn btn-print btn-sm no-print btn-imp-emp" onclick="imprimir('${emp.key}',event)" title="Imprimir só ${emp.label}">🖨️</button>`:''}
         <button class="btn btn-sort btn-sm no-print" id="btnSort_${emp.key}"
           onclick="ordenarPorValor(event,'${emp.key}')"
           title="Ordenar por valor (maior → menor)">↕️ Ordenar</button>
@@ -1353,6 +1355,66 @@ function renderContas(d) {
     </div>`;
   }
   sec.innerHTML=html;
+}
+
+
+/* ══ IMPRESSÃO LIMPA (Maikon 15/10) ══
+   Folha A4 em pé, letra normal, sem logo. Cada empresa numa folha: "Controle de pagamento diário", a data,
+   o saldo SÓ daquela empresa e a relação de contas com Fornecedor · Valor · Método (total embaixo do valor).
+   imprimir() = todas as empresas com conta; imprimir('BURGER_MATRIZ') = só ela. Respeita o filtro Boleto/Pix/Cartão. */
+function imprimir(soEmp, ev) {
+  if (ev) ev.stopPropagation();
+  const d = getDia(diaAtual); if (!d) return;
+  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Cobertura Conta',transfconta:'Entre Contas',outro:'Outro'};
+  const [aa,mm,dd] = String(diaAtual||'').split('-'), dataBR = dd ? `${dd}/${mm}/${aa}` : '';
+  const paginas = [];
+  for (const emp of EMPRESAS) {
+    if (soEmp && emp.key !== soEmp) continue;
+    const contas = d.contas[emp.key] || [];
+    if (!contas.length && !soEmp) continue;
+    const total = contas.reduce((s,c)=>s+(c.valor||0),0);
+    const ini = (d.saldos||{})[emp.key]||0;
+    const entreContas = contas.filter(c=>catEfetiva(c)==='entrecontas').reduce((s,c)=>s+(c.valor||0),0);
+    const final = ini - total + entreContas;
+    const fSel = FILTROS_MET.find(x=>x[0]===_filtroMet[emp.key]);
+    const lista = fSel ? contas.filter(c=>fSel[2].includes(catEfetiva(c))) : contas;
+    const totalLista = lista.reduce((s,c)=>s+(c.valor||0),0);
+    paginas.push(`<section class="pg">
+      <h1>Controle de pagamento diário</h1>
+      <div class="sub"><b>${esc(emp.label)}</b><span>${dataBR}</span></div>
+      <table class="saldo"><tr><td>Saldo</td><td class="n">${fmt(ini)}</td></tr>
+        <tr><td>A pagar</td><td class="n">- ${fmt(total)}</td></tr>
+        <tr class="fim"><td>Saldo final</td><td class="n">${fmt(final)}</td></tr></table>
+      <h2>Relação de contas${fSel ? ' · ' + fSel[1] : ''}</h2>
+      <table class="contas"><thead><tr><th>Fornecedor</th><th class="n">Valor</th><th>Método</th></tr></thead>
+        <tbody>${lista.map(c=>`<tr><td>${esc(c.desc||'')}</td><td class="n">${fmt(c.valor||0)}</td><td>${catLbl[catEfetiva(c)]||esc(c.cat||'')}</td></tr>`).join('') || '<tr><td colspan="3" class="vazio">Sem contas.</td></tr>'}</tbody>
+        <tfoot><tr><td class="r">${fSel ? 'Total ' + fSel[1] : 'Total'}</td><td class="n">${fmt(totalLista)}</td><td></td></tr></tfoot></table>
+    </section>`);
+  }
+  if (!paginas.length) { toast && toast('Nenhuma conta para imprimir.'); return; }
+  const css = `@page{size:A4 portrait;margin:14mm 14mm}
+    *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#111;font-size:12.5px}
+    .pg{page-break-after:always}.pg:last-child{page-break-after:auto}
+    h1{font-size:18px;margin:0 0 6px;text-transform:uppercase;letter-spacing:.5px}
+    .sub{display:flex;justify-content:space-between;font-size:14px;border-bottom:2px solid #111;padding-bottom:6px;margin-bottom:12px}
+    h2{font-size:13px;margin:16px 0 6px;text-transform:uppercase}
+    table{border-collapse:collapse}
+    .saldo{width:300px}.saldo td{padding:3px 0;font-size:13px}.saldo td.n{text-align:right;font-variant-numeric:tabular-nums}
+    .saldo tr.fim td{border-top:1px solid #111;font-weight:700;padding-top:5px}
+    .contas{width:100%}.contas th,.contas td{padding:5px 6px;border-bottom:1px solid #ccc;text-align:left}
+    .contas th{font-size:11px;text-transform:uppercase;border-bottom:2px solid #111}
+    .contas th:nth-child(2),.contas td:nth-child(2){width:120px}.contas th:nth-child(3),.contas td:nth-child(3){width:120px}
+    .contas .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .contas tfoot td{font-weight:700;border-bottom:none;border-top:2px solid #111}.contas td.r{text-align:right}
+    .vazio{color:#777;text-align:center}`;
+  let fr = document.getElementById('frImpressao');
+  if (fr) fr.remove();
+  fr = document.createElement('iframe'); fr.id = 'frImpressao';
+  fr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+  document.body.appendChild(fr);
+  const doc = fr.contentWindow.document;
+  doc.open(); doc.write(`<!doctype html><html><head><meta charset="utf-8"><title>Controle de pagamento diário ${dataBR}${soEmp ? ' - ' + (EMPRESAS.find(e=>e.key===soEmp)||{}).label : ''}</title><style>${css}</style></head><body>${paginas.join('')}</body></html>`); doc.close();
+  setTimeout(()=>{ if (!fr.isConnected || !fr.contentWindow) return; fr.contentWindow.focus(); fr.contentWindow.print(); }, 250);
 }
 
 function rowHTML(empKey,c,i) {
