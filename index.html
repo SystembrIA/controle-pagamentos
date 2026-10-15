@@ -591,6 +591,46 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
+/* Informar diretoria: imagem (renderizada fora da tela) e janela */
+#infDirRender{position:fixed;left:-9999px;top:0;width:400px;background:#fff;font-family:Inter,"Segoe UI",Arial,sans-serif;color:#0f172a;font-variant-numeric:tabular-nums}
+#infDirRender *{box-sizing:border-box;margin:0;padding:0}
+#infDirRender .topo{background:#0f172a;color:#fff;padding:18px 16px 16px}
+#infDirRender h1{font-size:21px;font-weight:900;color:#fff}
+#infDirRender .sub{font-size:13px;color:#cbd5e1;margin-top:4px}
+#infDirRender .ok{display:inline-block;margin-top:10px;background:#16a34a;color:#fff;font-weight:800;font-size:12.5px;padding:5px 11px;border-radius:999px}
+#infDirRender .tot{padding:6px 16px 4px;border-bottom:6px solid #f1f5f9}
+#infDirRender .tl{display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;border-bottom:1px solid #e2e8f0}
+#infDirRender .tl:last-child{border-bottom:none}
+#infDirRender .tl span{font-size:13px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.3px}
+#infDirRender .tl small{font-weight:700;text-transform:none;letter-spacing:0}
+#infDirRender .tl b{font-size:21px;font-weight:900;white-space:nowrap}
+#infDirRender .tl.liq{background:#f0fdf4;margin:0 -16px;padding:11px 16px}
+#infDirRender .neg{color:#dc2626}#infDirRender .pos{color:#15803d}
+#infDirRender .lista{padding:4px 16px 0}
+#infDirRender .cab,#infDirRender .emp .v{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-left:26px}
+#infDirRender .cab{font-size:10.5px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.3px;padding:10px 0 6px;border-bottom:2px solid #0f172a;margin-left:0;padding-left:26px}
+#infDirRender .cab div,#infDirRender .emp .v div{text-align:right}
+#infDirRender .cab .s,#infDirRender .emp .v .s{text-align:left}
+#infDirRender .emp{padding:9px 0;border-bottom:1px solid #e2e8f0}
+#infDirRender .emp .n{display:flex;align-items:baseline;font-size:15px;font-weight:800}
+#infDirRender .emp .n .ic{width:26px;flex:0 0 26px}
+#infDirRender .emp .n .nm{flex:1}
+#infDirRender .emp .n small{font-size:12px;font-weight:700;color:#64748b}
+#infDirRender .emp .v{font-size:15px;font-weight:700;margin-top:3px;white-space:nowrap}
+#infDirRender .emp.total{border-top:2px solid #0f172a;border-bottom:none;background:#f8fafc;margin:0 -16px;padding:10px 16px}
+#infDirRender .emp.total .v{font-weight:900}
+#infDirRender .emp.info{color:#94a3b8;font-style:italic}
+#infDirRender .rod{padding:12px 16px 16px;font-size:12px;color:#64748b;line-height:1.5;border-top:6px solid #f1f5f9}
+#infDirModal .idm-bg{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:14px}
+#infDirModal .idm{background:#fff;border-radius:14px;max-width:460px;width:100%;max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
+#infDirModal .idm-top{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid #e2e8f0}
+#infDirModal .idm-corpo{overflow:auto;background:#e2e8f0;padding:10px}
+#infDirModal .idm-corpo img{width:100%;display:block;border-radius:8px}
+#infDirModal .idm-acoes{display:flex;gap:8px;flex-wrap:wrap;padding:10px 14px 4px}
+#infDirModal .idm-acoes .btn{flex:1}
+#infDirModal .idm-dica{font-size:12px;color:#64748b;padding:0 14px 12px}
+</style>
+<style>
 /* ══ VERSÃO 2 — clara moderna (padrão do Hub: branco, linha amarela, cartões com sombra) ══ */
 @media screen{
 
@@ -750,6 +790,7 @@ tr.linha-total td{font-weight:800;color:#1e40af !important;background:#e8efff;fo
     title="Nome do arquivo define a empresa. Ex: pizza.xlsx → PIZZA"><i class="fa-solid fa-folder-open"></i> Upload planilha</button>
   <button class="btn btn-print btn-sm btn-mobile-hide" onclick="imprimir()" title="Uma folha para cada empresa"><i class="fa-solid fa-print"></i> Imprimir</button>
   <button class="btn btn-print btn-sm btn-mobile-hide" onclick="imprimirTodas()" title="Todas as empresas juntas, seguidas, com o total geral no fim"><i class="fa-solid fa-print"></i> Imprimir todas</button>
+  <button class="btn btn-success btn-sm" onclick="informarDiretoria()" title="Gera a imagem com o resumo do dia para mandar à diretoria"><i class="fa-solid fa-bullhorn"></i> Informar diretoria</button>
   <div class="busca-wrap btn-mobile-hide">
     <input type="text" id="buscaInput" placeholder="Buscar fornecedor em todas as datas..." oninput="buscaAoDigitar()" autocomplete="off">
     <button class="btn btn-outline btn-sm" onclick="limparBusca()" id="btnLimparBusca" style="display:none">✕</button>
@@ -1919,6 +1960,75 @@ function ehEntreContas(descricao) {
 // verdade pra Cobertura Conta / Entre Contas, mesmo quando o campo cat salvo é outro --
 // cobre lançamentos cadastrados antes dessas categorias existirem (ficaram salvos como
 // TED/Pix/etc. pelo Método), sem precisar reimportar ou corrigir nada manualmente.
+// ══════════════════════════════════════════════════════════
+// INFORMAR DIRETORIA (Maikon 15/10): imagem para celular com o resumo do dia
+// (saldo geral, a pagar, saldo líquido e cada empresa), para mandar no WhatsApp.
+// Mesmas contas do renderSaldos: Service é só informativo; Cobertura volta para o líquido.
+// ══════════════════════════════════════════════════════════
+let _infDirBlob = null;
+function _carregaH2C(){ return window.html2canvas ? Promise.resolve() : new Promise((ok,erro)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'; s.onload=ok; s.onerror=()=>erro(new Error('html2canvas')); document.head.appendChild(s); }); }
+function resumoDiretoria(d){
+  const r={emps:[],ini:0,pagar:0,final:0,n:0,serv:null};
+  for (const emp of EMPRESAS){
+    const ini=d.saldos[emp.key]||0, contas=d.contas[emp.key]||[];
+    const pagar=contas.reduce((s,c)=>s+(c.valor||0),0);
+    const entre=contas.filter(c=>catEfetiva(c)==='entrecontas').reduce((s,c)=>s+(c.valor||0),0);
+    const linha={emp, ini, pagar, final:ini-pagar+entre, n:contas.length};
+    if (emp.key==='SERVICE'){ r.serv=linha; continue; }
+    r.emps.push(linha); r.ini+=ini; r.pagar+=pagar; r.final+=linha.final; r.n+=contas.length;
+  }
+  return r;
+}
+function htmlDiretoria(r){
+  const v=x=>Number(x||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const [y,m,dd]=diaAtual.split('-'), dia=new Date(+y,+m-1,+dd).toLocaleDateString('pt-BR',{weekday:'short'}).replace('.','');
+  let quem=''; try{ const u=JSON.parse(localStorage.getItem('jb_user')||'{}'); quem=u.nome||u.username||''; }catch(e){}
+  const agora=new Date(), hora=`${String(agora.getHours()).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}`;
+  const nm=t=>t.length<=3?t:t.toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase());
+  const lin=(e,cls)=>`<div class="emp ${cls||''}"><div class="n"><span class="ic">${e.ic}</span><span class="nm">${e.nome}</span><small>${e.n} ${e.n===1?'conta':'contas'}</small></div><div class="v"><div class="s">${e.ini}</div><div class="p">${e.pagar}</div><div class="f">${e.final}</div></div></div>`;
+  const servTot=r.serv&&r.serv.pagar?r.pagar+r.serv.pagar:0;
+  return `<div class="topo"><h1>💰 PAGAMENTOS DO DIA</h1><div class="sub">${dia.charAt(0).toUpperCase()+dia.slice(1)} ${dd}/${m}/${y}${quem?' · '+quem:''} · ${hora}</div><div class="ok">✅ Tudo lançado — pronto para autorizar</div></div>
+  <div class="tot"><div class="tl"><span>Saldo geral</span><b>R$ ${v(r.ini)}</b></div>
+    <div class="tl"><span>A pagar <small>(${r.n} contas)</small></span><b class="neg">− R$ ${v(r.pagar)}</b></div>
+    <div class="tl liq"><span>Saldo líquido</span><b class="${r.final<0?'neg':'pos'}">R$ ${v(r.final)}</b></div></div>
+  <div class="lista"><div class="cab"><div class="s">Saldo</div><div>A pagar</div><div>Líquido</div></div>
+    ${r.emps.map(e=>lin({ic:e.emp.emoji,nome:nm(e.emp.label),n:e.n,ini:v(e.ini),pagar:`<span class="neg">−${v(e.pagar)}</span>`,final:`<span class="${e.final<0?'neg':'pos'}">${v(e.final)}</span>`})).join('')}
+    ${lin({ic:'',nome:'TOTAL',n:r.n,ini:v(r.ini),pagar:`<span class="neg">−${v(r.pagar)}</span>`,final:`<span class="${r.final<0?'neg':'pos'}">${v(r.final)}</span>`},'total')}
+    ${r.serv&&(r.serv.pagar||r.serv.n)?lin({ic:r.serv.emp.emoji,nome:'Service (informativo)',n:r.serv.n,ini:'—',pagar:'−'+v(r.serv.pagar),final:'—'},'info'):''}
+  </div>
+  ${servTot?`<div class="rod">Sai do banco hoje (com Service): <b>R$ ${v(servTot)}</b></div>`:''}`;
+}
+async function informarDiretoria(){
+  if (!diaAtual){ toast('📅 Abra o dia primeiro'); return; }
+  const r=resumoDiretoria(getDia(diaAtual));
+  if (!r.n){ toast('Nenhuma conta lançada neste dia.'); return; }
+  let box=document.getElementById('infDirRender');
+  if (!box){ box=document.createElement('div'); box.id='infDirRender'; document.body.appendChild(box); }
+  box.innerHTML=htmlDiretoria(r);
+  try { await _carregaH2C(); } catch(e){ toast('❌ Não consegui gerar a imagem (sem internet?)'); return; }
+  const cv=await html2canvas(box,{scale:3,backgroundColor:'#ffffff',logging:false});
+  _infDirBlob=await new Promise(ok=>cv.toBlob(ok,'image/png'));
+  const url=URL.createObjectURL(_infDirBlob);
+  let m=document.getElementById('infDirModal');
+  if (!m){ m=document.createElement('div'); m.id='infDirModal'; document.body.appendChild(m); }
+  m.innerHTML=`<div class="idm-bg" onclick="if(event.target===this)fecharInfDir()"><div class="idm"><div class="idm-top"><b>📣 Informar diretoria</b><button class="btn btn-outline btn-sm" onclick="fecharInfDir()">✕</button></div>
+    <div class="idm-dica" style="padding:8px 14px 0">É assim que a mensagem vai chegar no WhatsApp do Maikon:</div>
+    <div class="idm-corpo"><img src="${url}" alt="Resumo do dia"></div>
+    <div class="idm-acoes"><button class="btn btn-success" id="infDirEnviar" onclick="infDirEnviar()">📤 Enviar para o Maikon</button><button class="btn btn-outline" onclick="infDirBaixar()">⬇️ Baixar</button></div>
+    <div class="idm-dica" id="infDirAviso">${INF_DIR_ENVIO_ATIVO?'':'🧪 Modo teste: hoje o Enviar ainda não manda nada.'}</div></div></div>`;
+}
+function fecharInfDir(){ const m=document.getElementById('infDirModal'); if(m) m.innerHTML=''; }
+const _infDirNome=()=>`Pagamentos ${diaAtual}.png`;
+// Envio automático (template com imagem na Meta) ainda não aprovado: até lá o botão só mostra como vai funcionar.
+const INF_DIR_ENVIO_ATIVO = false;
+function infDirEnviar(){
+  if (!INF_DIR_ENVIO_ATIVO){
+    document.getElementById('infDirAviso').innerHTML='🧪 <b>Teste ok!</b> Nada foi enviado hoje. Quando o envio for ligado, este botão manda esta imagem direto no WhatsApp do Maikon.';
+    document.getElementById('infDirEnviar').textContent='✅ Teste ok (não enviado)';
+    return;
+  }
+}
+function infDirBaixar(){ const a=document.createElement('a'); a.href=URL.createObjectURL(_infDirBlob); a.download=_infDirNome(); document.body.appendChild(a); a.click(); a.remove(); }
 function catEfetiva(c) {
   if (ehCoberturaConta(c.ref)||ehCoberturaConta(c.desc)) return 'entrecontas';
   if (ehEntreContas(c.ref)||ehEntreContas(c.desc)) return 'transfconta';
