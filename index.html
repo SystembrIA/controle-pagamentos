@@ -737,7 +737,7 @@ tr.linha-total td{font-weight:800;color:#1e40af !important;background:#e8efff;fo
   <input type="date" id="selData" onchange="carregarDia()" autocomplete="off">
   <button class="btn btn-primary btn-mobile-hide" onclick="novoDia()"><i class="fa-solid fa-plus"></i> Novo controle</button>
   <button class="btn btn-outline btn-mobile-hide" onclick="abrirSaldoModal()"><i class="fa-solid fa-pen"></i> Editar saldos</button>
-  <button class="btn btn-success btn-mobile-hide" onclick="exportCSV()"><i class="fa-solid fa-download"></i> Exportar CSV</button>
+  <button class="btn btn-success btn-mobile-hide" onclick="abrirExportar()"><i class="fa-solid fa-download"></i> Exportar</button>
   <button class="btn btn-outline btn-sm btn-mobile-hide" onclick="document.getElementById('fileInput').click()"
     title="Nome do arquivo define a empresa. Ex: pizza.xlsx → PIZZA"><i class="fa-solid fa-folder-open"></i> Upload planilha</button>
   <button class="btn btn-print btn-sm btn-mobile-hide" onclick="imprimir()" title="Uma folha para cada empresa"><i class="fa-solid fa-print"></i> Imprimir</button>
@@ -805,6 +805,28 @@ tr.linha-total td{font-weight:800;color:#1e40af !important;background:#e8efff;fo
     <div class="modal-btns">
       <button class="btn btn-outline" onclick="fecharModal('saldoModal')">Cancelar</button>
       <button class="btn btn-primary" onclick="salvarSaldos()"><i class="fa-solid fa-floppy-disk"></i> Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EXPORTAR (empresa + período) -->
+<div class="overlay" id="exportModal">
+  <div class="modal">
+    <h3><i class="fa-solid fa-download"></i> Exportar pagamentos</h3>
+    <div class="form-row"><label>Empresa</label><select id="exEmp"></select></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px;">
+      <div class="form-row"><label>De</label><input type="date" id="exDe"></div>
+      <div class="form-row"><label>Até</label><input type="date" id="exAte"></div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 6px">
+      <button type="button" class="btn btn-outline btn-sm" onclick="exPeriodo('dia')">Só o dia</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="exPeriodo('mes')">Mês até o dia</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="exPeriodo('mesant')">Mês anterior</button>
+    </div>
+    <div id="exInfo" style="font-size:.8rem;color:#64748b;min-height:18px"></div>
+    <div class="modal-btns">
+      <button class="btn btn-outline" onclick="fecharModal('exportModal')">Cancelar</button>
+      <button class="btn btn-success" onclick="exportarPeriodo()"><i class="fa-solid fa-download"></i> Exportar</button>
     </div>
   </div>
 </div>
@@ -2371,6 +2393,54 @@ function executarBusca(q) {
 // ══════════════════════════════════════════════════════════
 // EXPORT CSV
 // ══════════════════════════════════════════════════════════
+/* Exportar por empresa e período (Maikon 15/10): abre a janela com a empresa (ou todas) e o período —
+   por padrão do dia 1 do mês até o dia aberto. Planilha CSV que abre no Excel (separador ; e vírgula decimal). */
+function abrirExportar(){
+  const sel=document.getElementById('exEmp');
+  sel.innerHTML='<option value="">Todas as empresas</option>'+EMPRESAS.map(e=>`<option value="${e.key}">${esc(e.label)}</option>`).join('');
+  exPeriodo('mes');
+  document.getElementById('exportModal').classList.add('open');
+  ['exEmp','exDe','exAte'].forEach(id=>document.getElementById(id).onchange=exContar);
+}
+function exPeriodo(tipo){
+  const base=diaAtual||new Date().toISOString().slice(0,10), [y,m]=base.split('-').map(Number);
+  let de=base, ate=base;
+  if(tipo==='mes') de=base.slice(0,8)+'01';
+  if(tipo==='mesant'){ const d0=new Date(y,m-2,1), d1=new Date(y,m-1,0), p=n=>String(n).padStart(2,'0');
+    de=`${d0.getFullYear()}-${p(d0.getMonth()+1)}-01`; ate=`${d1.getFullYear()}-${p(d1.getMonth()+1)}-${p(d1.getDate())}`; }
+  document.getElementById('exDe').value=de; document.getElementById('exAte').value=ate; exContar();
+}
+function exLinhas(){
+  const emp=document.getElementById('exEmp').value, de=document.getElementById('exDe').value, ate=document.getElementById('exAte').value;
+  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Cobertura Conta',transfconta:'Entre Contas',outro:'Outro'};
+  const out=[];
+  Object.keys(DB).filter(dt=>/^\d{4}-\d{2}-\d{2}$/.test(dt) && dt>=de && dt<=ate).sort().forEach(dt=>{
+    const d=DB[dt]||{};
+    EMPRESAS.forEach(e=>{ if(emp && e.key!==emp) return;
+      ((d.contas||{})[e.key]||[]).forEach(c=>{ if(c) out.push({dt,emp:e.label,c,met:catLbl[catEfetiva(c)]||c.cat||''}); }); });
+  });
+  return {out,emp,de,ate};
+}
+function exContar(){
+  const {out,de,ate}=exLinhas(), tot=out.reduce((s,x)=>s+(x.c.valor||0),0);
+  document.getElementById('exInfo').textContent = de&&ate&&de>ate ? '⚠️ A data "De" está depois de "Até".' : `${out.length} lançamento(s) · ${fmt(tot)}`;
+}
+function exportarPeriodo(){
+  const {out,emp,de,ate}=exLinhas();
+  if(!de||!ate||de>ate){ toast('📅 Confira o período'); return; }
+  if(!out.length){ toast('Nenhum lançamento nesse período.'); return; }
+  const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const br=dt=>dt.split('-').reverse().join('/');
+  const lines=['"Data";"Empresa";"Vencimento";"Fornecedor";"Descrição";"Método";"Categoria";"Valor";"Status"'];
+  out.forEach(({dt,emp:en,c,met})=>lines.push([br(dt),en,c.venc||'',c.desc||'',c.ref||'',met,catOficial(c.categoria||''),(c.valor||0).toFixed(2).replace('.',','),c.status||'pendente'].map(q).join(';')));
+  const tot=out.reduce((s,x)=>s+(x.c.valor||0),0);
+  lines.push(['','','','','','','Total',tot.toFixed(2).replace('.',','),''].map(q).join(';'));
+  const nomeEmp=emp?(EMPRESAS.find(e=>e.key===emp)||{}).label.replace(/\s+/g,'_'):'todas';
+  const blob=new Blob(['﻿'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`pagamentos_${nomeEmp}_${de}_a_${ate}.csv`; a.click();
+  fecharModal('exportModal'); toast(`⬇️ Exportado: ${out.length} lançamento(s)`);
+}
 function exportCSV() {
   if (!diaAtual){toast('📅 Selecione uma data');return;}
   const d=getDia(diaAtual);
