@@ -2341,11 +2341,23 @@ function acharGrupoQueSoma(bancoRestante, alvo, tolerancia=0.01) {
 // existir (ou antes de ele virar motoboy), os Pix "Pagfor" dos motoboys ficavam como linhas em branco aguardando
 // identificação. Aqui, para cada Motoboy ainda não conciliado, procura entre essas linhas pendentes do extrato um
 // grupo que some o valor dele; achou = o Motoboy fica conciliado e as linhas do grupo saem (ele já representa esses Pix).
+// O histórico do banco tem alguma palavra do fornecedor/descrição do lançamento? (ex.: "PIX ENVIADO NATHAM FLORES DIAS")
+function nomeNoHistorico(c, historico) {
+  const n = x => String(x||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const h = n(historico); if (!h) return false;
+  return n(c.desc).split(/[^a-z0-9]+/).filter(w => w.length >= 4).some(w => h.includes(w));
+}
+
 function casarMotoboyPendentes(empKey) {
   const contas = getContas(diaAtual, empKey); let mudou = false;
   for (const c of contas) {
     if (c.conciliado || c.cat !== 'motoboy') continue;
-    const pend = contas.filter(x => x.origem === 'conciliacao' && !x.conciliado && !String(x.desc||'').trim() && ehPagforPixOutraInst(x.ref))
+    const vazia = x => x.origem === 'conciliacao' && !x.conciliado && !String(x.desc||'').trim();
+    // Pix avulso que ficou em branco porque o lançamento dele (mesmo valor e nome no histórico) pegou um Pix do
+    // motoboy na conciliação antiga: os valores são iguais, então ele entra no lugar do Pix que foi pego.
+    const trocado = x => vazia(x) && !ehPagforPixOutraInst(x.ref) && contas.some(l => l !== x && l.conciliado && l.origem !== 'conciliacao' && l.cat !== 'motoboy'
+      && Math.abs((Number(l.valor)||0) - (Number(x.valor)||0)) < 0.01 && nomeNoHistorico(l, x.ref));
+    const pend = contas.filter(x => vazia(x) && (ehPagforPixOutraInst(x.ref) || trocado(x)))
       .map(x => ({ valor: Number(x.valor)||0, usado: false, linha: x }));
     const grupo = acharGrupoQueSoma(pend, Number(c.valor)||0);
     if (!grupo) continue;
@@ -2365,9 +2377,21 @@ function rodarConciliacao(empKey, saidasBanco, nomeArquivo, conta) {
   // avulso, boleto) 1:1 por valor -- isso "reserva" o item do banco de cada
   // um antes de qualquer soma em grupo, pra um Pix de fornecedor não ser
   // "roubado" por engano pela soma do motoboy só porque a conta bate.
-  for (const c of cadastrados) {
-    if (c.conciliado || c.cat==='cartao' || c.cat==='motoboy') continue;
-    const match = bancoRestante.find(b => !b.usado && Math.abs(b.valor - (c.valor||0)) < 0.01);
+  // Maikon 19/10: com valores repetidos (ex.: R$ 100 de um Pix avulso e R$ 100 de um Pix de motoboy), o 1:1
+  // pegava o primeiro do mesmo valor e "roubava" o Pix do motoboy -- aí a soma do Motoboy não batia e os Pix
+  // dele ficavam em branco. Agora: 1º os que batem valor E nome (histórico do banco tem o nome do fornecedor);
+  // depois, por valor, preferindo item que não seja "Pagfor Pix" quando há Motoboy no dia.
+  const temMotoboy = cadastrados.some(c => !c.conciliado && c.cat==='motoboy');
+  const normais = cadastrados.filter(c => !(c.conciliado || c.cat==='cartao' || c.cat==='motoboy'));
+  const mesmoValor = c => bancoRestante.filter(b => !b.usado && Math.abs(b.valor - (c.valor||0)) < 0.01);
+  for (const c of normais) {
+    const match = mesmoValor(c).find(b => nomeNoHistorico(c, b.historico));
+    if (match) { match.usado = true; c.conciliado = true; batidos++; }
+  }
+  for (const c of normais) {
+    if (c.conciliado) continue;
+    const cands = mesmoValor(c);
+    const match = (temMotoboy && cands.find(b => !ehPagforPixOutraInst(b.historico))) || cands[0];
     if (match) { match.usado = true; c.conciliado = true; batidos++; }
   }
 
