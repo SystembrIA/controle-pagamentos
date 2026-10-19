@@ -1230,8 +1230,12 @@ function renderTudo() {
   const lbl=`${day}/${m}/${y}`;
   document.getElementById('headerSub').textContent=`Controle — ${lbl}`;
   document.getElementById('saldoLabel').textContent=lbl;
+  // dia aberto com Motoboy sem conciliar e os Pix dele em branco (extrato subiu antes): casa sozinho e salva
+  let casou = false;
+  Object.keys(d.contas||{}).forEach(k => { if (!(d.travados||{})[k] && casarMotoboyPendentes(k)) { atualizarTravaEmpresa(k); casou = true; } });
   renderSaldos(d);
   renderContas(d);
+  if (casou) { salvarNuvem(); toast('✅ Pix dos motoboys casados com o lançamento Motoboy'); }
 }
 
 function fmt(v){
@@ -2333,6 +2337,25 @@ function acharGrupoQueSoma(bancoRestante, alvo, tolerancia=0.01) {
   return resultado;
 }
 
+// Motoboy lançado depois do extrato (Maikon 19/10): se o extrato foi conciliado antes do lançamento "Pix Motoboy"
+// existir (ou antes de ele virar motoboy), os Pix "Pagfor" dos motoboys ficavam como linhas em branco aguardando
+// identificação. Aqui, para cada Motoboy ainda não conciliado, procura entre essas linhas pendentes do extrato um
+// grupo que some o valor dele; achou = o Motoboy fica conciliado e as linhas do grupo saem (ele já representa esses Pix).
+function casarMotoboyPendentes(empKey) {
+  const contas = getContas(diaAtual, empKey); let mudou = false;
+  for (const c of contas) {
+    if (c.conciliado || c.cat !== 'motoboy') continue;
+    const pend = contas.filter(x => x.origem === 'conciliacao' && !x.conciliado && !String(x.desc||'').trim() && ehPagforPixOutraInst(x.ref))
+      .map(x => ({ valor: Number(x.valor)||0, usado: false, linha: x }));
+    const grupo = acharGrupoQueSoma(pend, Number(c.valor)||0);
+    if (!grupo) continue;
+    const sai = new Set(grupo.map(g => g.linha));
+    for (let i = contas.length - 1; i >= 0; i--) if (sai.has(contas[i])) contas.splice(i, 1);
+    c.conciliado = true; mudou = true;
+  }
+  return mudou;
+}
+
 function rodarConciliacao(empKey, saidasBanco, nomeArquivo, conta) {
   const cadastrados = getContas(diaAtual, empKey);
   const bancoRestante = saidasBanco.map(s => ({...s, usado:false}));
@@ -2391,6 +2414,7 @@ function rodarConciliacao(empKey, saidasBanco, nomeArquivo, conta) {
     });
   }
 
+  casarMotoboyPendentes(empKey);
   atualizarTravaEmpresa(empKey);
 
   return {
