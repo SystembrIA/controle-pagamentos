@@ -704,6 +704,8 @@ tr.linha-total td{font-weight:800;color:#1e40af !important;background:#e8efff;fo
 .gp-per input[type=date]{padding:5px 8px;font-size:.8rem}
 .gp-total{background:#1e293b;color:#fff;border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
 .gp-total .t1{font-size:.85rem;font-weight:800}.gp-total .t1 small{display:block;font-weight:600;opacity:.75;font-size:.72rem}
+.gp-total .t1{flex:1}
+.gp-x{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:8px;width:30px;height:30px;font-weight:900;cursor:pointer;flex:0 0 auto}
 .gp-total .t2{font-size:1.25rem;font-weight:900;font-variant-numeric:tabular-nums;white-space:nowrap}
 .gp-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:10px}
 .gp-card{border:1px solid #e8ecf3;border-top:4px solid var(--cor);border-radius:12px;padding:9px 10px;display:flex;flex-direction:column;gap:3px}
@@ -1407,6 +1409,8 @@ const GRUPOS=[
   {k:'serv',l:'Prestação de serviço',curto:'Serviços',ic:'🤝',cats:['Prestação de Serviços','Contabilidade','Consultoria/Assessoria','Advocacia','Segurança','Freelancer','Transporte de Terceiros']},
   // Outros (Maikon 20/10, no lugar de Obra): tudo que não é dos outros tipos — menos as transferências internas do grupo
   {k:'outros',l:'Outros',ic:'🗂️',outros:true},
+  // Total (Maikon 20/10): todos os gastos juntos (= soma dos tipos acima, sem Boletos, que é forma de pagamento), menos as transferências internas
+  {k:'total',l:'Total',ic:'💰',total:true},
 ];
 const _G_INTERNAS=['Transferência entre Contas','Cobertura de Conta'];
 let GRUPO='', GPER='dia', GDE='', GATE='';
@@ -1414,9 +1418,10 @@ const _gNorm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCas
 function noGrupo(c,g){
   if(!c) return false;
   if(g.k==='boleto') return catEfetiva(c)==='boleto';
+  if(g.total){ const ce=catEfetiva(c); if(ce==='entrecontas'||ce==='transfconta') return false; return !_G_INTERNAS.includes(catOficial(c.categoria||'')); }
   if(g.outros){ const ce=catEfetiva(c); if(ce==='entrecontas'||ce==='transfconta') return false;
     const cat=catOficial(c.categoria||''); if(_G_INTERNAS.includes(cat)) return false;
-    return !GRUPOS.some(x=>x.k!=='boleto' && !x.outros && noGrupo(c,x)); }
+    return !GRUPOS.some(x=>x.k!=='boleto' && !x.outros && !x.total && noGrupo(c,x)); }
   const cat=catOficial(c.categoria||'');
   if(cat && cat!=='Sem categoria') return g.cats.includes(cat);
   return !!(g.re && g.re.test(_gNorm((c.desc||'')+' '+(c.ref||''))));
@@ -1448,7 +1453,7 @@ function periodoTopo(limpa){
 function renderGrupo(){
   const bar=document.getElementById('grupoBar'), pn=document.getElementById('grupoPainel'); if(!bar||!pn) return;
   bar.innerHTML=GRUPOS.map(g=>`<button type="button" class="fm-chip${GRUPO===g.k?' on':''}" onclick="escolherGrupo('${g.k}')"><span class="gi">${g.ic} </span><span class="gl">${g.l}</span>${g.curto?`<span class="gs">${g.curto}</span>`:''}</button>`).join('')
-    +(GRUPO?`<button type="button" class="fm-chip" onclick="escolherGrupo('')">✕ <span class="gl">Tirar filtro</span><span class="gs">Limpar</span></button>`:'');
+    ;
   document.body.classList.toggle('grupo-on', !!GRUPO);
   if(!GRUPO){ pn.innerHTML=''; return; }
   const g=GRUPOS.find(x=>x.k===GRUPO), [de,ate]=_gPeriodo(), br=s=>s.split('-').reverse().join('/');
@@ -1470,7 +1475,7 @@ function renderGrupo(){
   pn.innerHTML=`<div class="gp-box">
     <div class="gp-per">${per.map(([k,l])=>`<button type="button" class="fm-chip${GPER===k?' on':''}" onclick="grupoPeriodo('${k}')">${l}</button>`).join('')}
       ${GPER==='livre'?`<input type="date" id="gpDe" value="${de}" onchange="grupoDatas()"><span style="font-size:.78rem;color:#64748b">até</span><input type="date" id="gpAte" value="${ate}" onchange="grupoDatas()">`:''}</div>
-    <div class="gp-total"><div class="t1">${g.ic} ${g.l}<small>${de===ate?br(de):br(de)+' a '+br(ate)} · ${linhas.length} lançamento(s)</small></div><div class="t2">${fmt(total)}</div></div>
+    <div class="gp-total"><div class="t1">${g.ic} ${g.l}<small>${de===ate?br(de):br(de)+' a '+br(ate)} · ${linhas.length} lançamento(s)</small></div><div class="t2">${fmt(total)}</div><button type="button" class="gp-x" onclick="escolherGrupo('')" title="Tirar o filtro e voltar aos cards">✕</button></div>
     ${cards?`<div class="gp-cards">${cards}</div>`:'<div style="font-size:.85rem;color:#64748b;padding:6px 2px">Nada desse tipo no período.</div>'}
     ${linhas.length?`<table class="gp-tab"><thead><tr><th>Data</th><th>Empresa</th><th>Fornecedor</th><th class="mob-hide">Categoria</th><th class="r">Valor</th></tr></thead><tbody>
       ${linhas.map(x=>`<tr><td>${br(x.dt).slice(0,5)}</td><td>${x.emp.emoji} ${esc(x.emp.label)}</td><td>${esc(x.c.desc||x.c.ref||'—')}${x.c.ref&&x.c.desc?`<div style="font-size:.7rem;color:#94a3b8">${esc(String(x.c.ref).slice(0,60))}</div>`:''}</td><td class="mob-hide">${esc(catOficial(x.c.categoria||'')||'—')}</td><td class="r">${fmt(x.v)}</td></tr>`).join('')}
