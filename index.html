@@ -29,7 +29,7 @@ const PG_HUB = 'https://systembria.github.io/hub/';
 async function _pgConferirAcesso() {
   var u = (window.JbLogin && JbLogin.pronto) ? await JbLogin.pronto() : null, nome = '';
   if (u) { try { nome = String((await u.getIdTokenResult()).claims.username || '').toLowerCase(); } catch (e) {} }
-  if (u && PG_PERMITIDOS.indexOf(nome) >= 0) return;
+  if (u && PG_PERMITIDOS.indexOf(nome) >= 0) { window.PG_USER = nome; return; }
   var ov = document.createElement('div');
   ov.style.cssText = 'position:fixed;inset:0;z-index:10000;background:linear-gradient(160deg,#1a1d2e,#0b1020);display:flex;align-items:center;justify-content:center;padding:20px;font-family:Inter,"Segoe UI",Arial,sans-serif';
   ov.innerHTML = '<div style="background:#fff;border-radius:20px;max-width:360px;width:100%;padding:26px 24px;text-align:center;border-bottom:4px solid #e6a800">'
@@ -713,6 +713,8 @@ tr.linha-total td{font-weight:800;color:#1e40af !important;background:#e8efff;fo
 .gp-tab tfoot td{font-weight:900;border-top:2px solid #cbd5e1;border-bottom:none}
 body.grupo-on #saldoSection,body.grupo-on #uploadSection,body.grupo-on #contasSection,body.grupo-on #mobileTotalBanner{display:none !important}
 .grupo-bar .gs{display:none}
+.per-topo{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.per-topo .per-ate{font-size:.8rem;color:#64748b;font-weight:700}
 @media (max-width:768px){ .gp-cards{grid-template-columns:1fr 1fr} .gp-tab .mob-hide{display:none}
   /* celular: os botões em duas linhas de quatro, sem ícone e com o nome curto */
   .grupo-bar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
@@ -810,6 +812,8 @@ body.grupo-on #saldoSection,body.grupo-on #uploadSection,body.grupo-on #contasSe
 <div class="toolbar">
   <label><i class="fa-regular fa-calendar"></i> Data:</label>
   <input type="date" id="selData" onchange="carregarDia()" autocomplete="off">
+  <!-- Período (Maikon 20/10): a tela abre sempre no dia; aqui escolhe um período maior para os filtros de gastos -->
+  <span class="per-topo"><label>Período:</label><input type="date" id="perDe" onchange="periodoTopo()" autocomplete="off"><span class="per-ate">até</span><input type="date" id="perAte" onchange="periodoTopo()" autocomplete="off"><button type="button" class="btn btn-outline btn-sm" id="perLimpa" onclick="periodoTopo(true)" title="Voltar para o dia" style="display:none">✕</button></span>
   <button class="btn btn-primary btn-mobile-hide" onclick="novoDia()"><i class="fa-solid fa-plus"></i> Novo controle</button>
   <button class="btn btn-outline btn-mobile-hide" onclick="abrirSaldoModal()"><i class="fa-solid fa-pen"></i> Editar saldos</button>
   <button class="btn btn-success btn-mobile-hide" onclick="abrirExportar()"><i class="fa-solid fa-download"></i> Exportar</button>
@@ -817,7 +821,7 @@ body.grupo-on #saldoSection,body.grupo-on #uploadSection,body.grupo-on #contasSe
     title="Nome do arquivo define a empresa. Ex: pizza.xlsx → PIZZA"><i class="fa-solid fa-folder-open"></i> Upload planilha</button>
   <button class="btn btn-print btn-sm btn-mobile-hide" onclick="imprimir()" title="Uma folha para cada empresa"><i class="fa-solid fa-print"></i> Imprimir</button>
   <button class="btn btn-print btn-sm btn-mobile-hide" onclick="imprimirTodas()" title="Todas as empresas juntas, seguidas, com o total geral no fim"><i class="fa-solid fa-print"></i> Imprimir todas</button>
-  <button class="btn btn-success btn-sm" onclick="informarDiretoria()" title="Gera a imagem com o resumo do dia para mandar à diretoria"><i class="fa-solid fa-bullhorn"></i> Informar diretoria</button>
+  <button class="btn btn-success btn-sm" id="btnInfDir" onclick="informarDiretoria()" title="Gera a imagem com o resumo do dia para mandar à diretoria"><i class="fa-solid fa-bullhorn"></i> Informar diretoria</button>
   <div class="busca-wrap btn-mobile-hide">
     <input type="text" id="buscaInput" placeholder="Buscar fornecedor em todas as datas..." oninput="buscaAoDigitar()" autocomplete="off">
     <button class="btn btn-outline btn-sm" onclick="limparBusca()" id="btnLimparBusca" style="display:none">✕</button>
@@ -1223,6 +1227,8 @@ window.addEventListener('resize', ()=>{
 
 document.addEventListener('DOMContentLoaded', async ()=>{
   await _pgConferirAcesso();
+  // Informar diretoria (Maikon 20/10): para ele não precisa (é quem recebe) — fica para a Jaqueline, Juliana e Pedro
+  if (window.PG_USER === 'justadm') { const b=document.getElementById('btnInfDir'); if (b) b.style.display='none'; }
   await carregarDadosNuvem();
   await carregarContasBancarias();
   document.getElementById('loadingOverlay').style.display='none';
@@ -1368,7 +1374,7 @@ function renderSaldos(d) {
    (lançamento sem categoria: pelo texto, ex. "FOLHA PAGTO", "DARF"). Motoboy não entra em Funcionários (não é funcionário). */
 const GRUPOS=[
   {k:'boleto',l:'Boletos',ic:'📄'},
-  {k:'func',l:'Funcionários',ic:'👥',cats:['Salário dos Funcionários','Adiantamento Salarial','Rescisão','Férias','13º Salário','FGTS','FGTS Rescisório','Vale Transporte','Alimentação Funcionários','Plano de Saúde','Comissões/Gorjetas','Bonificação','Dias Trabalhados','Estagiários','Pensão Alimentícia','Sindicato','Cursos e Treinamentos','Empréstimos a Funcionários'],
+  {k:'func',l:'Funcionários',ic:'👥',cats:['Salário dos Funcionários','Adiantamento Salarial','Rescisão','Férias','13º Salário','FGTS','FGTS Rescisório','Vale Transporte','Alimentação Funcionários','Plano de Saúde','Comissões/Gorjetas','Bonificação','Dias Trabalhados','Estagiários','Pensão Alimentícia','Sindicato','Empréstimos a Funcionários'],
     re:/FOLHA PAG|PAGAMENTO DE SALARIO|PAGSAL|SALARIO|RESCIS|FERIAS|DIAS TRABALHADOS|ADIANTAMENTO|\bFGTS\b/},
   {k:'imp',l:'Impostos',ic:'🏛️',cats:['Impostos','IPTU'],re:/\bDARF\b|\bDAS\b|SIMPLES NAC|\bICMS\b|\bISS\b|\bDARE\b|\bIPTU\b|\bINSS\b|\bGPS\b|IMPOSTO/},
   {k:'forn',l:'Fornecedores',ic:'📦',cats:['Insumos','Embalagens e Descartáveis','Revenda de Mercadorias','Aquisição de Material','Aquisição de Equipamentos','Gás','Material de Limpeza/Higiene','Material Promocional']},
@@ -1398,8 +1404,19 @@ function _gPeriodo(){
   return [dia,dia];
 }
 function escolherGrupo(k){ GRUPO=(GRUPO===k)?'':k; renderGrupo(); window.scrollTo({top:0,behavior:'smooth'}); }
-function grupoPeriodo(p){ GPER=p; if(p==='livre'&&!GDE){ const [a,b]=_gPeriodo(); GDE=a; GATE=b; } renderGrupo(); }
-function grupoDatas(){ GDE=document.getElementById('gpDe').value; GATE=document.getElementById('gpAte').value; GPER='livre'; renderGrupo(); }
+function _sincPerTopo(){ const a=document.getElementById('perDe'), b=document.getElementById('perAte'), x=document.getElementById('perLimpa'); if(!a) return;
+  const liv=GPER==='livre'&&GDE&&GATE; a.value=liv?GDE:''; b.value=liv?GATE:''; if(x) x.style.display=liv?'':'none'; }
+function grupoPeriodo(p){ GPER=p; if(p==='livre'&&!GDE){ const [a,b]=_gPeriodo(); GDE=a; GATE=b; } _sincPerTopo(); renderGrupo(); }
+function grupoDatas(){ GDE=document.getElementById('gpDe').value; GATE=document.getElementById('gpAte').value; GPER='livre'; _sincPerTopo(); renderGrupo(); }
+// período lá em cima (do lado da Data): vale para os filtros de gastos; sem filtro escolhido, só avisa para tocar num botão
+function periodoTopo(limpa){
+  const a=document.getElementById('perDe'), b=document.getElementById('perAte');
+  if(limpa){ a.value=''; b.value=''; GPER='dia'; GDE=''; GATE=''; _sincPerTopo(); renderGrupo(); return; }
+  if(a.value && !b.value) b.value=a.value; if(b.value && !a.value) a.value=b.value;
+  if(!a.value) return;
+  GDE=a.value; GATE=b.value; GPER='livre'; _sincPerTopo(); renderGrupo();
+  if(!GRUPO) toast('📅 Período escolhido: toque num botão de gasto (Boletos, Funcionários…) para ver o total');
+}
 function renderGrupo(){
   const bar=document.getElementById('grupoBar'), pn=document.getElementById('grupoPainel'); if(!bar||!pn) return;
   bar.innerHTML=GRUPOS.map(g=>`<button type="button" class="fm-chip${GRUPO===g.k?' on':''}" onclick="escolherGrupo('${g.k}')"><span class="gi">${g.ic} </span><span class="gl">${g.l}</span>${g.curto?`<span class="gs">${g.curto}</span>`:''}</button>`).join('')
