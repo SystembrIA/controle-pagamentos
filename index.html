@@ -712,7 +712,12 @@ tr.linha-total td{font-weight:800;color:#1e40af !important;background:#e8efff;fo
 .gp-tab .r{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .gp-tab tfoot td{font-weight:900;border-top:2px solid #cbd5e1;border-bottom:none}
 body.grupo-on #saldoSection,body.grupo-on #uploadSection,body.grupo-on #contasSection,body.grupo-on #mobileTotalBanner{display:none !important}
-@media (max-width:768px){ .gp-cards{grid-template-columns:1fr 1fr} .gp-tab .mob-hide{display:none} }
+.grupo-bar .gs{display:none}
+@media (max-width:768px){ .gp-cards{grid-template-columns:1fr 1fr} .gp-tab .mob-hide{display:none}
+  /* celular: os botões em duas linhas de quatro, sem ícone e com o nome curto */
+  .grupo-bar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+  .grupo-bar .fm-chip{padding:6px 2px;font-size:.7rem;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .grupo-bar .gi{display:none} .grupo-bar .fm-chip .gs{display:inline} .grupo-bar .fm-chip:has(.gs) .gl{display:none} }
 /* ══ Cards por empresa no celular em pé (Maikon 12/10) ══ */
 .mc-info{display:none}
 @media screen and (max-width:768px) and (orientation:portrait){
@@ -1368,14 +1373,19 @@ const GRUPOS=[
   {k:'imp',l:'Impostos',ic:'🏛️',cats:['Impostos','IPTU'],re:/\bDARF\b|\bDAS\b|SIMPLES NAC|\bICMS\b|\bISS\b|\bDARE\b|\bIPTU\b|\bINSS\b|\bGPS\b|IMPOSTO/},
   {k:'forn',l:'Fornecedores',ic:'📦',cats:['Insumos','Embalagens e Descartáveis','Revenda de Mercadorias','Aquisição de Material','Aquisição de Equipamentos','Gás','Material de Limpeza/Higiene','Material Promocional']},
   {k:'manut',l:'Manutenção',ic:'🛠️',cats:['Manutenções','Manutenção de Equipamentos','Manutenção Predial']},
-  {k:'obra',l:'Obra',ic:'🏗️',cats:['Obra e Reformas','Decorações e Paisagismo']},
-  {k:'serv',l:'Prestação de serviço',ic:'🤝',cats:['Prestação de Serviços','Contabilidade','Consultoria/Assessoria','Advocacia','Segurança','Freelancer','Transporte de Terceiros']},
+  {k:'serv',l:'Prestação de serviço',curto:'Serviços',ic:'🤝',cats:['Prestação de Serviços','Contabilidade','Consultoria/Assessoria','Advocacia','Segurança','Freelancer','Transporte de Terceiros']},
+  // Outros (Maikon 20/10, no lugar de Obra): tudo que não é dos outros tipos — menos as transferências internas do grupo
+  {k:'outros',l:'Outros',ic:'🗂️',outros:true},
 ];
+const _G_INTERNAS=['Transferência entre Contas','Cobertura de Conta'];
 let GRUPO='', GPER='dia', GDE='', GATE='';
 const _gNorm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase();
 function noGrupo(c,g){
   if(!c) return false;
   if(g.k==='boleto') return catEfetiva(c)==='boleto';
+  if(g.outros){ const ce=catEfetiva(c); if(ce==='entrecontas'||ce==='transfconta') return false;
+    const cat=catOficial(c.categoria||''); if(_G_INTERNAS.includes(cat)) return false;
+    return !GRUPOS.some(x=>x.k!=='boleto' && !x.outros && noGrupo(c,x)); }
   const cat=catOficial(c.categoria||'');
   if(cat && cat!=='Sem categoria') return g.cats.includes(cat);
   return !!(g.re && g.re.test(_gNorm((c.desc||'')+' '+(c.ref||''))));
@@ -1392,8 +1402,8 @@ function grupoPeriodo(p){ GPER=p; if(p==='livre'&&!GDE){ const [a,b]=_gPeriodo()
 function grupoDatas(){ GDE=document.getElementById('gpDe').value; GATE=document.getElementById('gpAte').value; GPER='livre'; renderGrupo(); }
 function renderGrupo(){
   const bar=document.getElementById('grupoBar'), pn=document.getElementById('grupoPainel'); if(!bar||!pn) return;
-  bar.innerHTML='<span class="gb-lbl">Filtrar gastos:</span>'+GRUPOS.map(g=>`<button type="button" class="fm-chip${GRUPO===g.k?' on':''}" onclick="escolherGrupo('${g.k}')">${g.ic} ${g.l}</button>`).join('')
-    +(GRUPO?`<button type="button" class="fm-chip" onclick="escolherGrupo('')">✕ Tirar filtro</button>`:'');
+  bar.innerHTML=GRUPOS.map(g=>`<button type="button" class="fm-chip${GRUPO===g.k?' on':''}" onclick="escolherGrupo('${g.k}')"><span class="gi">${g.ic} </span><span class="gl">${g.l}</span>${g.curto?`<span class="gs">${g.curto}</span>`:''}</button>`).join('')
+    +(GRUPO?`<button type="button" class="fm-chip" onclick="escolherGrupo('')">✕ <span class="gl">Tirar filtro</span><span class="gs">Limpar</span></button>`:'');
   document.body.classList.toggle('grupo-on', !!GRUPO);
   if(!GRUPO){ pn.innerHTML=''; return; }
   const g=GRUPOS.find(x=>x.k===GRUPO), [de,ate]=_gPeriodo(), br=s=>s.split('-').reverse().join('/');
@@ -2119,14 +2129,24 @@ async function informarDiretoria(){
 }
 function fecharInfDir(){ const m=document.getElementById('infDirModal'); if(m) m.innerHTML=''; }
 const _infDirNome=()=>`Pagamentos ${diaAtual}.png`;
-// Envio automático (template com imagem na Meta) ainda não aprovado: até lá o botão só mostra como vai funcionar.
-const INF_DIR_ENVIO_ATIVO = false;
-function infDirEnviar(){
-  if (!INF_DIR_ENVIO_ATIVO){
-    document.getElementById('infDirAviso').innerHTML='🧪 <b>Teste ok!</b> Nada foi enviado hoje. Quando o envio for ligado, este botão manda esta imagem direto no WhatsApp do Maikon.';
-    document.getElementById('infDirEnviar').textContent='✅ Teste ok (não enviado)';
-    return;
-  }
+// Envio (Maikon 20/10): a imagem vai para pagamentos_diarios/informar_diretoria e a função do Firebase manda no WhatsApp do Maikon
+// pelo modelo resumo_pagamentos_dia (o número dele fica só no servidor). A resposta (enviado ou o motivo) volta no mesmo lugar.
+const INF_DIR_ENVIO_ATIVO = true;
+async function infDirEnviar(){
+  const b=document.getElementById('infDirEnviar'), av=document.getElementById('infDirAviso');
+  if(!_infDirBlob || !diaAtual) return;
+  b.disabled=true; b.textContent='⏳ Enviando…'; av.textContent='';
+  try{
+    const png=await new Promise((ok,erro)=>{ const fr=new FileReader(); fr.onload=()=>ok(String(fr.result).split(',')[1]); fr.onerror=erro; fr.readAsDataURL(_infDirBlob); });
+    const r=resumoDiretoria(getDia(diaAtual));
+    let quem=''; try{ const u=JSON.parse(localStorage.getItem('jb_user')||'{}'); quem=u.nome||u.username||''; }catch(e){}
+    const ref=fbDB.ref('informar_diretoria').push();
+    await ref.set({ dia:diaAtual, png, total:fmt(r.pagar), contas:r.n, quem:quem||'Financeiro', criado:Date.now() });
+    const res=await new Promise(ok=>{ const t=setTimeout(()=>{ ref.child('resultado').off(); ok(null); },60000);
+      ref.child('resultado').on('value',sn=>{ const v=sn.val(); if(v){ clearTimeout(t); ref.child('resultado').off(); ok(v); } }); });
+    if(res && res.ok){ b.textContent='✅ Enviado'; av.innerHTML='✅ <b>Enviado</b> no WhatsApp do Maikon.'; }
+    else { b.disabled=false; b.textContent='📤 Tentar de novo'; av.innerHTML='⚠️ <b>Não foi enviado</b>: '+esc((res&&res.erro)||'sem resposta do servidor em 1 minuto'); }
+  }catch(e){ b.disabled=false; b.textContent='📤 Tentar de novo'; av.innerHTML='⚠️ Não foi enviado: '+esc(e.message||String(e)); }
 }
 function infDirBaixar(){ const a=document.createElement('a'); a.href=URL.createObjectURL(_infDirBlob); a.download=_infDirNome(); document.body.appendChild(a); a.click(); a.remove(); }
 function catEfetiva(c) {
