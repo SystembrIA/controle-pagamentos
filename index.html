@@ -499,6 +499,12 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
   .toolbar label{white-space:nowrap;font-size:.78rem;}
   .toolbar input[type=date]{flex:1;}
   .btn-mobile-hide{display:none !important;}
+  /* Período (Maikon 20/10): no celular vai para a linha de baixo, de ponta a ponta */
+  .toolbar{flex-wrap:wrap;}
+  .toolbar .per-topo{order:9;flex:1 1 100%;flex-wrap:nowrap;}
+  .toolbar .per-topo{gap:4px;}
+  .toolbar .per-topo input[type=date]{min-width:0;padding:6px 4px;font-size:.76rem;}
+  .toolbar .per-topo .btn{padding:4px 7px;flex:0 0 auto;}
 
   /* banner de total: aparece só em mobile */
   .mobile-total-banner{
