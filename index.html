@@ -499,12 +499,10 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
   .toolbar label{white-space:nowrap;font-size:.78rem;}
   .toolbar input[type=date]{flex:1;}
   .btn-mobile-hide{display:none !important;}
-  /* Período (Maikon 20/10): no celular vai para a linha de baixo, de ponta a ponta */
-  .toolbar{flex-wrap:wrap;}
-  .toolbar .per-topo{order:9;flex:1 1 100%;flex-wrap:nowrap;}
-  .toolbar .per-topo{gap:4px;}
-  .toolbar .per-topo input[type=date]{min-width:0;padding:6px 4px;font-size:.76rem;}
-  .toolbar .per-topo .btn{padding:4px 7px;flex:0 0 auto;}
+  /* Celular (Maikon 20/10): Data na 1ª linha; Período e Informar diretoria embaixo, lado a lado e do mesmo tamanho */
+  .toolbar{flex-wrap:wrap}
+  .toolbar .tb-quebra{display:block;flex:0 0 100%;height:0}
+  .toolbar .btn-per,.toolbar #btnInfDir{flex:1 1 0;justify-content:center;white-space:nowrap;padding:9px 8px;font-size:.8rem}
 
   /* banner de total: aparece só em mobile */
   .mobile-total-banner{
@@ -719,8 +717,9 @@ tr.linha-total td{font-weight:800;color:#1e40af !important;background:#e8efff;fo
 .gp-tab tfoot td{font-weight:900;border-top:2px solid #cbd5e1;border-bottom:none}
 body.grupo-on #saldoSection,body.grupo-on #uploadSection,body.grupo-on #contasSection,body.grupo-on #mobileTotalBanner{display:none !important}
 .grupo-bar .gs{display:none}
-.per-topo{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
-.per-topo .per-ate{font-size:.8rem;color:#64748b;font-weight:700}
+.btn-per{white-space:nowrap}
+.tb-quebra{display:none}
+.btn-per.on{background:#1e40af;border-color:#1e40af;color:#fff}
 @media (max-width:768px){ .gp-cards{grid-template-columns:1fr 1fr} .gp-tab .mob-hide{display:none}
   /* celular: os botões em duas linhas de quatro, sem ícone e com o nome curto */
   .grupo-bar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
@@ -818,8 +817,9 @@ body.grupo-on #saldoSection,body.grupo-on #uploadSection,body.grupo-on #contasSe
 <div class="toolbar">
   <label><i class="fa-regular fa-calendar"></i> Data:</label>
   <input type="date" id="selData" onchange="carregarDia()" autocomplete="off">
-  <!-- Período (Maikon 20/10): a tela abre sempre no dia; aqui escolhe um período maior para os filtros de gastos -->
-  <span class="per-topo"><label>Período:</label><input type="date" id="perDe" onchange="periodoTopo()" autocomplete="off"><span class="per-ate">até</span><input type="date" id="perAte" onchange="periodoTopo()" autocomplete="off"><button type="button" class="btn btn-outline btn-sm" id="perLimpa" onclick="periodoTopo(true)" title="Voltar para o dia" style="display:none">✕</button></span>
+  <!-- Período (Maikon 20/10): a tela abre sempre no dia; o botão abre a janelinha para escolher de / até (vale para os filtros de gastos) -->
+  <span class="tb-quebra"></span>
+  <button type="button" class="btn btn-outline btn-sm btn-per" id="btnPer" onclick="abrirPeriodo()">📅 <span id="btnPerTxt">Período</span></button>
   <button class="btn btn-primary btn-mobile-hide" onclick="novoDia()"><i class="fa-solid fa-plus"></i> Novo controle</button>
   <button class="btn btn-outline btn-mobile-hide" onclick="abrirSaldoModal()"><i class="fa-solid fa-pen"></i> Editar saldos</button>
   <button class="btn btn-success btn-mobile-hide" onclick="abrirExportar()"><i class="fa-solid fa-download"></i> Exportar</button>
@@ -897,6 +897,25 @@ body.grupo-on #saldoSection,body.grupo-on #uploadSection,body.grupo-on #contasSe
     <div class="modal-btns">
       <button class="btn btn-outline" onclick="fecharModal('saldoModal')">Cancelar</button>
       <button class="btn btn-primary" onclick="salvarSaldos()"><i class="fa-solid fa-floppy-disk"></i> Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PERÍODO (Maikon 20/10) -->
+<div class="overlay" id="perModal" onclick="if(event.target===this)fecharModal('perModal')">
+  <div class="modal" style="max-width:360px">
+    <h3><i class="fa-regular fa-calendar"></i> Período</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px;">
+      <div class="form-row"><label>De</label><input type="date" id="perDe"></div>
+      <div class="form-row"><label>Até</label><input type="date" id="perAte"></div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 6px">
+      <button type="button" class="btn btn-outline btn-sm" onclick="perRapido('mes')">Mês até o dia</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="perRapido('mesant')">Mês anterior</button>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-outline" onclick="periodoTopo(true)">Voltar ao dia</button>
+      <button class="btn btn-primary" onclick="periodoTopo()">Aplicar</button>
     </div>
   </div>
 </div>
@@ -1410,17 +1429,20 @@ function _gPeriodo(){
   return [dia,dia];
 }
 function escolherGrupo(k){ GRUPO=(GRUPO===k)?'':k; renderGrupo(); window.scrollTo({top:0,behavior:'smooth'}); }
-function _sincPerTopo(){ const a=document.getElementById('perDe'), b=document.getElementById('perAte'), x=document.getElementById('perLimpa'); if(!a) return;
-  const liv=GPER==='livre'&&GDE&&GATE; a.value=liv?GDE:''; b.value=liv?GATE:''; if(x) x.style.display=liv?'':'none'; }
+function _sincPerTopo(){ const t=document.getElementById('btnPerTxt'), b=document.getElementById('btnPer'); if(!t) return;
+  const liv=GPER==='livre'&&GDE&&GATE, br=x=>x.split('-').reverse().slice(0,2).join('/');
+  t.textContent=liv?`${br(GDE)} a ${br(GATE)}`:'Período'; b.classList.toggle('on',!!liv); }
 function grupoPeriodo(p){ GPER=p; if(p==='livre'&&!GDE){ const [a,b]=_gPeriodo(); GDE=a; GATE=b; } _sincPerTopo(); renderGrupo(); }
 function grupoDatas(){ GDE=document.getElementById('gpDe').value; GATE=document.getElementById('gpAte').value; GPER='livre'; _sincPerTopo(); renderGrupo(); }
-// período lá em cima (do lado da Data): vale para os filtros de gastos; sem filtro escolhido, só avisa para tocar num botão
+// botão Período lá em cima (do lado da Data): abre a janelinha de / até; vale para os filtros de gastos
+function abrirPeriodo(){ const [a,b]=GPER==='livre'&&GDE?[GDE,GATE]:_gPeriodo(); document.getElementById('perDe').value=a; document.getElementById('perAte').value=b; document.getElementById('perModal').classList.add('open'); }
+function perRapido(k){ const g=GPER; GPER=k; const [a,b]=_gPeriodo(); GPER=g; document.getElementById('perDe').value=a; document.getElementById('perAte').value=b; }
 function periodoTopo(limpa){
-  const a=document.getElementById('perDe'), b=document.getElementById('perAte');
-  if(limpa){ a.value=''; b.value=''; GPER='dia'; GDE=''; GATE=''; _sincPerTopo(); renderGrupo(); return; }
-  if(a.value && !b.value) b.value=a.value; if(b.value && !a.value) a.value=b.value;
-  if(!a.value) return;
-  GDE=a.value; GATE=b.value; GPER='livre'; _sincPerTopo(); renderGrupo();
+  fecharModal('perModal');
+  if(limpa){ GPER='dia'; GDE=''; GATE=''; _sincPerTopo(); renderGrupo(); return; }
+  let a=document.getElementById('perDe').value, b=document.getElementById('perAte').value;
+  if(a && !b) b=a; if(b && !a) a=b; if(!a) return;
+  GDE=a<=b?a:b; GATE=a<=b?b:a; GPER='livre'; _sincPerTopo(); renderGrupo();
   if(!GRUPO) toast('📅 Período escolhido: toque num botão de gasto (Boletos, Funcionários…) para ver o total');
 }
 function renderGrupo(){
