@@ -691,6 +691,28 @@ tr.linha-total td{font-weight:800;color:#1e40af !important;background:#e8efff;fo
 .fm-chip{border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:999px;padding:4px 11px;font-size:.78rem;font-weight:700;cursor:pointer;line-height:1.3}
 .fm-chip small{opacity:.6;font-weight:700;margin-left:2px}
 .fm-chip.on{background:#1e40af;border-color:#1e40af;color:#fff}
+/* Filtro por tipo de gasto (Maikon 20/10) */
+#grupoSection{margin:0 0 12px}
+.grupo-bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.grupo-bar .gb-lbl{font-size:.78rem;font-weight:800;color:#475569;margin-right:2px}
+.gp-box{background:#fff;border:1px solid #e8ecf3;border-radius:14px;padding:12px;margin-top:10px;box-shadow:0 2px 10px rgba(15,23,42,.06)}
+.gp-per{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.gp-per input[type=date]{padding:5px 8px;font-size:.8rem}
+.gp-total{background:#1e293b;color:#fff;border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+.gp-total .t1{font-size:.85rem;font-weight:800}.gp-total .t1 small{display:block;font-weight:600;opacity:.75;font-size:.72rem}
+.gp-total .t2{font-size:1.25rem;font-weight:900;font-variant-numeric:tabular-nums;white-space:nowrap}
+.gp-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:10px}
+.gp-card{border:1px solid #e8ecf3;border-top:4px solid var(--cor);border-radius:12px;padding:9px 10px;display:flex;flex-direction:column;gap:3px}
+.gp-card .n{font-size:.75rem;font-weight:800;color:var(--cor);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gp-card .v{font-size:1rem;font-weight:900;font-variant-numeric:tabular-nums;text-align:right}
+.gp-card .q{font-size:.68rem;color:#64748b;text-align:right}
+.gp-tab{width:100%;border-collapse:collapse;font-size:.8rem}
+.gp-tab th,.gp-tab td{padding:6px 6px;border-bottom:1px solid #eef1f6;text-align:left;vertical-align:top}
+.gp-tab th{font-size:.7rem;color:#64748b;text-transform:uppercase;letter-spacing:.3px}
+.gp-tab .r{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.gp-tab tfoot td{font-weight:900;border-top:2px solid #cbd5e1;border-bottom:none}
+body.grupo-on #saldoSection,body.grupo-on #uploadSection,body.grupo-on #contasSection,body.grupo-on #mobileTotalBanner{display:none !important}
+@media (max-width:768px){ .gp-cards{grid-template-columns:1fr 1fr} .gp-tab .mob-hide{display:none} }
 /* ══ Cards por empresa no celular em pé (Maikon 12/10) ══ */
 .mc-info{display:none}
 @media screen and (max-width:768px) and (orientation:portrait){
@@ -828,6 +850,12 @@ tr.linha-total td{font-weight:800;color:#1e40af !important;background:#e8efff;fo
   <div id="saldoSection">
     <div class="section-title saldo-titulo-wrap" style="justify-content:flex-start;"><i class="fa-solid fa-building-columns"></i> Saldos em Conta — <span id="saldoLabel">—</span></div>
     <div class="saldo-grid" id="saldoGrid"></div>
+  </div>
+
+  <!-- FILTRO POR TIPO DE GASTO (Maikon 20/10) -->
+  <div id="grupoSection" class="no-print">
+    <div class="grupo-bar" id="grupoBar"></div>
+    <div id="grupoPainel"></div>
   </div>
 
   <!-- UPLOAD -->
@@ -1235,6 +1263,7 @@ function renderTudo() {
   Object.keys(d.contas||{}).forEach(k => { if (!(d.travados||{})[k] && casarMotoboyPendentes(k)) { atualizarTravaEmpresa(k); casou = true; } });
   renderSaldos(d);
   renderContas(d);
+  renderGrupo();
   if (casou) { salvarNuvem(); toast('✅ Pix dos motoboys casados com o lançamento Motoboy'); }
 }
 
@@ -1325,6 +1354,73 @@ function renderSaldos(d) {
       elR.style.color=totalFinalReal<0?'#fca5a5':'#6ee7b7';
     }
   }
+}
+
+// ── FILTRO POR TIPO DE GASTO (Maikon 20/10) ─────────────────
+/* Botões embaixo dos saldos: Boletos · Funcionários · Impostos · Fornecedores · Manutenção · Obra · Prestação de serviço.
+   Escolhido um, os cards normais saem e aparece o total daquele tipo no período (o dia, o mês ou um período livre),
+   o valor de cada empresa e a lista dos lançamentos. Boletos = forma de pagamento; os outros vêm da categoria do lançamento
+   (lançamento sem categoria: pelo texto, ex. "FOLHA PAGTO", "DARF"). Motoboy não entra em Funcionários (não é funcionário). */
+const GRUPOS=[
+  {k:'boleto',l:'Boletos',ic:'📄'},
+  {k:'func',l:'Funcionários',ic:'👥',cats:['Salário dos Funcionários','Adiantamento Salarial','Rescisão','Férias','13º Salário','FGTS','FGTS Rescisório','Vale Transporte','Alimentação Funcionários','Plano de Saúde','Comissões/Gorjetas','Bonificação','Dias Trabalhados','Estagiários','Pensão Alimentícia','Sindicato','Cursos e Treinamentos','Empréstimos a Funcionários'],
+    re:/FOLHA PAG|PAGAMENTO DE SALARIO|PAGSAL|SALARIO|RESCIS|FERIAS|DIAS TRABALHADOS|ADIANTAMENTO|\bFGTS\b/},
+  {k:'imp',l:'Impostos',ic:'🏛️',cats:['Impostos','IPTU'],re:/\bDARF\b|\bDAS\b|SIMPLES NAC|\bICMS\b|\bISS\b|\bDARE\b|\bIPTU\b|\bINSS\b|\bGPS\b|IMPOSTO/},
+  {k:'forn',l:'Fornecedores',ic:'📦',cats:['Insumos','Embalagens e Descartáveis','Revenda de Mercadorias','Aquisição de Material','Aquisição de Equipamentos','Gás','Material de Limpeza/Higiene','Material Promocional']},
+  {k:'manut',l:'Manutenção',ic:'🛠️',cats:['Manutenções','Manutenção de Equipamentos','Manutenção Predial']},
+  {k:'obra',l:'Obra',ic:'🏗️',cats:['Obra e Reformas','Decorações e Paisagismo']},
+  {k:'serv',l:'Prestação de serviço',ic:'🤝',cats:['Prestação de Serviços','Contabilidade','Consultoria/Assessoria','Advocacia','Segurança','Freelancer','Transporte de Terceiros']},
+];
+let GRUPO='', GPER='dia', GDE='', GATE='';
+const _gNorm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase();
+function noGrupo(c,g){
+  if(!c) return false;
+  if(g.k==='boleto') return catEfetiva(c)==='boleto';
+  const cat=catOficial(c.categoria||'');
+  if(cat && cat!=='Sem categoria') return g.cats.includes(cat);
+  return !!(g.re && g.re.test(_gNorm((c.desc||'')+' '+(c.ref||''))));
+}
+function _gPeriodo(){
+  const dia=diaAtual||new Date().toLocaleDateString('sv'), [y,m]=dia.split('-').map(Number), p=n=>String(n).padStart(2,'0');
+  if(GPER==='mes') return [`${y}-${p(m)}-01`, dia];
+  if(GPER==='mesant'){ const a=new Date(y,m-2,1), b=new Date(y,m-1,0); return [a.toLocaleDateString('sv'), b.toLocaleDateString('sv')]; }
+  if(GPER==='livre' && GDE && GATE) return GDE<=GATE?[GDE,GATE]:[GATE,GDE];
+  return [dia,dia];
+}
+function escolherGrupo(k){ GRUPO=(GRUPO===k)?'':k; renderGrupo(); window.scrollTo({top:0,behavior:'smooth'}); }
+function grupoPeriodo(p){ GPER=p; if(p==='livre'&&!GDE){ const [a,b]=_gPeriodo(); GDE=a; GATE=b; } renderGrupo(); }
+function grupoDatas(){ GDE=document.getElementById('gpDe').value; GATE=document.getElementById('gpAte').value; GPER='livre'; renderGrupo(); }
+function renderGrupo(){
+  const bar=document.getElementById('grupoBar'), pn=document.getElementById('grupoPainel'); if(!bar||!pn) return;
+  bar.innerHTML='<span class="gb-lbl">Filtrar gastos:</span>'+GRUPOS.map(g=>`<button type="button" class="fm-chip${GRUPO===g.k?' on':''}" onclick="escolherGrupo('${g.k}')">${g.ic} ${g.l}</button>`).join('')
+    +(GRUPO?`<button type="button" class="fm-chip" onclick="escolherGrupo('')">✕ Tirar filtro</button>`:'');
+  document.body.classList.toggle('grupo-on', !!GRUPO);
+  if(!GRUPO){ pn.innerHTML=''; return; }
+  const g=GRUPOS.find(x=>x.k===GRUPO), [de,ate]=_gPeriodo(), br=s=>s.split('-').reverse().join('/');
+  const porEmp={}, linhas=[]; let total=0;
+  Object.keys(DB).filter(dt=>dt>=de && dt<=ate).sort().forEach(dt=>{
+    EMPRESAS.forEach(emp=>{ (((DB[dt]||{}).contas||{})[emp.key]||[]).forEach(c=>{
+      if(!noGrupo(c,g)) return; const v=Number(c.valor||0);
+      const e=porEmp[emp.key]||(porEmp[emp.key]={v:0,n:0,via:0});
+      // "Entre contas" = a empresa manda para a Just Service, que paga (o pagamento já aparece na SERVICE): não soma de novo,
+      // só mostra no card da empresa como "via Service" (mesma regra do total real dos saldos)
+      if(catEfetiva(c)==='transfconta'){ e.via+=v; return; }
+      e.v+=v; e.n++; total+=v; linhas.push({dt,emp,c,v});
+    }); });
+  });
+  linhas.sort((a,b)=>b.v-a.v);
+  const per=[['dia','Só o dia'],['mes','Mês até o dia'],['mesant','Mês anterior'],['livre','Período']];
+  const cards=EMPRESAS.filter(e=>porEmp[e.key]).map(e=>{ const x=porEmp[e.key];
+    return `<div class="gp-card" style="--cor:${COR_EMP[e.key]||'#e6a800'}"><span class="n">${e.emoji} ${e.label}</span><span class="v">${fmt(x.v)}</span><span class="q">${x.n} lançamento(s)</span>${x.via?`<span class="q" title="Mandado para a Just Service pagar (Entre contas): já está no card da SERVICE, não soma de novo">+ ${fmt(x.via)} via Service</span>`:''}</div>`; }).join('');
+  pn.innerHTML=`<div class="gp-box">
+    <div class="gp-per">${per.map(([k,l])=>`<button type="button" class="fm-chip${GPER===k?' on':''}" onclick="grupoPeriodo('${k}')">${l}</button>`).join('')}
+      ${GPER==='livre'?`<input type="date" id="gpDe" value="${de}" onchange="grupoDatas()"><span style="font-size:.78rem;color:#64748b">até</span><input type="date" id="gpAte" value="${ate}" onchange="grupoDatas()">`:''}</div>
+    <div class="gp-total"><div class="t1">${g.ic} ${g.l}<small>${de===ate?br(de):br(de)+' a '+br(ate)} · ${linhas.length} lançamento(s)</small></div><div class="t2">${fmt(total)}</div></div>
+    ${cards?`<div class="gp-cards">${cards}</div>`:'<div style="font-size:.85rem;color:#64748b;padding:6px 2px">Nada desse tipo no período.</div>'}
+    ${linhas.length?`<table class="gp-tab"><thead><tr><th>Data</th><th>Empresa</th><th>Fornecedor</th><th class="mob-hide">Categoria</th><th class="r">Valor</th></tr></thead><tbody>
+      ${linhas.map(x=>`<tr><td>${br(x.dt).slice(0,5)}</td><td>${x.emp.emoji} ${esc(x.emp.label)}</td><td>${esc(x.c.desc||x.c.ref||'—')}${x.c.ref&&x.c.desc?`<div style="font-size:.7rem;color:#94a3b8">${esc(String(x.c.ref).slice(0,60))}</div>`:''}</td><td class="mob-hide">${esc(catOficial(x.c.categoria||'')||'—')}</td><td class="r">${fmt(x.v)}</td></tr>`).join('')}
+      </tbody><tfoot><tr><td colspan="3">Total</td><td class="mob-hide"></td><td class="r">${fmt(total)}</td></tr></tfoot></table>`:''}
+  </div>`;
 }
 
 // ── CONTAS ──────────────────────────────────────────────
