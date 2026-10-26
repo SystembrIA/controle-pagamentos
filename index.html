@@ -8,7 +8,19 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>💳 Controle de Pagamento Diário</title>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+<script>
+/* Maikon 26/10: vigia da abertura — roda antes de tudo; se em 20 s a tela não abriu, diz em que etapa parou (mesmo se um arquivo de fora travar) */
+window.PG_ETAPA = 'baixar os arquivos da página';
+setTimeout(function () {
+  var o = document.getElementById('loadingOverlay');
+  if (!o || getComputedStyle(o).display === 'none' || o.getAttribute('data-aviso')) return;
+  o.setAttribute('data-aviso', '1');
+  o.innerHTML = '<div style="font-size:38px">⚠️</div><h2 style="margin:10px 0 4px">Não consegui abrir</h2><p style="max-width:340px;text-align:center">Travou em: <b>' + window.PG_ETAPA + '</b>. Confira a internet e tente de novo. Se continuar, saia do Hub e entre de novo.</p>'
+    + '<button onclick="location.reload()" style="margin-top:14px;padding:12px 26px;border-radius:12px;border:0;background:#e6a800;color:#1a1d2e;font:800 15px inherit;cursor:pointer">Tentar de novo</button>'
+    + '<a href="https://systembria.github.io/hub/" style="margin-top:10px;font-weight:700;color:inherit">Ir para o Hub</a>';
+}, 20000);
+</script>
+<script async src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -29,14 +41,15 @@ const PG_HUB = 'https://systembria.github.io/hub/';
 /* Maikon 26/10: a tela ficava girando sem abrir. Cada etapa agora tem tempo limite: se travar, mostra qual foi e "Tentar de novo". */
 function _pgLimite(p, ms, etapa) { return Promise.race([p, new Promise(function (_, n) { setTimeout(function () { n(new Error(etapa)); }, ms); })]); }
 function _pgTravou(etapa) {
-  var o = document.getElementById('loadingOverlay'); if (!o) return;
+  var o = document.getElementById('loadingOverlay'); if (!o) return; o.setAttribute('data-aviso', '1');
   o.innerHTML = '<div style="font-size:38px">⚠️</div><h2 style="margin:10px 0 4px">Não consegui abrir</h2><p style="max-width:340px;text-align:center">Travou em: <b>' + etapa + '</b>. Confira a internet e tente de novo. Se continuar, saia do Hub e entre de novo.</p>'
     + '<button onclick="location.reload()" style="margin-top:14px;padding:12px 26px;border-radius:12px;border:0;background:#e6a800;color:#1a1d2e;font:800 15px inherit;cursor:pointer">Tentar de novo</button>'
     + '<a href="https://systembria.github.io/hub/" style="margin-top:10px;font-weight:700;color:inherit">Ir para o Hub</a>';
 }
 async function _pgConferirAcesso() {
   var u = null, nome = '';
-  try { u = (window.JbLogin && JbLogin.pronto) ? await _pgLimite(JbLogin.pronto(), 12000, 'login') : null; } catch (e) { _pgTravou('login (o Hub não respondeu)'); return new Promise(function () {}); }
+  window.PG_ETAPA = 'login (o Hub não respondeu)';
+  try { u = (window.JbLogin && JbLogin.pronto) ? await _pgLimite(JbLogin.pronto(), 10000, 'login') : null; } catch (e) { _pgTravou('login (o Hub não respondeu)'); return new Promise(function () {}); }
   if (u) { try { nome = String((await _pgLimite(u.getIdTokenResult(), 12000, 'login')).claims.username || '').toLowerCase(); } catch (e) {} }
   if (u && PG_PERMITIDOS.indexOf(nome) >= 0) { window.PG_USER = nome; return; }
   var ov = document.createElement('div');
@@ -1265,7 +1278,8 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   await _pgConferirAcesso();
   // Informar diretoria (Maikon 20/10): para ele não precisa (é quem recebe) — fica para a Jaqueline, Juliana e Pedro
   if (window.PG_USER === 'justadm') { const b=document.getElementById('btnInfDir'); if (b) b.style.display='none'; }
-  try { await _pgLimite(carregarDadosNuvem(), 25000, 'pagamentos'); await _pgLimite(carregarContasBancarias(), 15000, 'contas bancárias'); }
+  window.PG_ETAPA = 'carregar os pagamentos do banco';
+  try { await _pgLimite(carregarDadosNuvem(), 18000, 'pagamentos'); await _pgLimite(carregarContasBancarias(), 15000, 'contas bancárias'); }
   catch (e) { _pgTravou('carregar os ' + e.message + ' do banco'); return; }
   document.getElementById('loadingOverlay').style.display='none';
   const hoje = new Date().toLocaleDateString('sv');
