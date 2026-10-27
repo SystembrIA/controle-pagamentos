@@ -1216,16 +1216,18 @@ function _pgInicioCarga() {
   const h = new Date(), m = new Date(h.getFullYear(), h.getMonth(), 1), q = new Date(h.getTime() - 15 * 864e5);
   return (q < m ? q : m).toLocaleDateString('sv');
 }
-let PG_DESDE = _pgInicioCarga();
+// Maikon 27/10: abre na hora com hoje e ontem; o resto do mês (+15 dias) vem por trás, sem segurar a tela
+const _pgOntem = () => new Date(Date.now() - 864e5).toLocaleDateString('sv');
+let PG_DESDE = _pgOntem();
 const _pgJunta = data => { for (const [dt, val] of Object.entries(data || {})) { if (!val) continue; DB[dt] = { saldos: val.saldos||{}, contas: val.contas||{}, travados: val.travados||{} }; } };
 let _pgBuscando = null;
-function _pgGarante(de) {  // garante no DB os dias desde "de"
+function _pgGarante(de, silencioso) {  // garante no DB os dias desde "de"
   if (!de || de >= PG_DESDE) return Promise.resolve();
-  if (_pgBuscando) return _pgBuscando.then(() => _pgGarante(de));
+  if (_pgBuscando) return _pgBuscando.then(() => _pgGarante(de, silencioso));
   const ate = new Date(new Date(PG_DESDE + 'T12:00:00').getTime() - 864e5).toLocaleDateString('sv');
-  toast('⏳ Buscando dias anteriores…');
+  if (!silencioso) toast('⏳ Buscando dias anteriores…');
   _pgBuscando = _pgLer('pagamentos', de, ate).then(val => { _pgJunta(val); PG_DESDE = de; preencherHistorico(); })
-    .catch(() => toast('⚠️ Não consegui buscar os dias anteriores. Tente de novo.')).finally(() => { _pgBuscando = null; });
+    .catch(() => { if (!silencioso) toast('⚠️ Não consegui buscar os dias anteriores. Tente de novo.'); }).finally(() => { _pgBuscando = null; });
   return _pgBuscando;
 }
 async function carregarDadosNuvem() {
@@ -1318,6 +1320,8 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   try { await _pgLimite(carregarDadosNuvem(), 18000, 'pagamentos'); await _pgLimite(carregarContasBancarias(), 15000, 'contas bancárias'); }
   catch (e) { _pgTravou('carregar os ' + e.message + ' do banco'); return; }
   document.getElementById('loadingOverlay').style.display='none';
+  // por trás, sem segurar a tela: o resto do mês atual + últimos 15 dias
+  setTimeout(() => _pgGarante(_pgInicioCarga(), true).then(() => { if (typeof GRUPO !== 'undefined' && GRUPO) renderGrupo(); }), 300);
   const hoje = new Date().toLocaleDateString('sv');
   document.getElementById('selData').value = hoje;
   carregarDia();
