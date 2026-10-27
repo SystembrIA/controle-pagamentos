@@ -1192,17 +1192,32 @@ function preencherHistorico() {
   }
 }
 
+/* Maikon 26/10: a leitura pelo canal ao vivo do Firebase às vezes não responde (a tela girava sem fim).
+   Se não vier em 8 s, busca o mesmo dado pelo endereço direto do banco (REST), com o login do Hub. */
+let PG_VIA_REST = false;
+async function _pgLer(caminho) {
+  try { return await _pgLimite(fbDB.ref(caminho).once('value').then(sn => sn.val()), 8000, 'ao vivo'); }
+  catch (e) {
+    if (e && e.message !== 'ao vivo') throw e;
+    let auth = '';
+    try { auth = await _pgLimite(JbLogin.paramAuth(), 8000, 'login'); } catch (x) {}
+    const r = await _pgLimite(fetch('https://justburger-producao-e9b27-default-rtdb.firebaseio.com/pagamentos_diarios/' + caminho + '.json' + (auth ? '?' + auth : ''), { cache: 'no-store' }), 15000, 'pagamentos');
+    if (!r.ok) throw new Error('banco respondeu ' + r.status);
+    PG_VIA_REST = true;
+    return await r.json();
+  }
+}
 async function carregarDadosNuvem() {
   setSyncBar('','Conectando ao Firebase...');
   return new Promise(resolve => {
-    fbDB.ref('pagamentos').once('value')
-      .then(snap => {
-        const data = snap.val() || {};
+    _pgLer('pagamentos')
+      .then(val => {
+        const data = val || {};
         for (const [dt, val] of Object.entries(data)) {
           DB[dt] = { saldos: val.saldos||{}, contas: val.contas||{}, travados: val.travados||{} };
         }
         preencherHistorico();
-        setSyncBar('ok', `${Object.keys(data).length} dia(s) carregado(s)`);
+        setSyncBar('ok', `${Object.keys(data).length} dia(s) carregado(s)${PG_VIA_REST ? ' · caminho alternativo' : ''}`);
         resolve();
       })
       .catch(() => {
@@ -2282,8 +2297,7 @@ let CONTAS_BANCARIAS = {}; // { empKey: 'numero da conta' }, carregado do Fireba
 
 async function carregarContasBancarias() {
   try {
-    const snap = await fbDB.ref('config/contasBancarias').once('value');
-    CONTAS_BANCARIAS = snap.val() || {};
+    CONTAS_BANCARIAS = (await _pgLer('config/contasBancarias')) || {};
   } catch(e) { CONTAS_BANCARIAS = {}; }
 }
 
