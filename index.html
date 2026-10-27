@@ -1195,22 +1195,43 @@ function preencherHistorico() {
 /* Maikon 26/10: a leitura pelo canal ao vivo do Firebase às vezes não responde (a tela girava sem fim).
    Se não vier em 8 s, busca o mesmo dado pelo endereço direto do banco (REST), com o login do Hub. */
 let PG_VIA_REST = false;
-async function _pgLer(caminho) {
-  try { return await _pgLimite(fbDB.ref(caminho).once('value').then(sn => sn.val()), 8000, 'ao vivo'); }
+async function _pgLer(caminho, de, ate) {
+  const faixa = !!(de || ate);
+  let ref = fbDB.ref(caminho); if (faixa) { ref = ref.orderByKey(); if (de) ref = ref.startAt(de); if (ate) ref = ref.endAt(ate); }
+  try { return await _pgLimite(ref.once('value').then(sn => sn.val()), 8000, 'ao vivo'); }
   catch (e) {
     if (e && e.message !== 'ao vivo') throw e;
     let auth = '';
     try { auth = await _pgLimite(JbLogin.paramAuth(), 8000, 'login'); } catch (x) {}
-    const r = await _pgLimite(fetch('https://justburger-producao-e9b27-default-rtdb.firebaseio.com/pagamentos_diarios/' + caminho + '.json' + (auth ? '?' + auth : ''), { cache: 'no-store' }), 15000, 'pagamentos');
+    const qs = [auth, faixa ? 'orderBy=' + encodeURIComponent('"$key"') : '', de ? 'startAt=' + encodeURIComponent('"' + de + '"') : '', ate ? 'endAt=' + encodeURIComponent('"' + ate + '"') : ''].filter(Boolean).join('&');
+    const r = await _pgLimite(fetch('https://justburger-producao-e9b27-default-rtdb.firebaseio.com/pagamentos_diarios/' + caminho + '.json' + (qs ? '?' + qs : ''), { cache: 'no-store' }), 15000, 'pagamentos');
     if (!r.ok) throw new Error('banco respondeu ' + r.status);
     PG_VIA_REST = true;
     return await r.json();
   }
 }
+/* Maikon 27/10: abre só com o mês atual + os últimos 15 dias (era o histórico todo, ~150 dias).
+   Período, exportação ou busca com datas mais antigas buscam esses dias na hora. */
+function _pgInicioCarga() {
+  const h = new Date(), m = new Date(h.getFullYear(), h.getMonth(), 1), q = new Date(h.getTime() - 15 * 864e5);
+  return (q < m ? q : m).toLocaleDateString('sv');
+}
+let PG_DESDE = _pgInicioCarga();
+const _pgJunta = data => { for (const [dt, val] of Object.entries(data || {})) { if (!val) continue; DB[dt] = { saldos: val.saldos||{}, contas: val.contas||{}, travados: val.travados||{} }; } };
+let _pgBuscando = null;
+function _pgGarante(de) {  // garante no DB os dias desde "de"
+  if (!de || de >= PG_DESDE) return Promise.resolve();
+  if (_pgBuscando) return _pgBuscando.then(() => _pgGarante(de));
+  const ate = new Date(new Date(PG_DESDE + 'T12:00:00').getTime() - 864e5).toLocaleDateString('sv');
+  toast('⏳ Buscando dias anteriores…');
+  _pgBuscando = _pgLer('pagamentos', de, ate).then(val => { _pgJunta(val); PG_DESDE = de; preencherHistorico(); })
+    .catch(() => toast('⚠️ Não consegui buscar os dias anteriores. Tente de novo.')).finally(() => { _pgBuscando = null; });
+  return _pgBuscando;
+}
 async function carregarDadosNuvem() {
   setSyncBar('','Conectando ao Firebase...');
   return new Promise(resolve => {
-    _pgLer('pagamentos')
+    _pgLer('pagamentos', PG_DESDE)
       .then(val => {
         const data = val || {};
         for (const [dt, val] of Object.entries(data)) {
@@ -1495,6 +1516,7 @@ function renderGrupo(){
   document.body.classList.toggle('grupo-on', !!GRUPO);
   if(!GRUPO){ pn.innerHTML=''; return; }
   const g=GRUPOS.find(x=>x.k===GRUPO), [de,ate]=_gPeriodo(), br=s=>s.split('-').reverse().join('/');
+  if(de<PG_DESDE){ pn.innerHTML='<div style="padding:14px;text-align:center;font-weight:700;color:#64748b">⏳ Buscando os dias do período…</div>'; _pgGarante(de).then(renderGrupo); return; }
   const porEmp={}, linhas=[]; let total=0;
   Object.keys(DB).filter(dt=>dt>=de && dt<=ate).sort().forEach(dt=>{
     EMPRESAS.forEach(emp=>{ (((DB[dt]||{}).contas||{})[emp.key]||[]).forEach(c=>{
@@ -2752,6 +2774,8 @@ function buscaAoDigitar() {
   const q = document.getElementById('buscaInput').value.trim();
   document.getElementById('btnLimparBusca').style.display = q ? '' : 'none';
   if (q.length < 2) { document.getElementById('buscaPanel').style.display='none'; return; }
+  // a busca procura em todos os dias: na primeira vez baixa o histórico que ainda não veio
+  if (PG_DESDE > '2026-01-01') { _pgGarante('2026-01-01').then(() => { const q2 = document.getElementById('buscaInput').value.trim(); if (q2.length >= 2) executarBusca(q2); }); }
   executarBusca(q);
 }
 
@@ -2847,10 +2871,12 @@ function exLinhas(){
   return {out,emp,de,ate};
 }
 function exContar(){
+  const _de=document.getElementById('exDe').value; if(_de && _de<PG_DESDE){ document.getElementById('exInfo').textContent='⏳ Buscando os dias do período…'; _pgGarante(_de).then(exContar); return; }
   const {out,de,ate}=exLinhas(), tot=out.reduce((s,x)=>s+(x.c.valor||0),0);
   document.getElementById('exInfo').textContent = de&&ate&&de>ate ? '⚠️ A data "De" está depois de "Até".' : `${out.length} lançamento(s) · ${fmt(tot)}`;
 }
 function exportarPeriodo(){
+  const _de=document.getElementById('exDe').value; if(_de && _de<PG_DESDE){ _pgGarante(_de).then(exportarPeriodo); return; }
   const {out,emp,de,ate}=exLinhas();
   if(!de||!ate||de>ate){ toast('📅 Confira o período'); return; }
   if(!out.length){ toast('Nenhum lançamento nesse período.'); return; }
