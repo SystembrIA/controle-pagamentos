@@ -522,7 +522,7 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
   .toolbar input[type=date]{flex:1;}
   .btn-mobile-hide{display:none !important;}
   /* Celular (Maikon 20/10): Período do lado da Data, numa linha só; Informar diretoria só no computador */
-  .toolbar #btnInfDir{display:none !important}
+  .toolbar #btnInfDir,.toolbar #btnSaldo{display:none !important}
   .toolbar #selData{flex:1 1 auto;min-width:0}
   .toolbar .btn-per{flex:0 0 auto;white-space:nowrap;padding:9px 10px;font-size:.8rem}
 
@@ -646,6 +646,10 @@ tfoot .val{color:#1e40af !important;font-size:.92rem;text-align:right;}
 #infDirRender .emp.total{border-top:2px solid #0f172a;border-bottom:none;background:#f8fafc;margin:0 -16px;padding:10px 16px}
 #infDirRender .emp.total .v{font-weight:900}
 #infDirRender .emp.info{color:#94a3b8;font-style:italic}
+#infDirRender .sl{display:flex;justify-content:space-between;align-items:baseline;padding:10px 0;border-bottom:1px solid #e2e8f0;font-size:15px;font-weight:800}
+#infDirRender .sl .ic{width:26px;flex:0 0 26px}#infDirRender .sl .nm{flex:1}#infDirRender .sl b{font-size:16px;font-weight:900;white-space:nowrap}
+#infDirRender .sl.total{border-top:2px solid #0f172a;border-bottom:none;background:#f8fafc;margin:0 -16px;padding:12px 16px}#infDirRender .sl.total b{font-size:18px}
+#infDirRender .sl.info{color:#94a3b8;font-style:italic}
 #infDirRender .rod{padding:12px 16px 16px;font-size:12px;color:#64748b;line-height:1.5;border-top:6px solid #f1f5f9}
 #infDirModal .idm-bg{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:14px}
 #infDirModal .idm{background:#fff;border-radius:14px;max-width:460px;width:100%;max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
@@ -852,6 +856,7 @@ body.grupo-on #saldoSection,body.grupo-on #uploadSection,body.grupo-on #contasSe
   <button class="btn btn-print btn-sm btn-mobile-hide" onclick="imprimir()" title="Uma folha para cada empresa"><i class="fa-solid fa-print"></i> Imprimir</button>
   <button class="btn btn-print btn-sm btn-mobile-hide" onclick="imprimirTodas()" title="Todas as empresas juntas, seguidas, com o total geral no fim"><i class="fa-solid fa-print"></i> Imprimir todas</button>
   <button class="btn btn-success btn-sm" id="btnInfDir" onclick="informarDiretoria()" title="Gera a imagem com o resumo do dia para mandar à diretoria"><i class="fa-solid fa-bullhorn"></i> Informar diretoria</button>
+  <button class="btn btn-success btn-sm" id="btnSaldo" onclick="enviarSaldo()" title="Manda a imagem com o saldo total e de cada conta para o WhatsApp do Maikon"><i class="fa-solid fa-building-columns"></i> Enviar saldo atualizado</button>
   <div class="busca-wrap btn-mobile-hide">
     <input type="text" id="buscaInput" placeholder="Buscar fornecedor em todas as datas..." oninput="buscaAoDigitar()" autocomplete="off">
     <button class="btn btn-outline btn-sm" onclick="limparBusca()" id="btnLimparBusca" style="display:none">✕</button>
@@ -1315,7 +1320,7 @@ window.addEventListener('resize', ()=>{
 document.addEventListener('DOMContentLoaded', async ()=>{
   await _pgConferirAcesso();
   // Informar diretoria (Maikon 20/10): para ele não precisa (é quem recebe) — fica para a Jaqueline, Juliana e Pedro
-  if (window.PG_USER === 'justadm') { const b=document.getElementById('btnInfDir'); if (b) b.style.display='none'; }
+  if (window.PG_USER === 'justadm') { ['btnInfDir','btnSaldo'].forEach(id=>{ const b=document.getElementById(id); if (b) b.style.display='none'; }); }
   window.PG_ETAPA = 'carregar os pagamentos do banco';
   try { await _pgLimite(carregarDadosNuvem(), 18000, 'pagamentos'); await _pgLimite(carregarContasBancarias(), 15000, 'contas bancárias'); }
   catch (e) { _pgTravou('carregar os ' + e.message + ' do banco'); return; }
@@ -2258,6 +2263,50 @@ async function infDirEnviar(){
     await ref.set({ dia:diaAtual, png, total:fmt(r.pagar), contas:r.n, quem:quem||'Financeiro', criado:Date.now() });
     const res=await new Promise(ok=>{ const t=setTimeout(()=>{ ref.child('resultado').off(); ok(null); },60000);
       ref.child('resultado').on('value',sn=>{ const v=sn.val(); if(v){ clearTimeout(t); ref.child('resultado').off(); ok(v); } }); });
+    if(res && res.ok){ b.textContent='✅ Enviado'; av.innerHTML='✅ <b>Enviado</b> no WhatsApp do Maikon.'; }
+    else { b.disabled=false; b.textContent='📤 Tentar de novo'; av.innerHTML='⚠️ <b>Não foi enviado</b>: '+esc((res&&res.erro)||'sem resposta do servidor em 1 minuto'); }
+  }catch(e){ b.disabled=false; b.textContent='📤 Tentar de novo'; av.innerHTML='⚠️ Não foi enviado: '+esc(e.message||String(e)); }
+}
+// Enviar saldo atualizado (Maikon 05/11): imagem com o saldo total e de cada conta, só para o WhatsApp do Maikon
+// (mesma fila do Informar diretoria, com tipo: 'saldo'; modelo saldo_contas_atualizado na Meta)
+function _quemPg(){ try{ const u=JSON.parse(localStorage.getItem('jb_user')||'{}'); return u.nome||u.username||''; }catch(e){ return ''; } }
+function _agoraBr(){ const a=new Date(), p=n=>String(n).padStart(2,'0'); return `${p(a.getDate())}/${p(a.getMonth()+1)}/${a.getFullYear()} ${p(a.getHours())}:${p(a.getMinutes())}`; }
+function resumoSaldo(d){ const r={emps:[],total:0,serv:null}; for (const emp of EMPRESAS){ const v=Number(d.saldos[emp.key]||0); if (emp.key==='SERVICE'){ r.serv={emp,v}; continue; } r.emps.push({emp,v}); r.total+=v; } return r; }
+function htmlSaldo(r){
+  const v=x=>Number(x||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}), quem=_quemPg();
+  const nm=t=>t.length<=3?t:t.toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase());
+  const lin=(ic,nome,val,cls)=>`<div class="sl ${cls||''}"><span class="ic">${ic}</span><span class="nm">${nome}</span><b class="${cls==='info'?'':(Number(val)<0?'neg':'')}">R$ ${v(val)}</b></div>`;
+  return `<div class="topo"><h1>🏦 SALDO DAS CONTAS</h1><div class="sub">Atualizado em ${_agoraBr()}${quem?' · '+quem:''}</div></div>
+  <div class="tot"><div class="tl liq"><span>Saldo total</span><b class="${r.total<0?'neg':'pos'}">R$ ${v(r.total)}</b></div></div>
+  <div class="lista">${r.emps.map(e=>lin(e.emp.emoji,nm(e.emp.label),e.v)).join('')}${lin('','TOTAL',r.total,'total')}
+  ${r.serv&&r.serv.v?lin(r.serv.emp.emoji,'Service (informativo)',r.serv.v,'info'):''}</div>`;
+}
+async function enviarSaldo(){
+  if (!diaAtual){ toast('📅 Abra o dia primeiro'); return; }
+  const r=resumoSaldo(getDia(diaAtual));
+  if (!r.emps.some(e=>e.v)){ toast('Nenhum saldo lançado neste dia.'); return; }
+  let box=document.getElementById('infDirRender'); if (!box){ box=document.createElement('div'); box.id='infDirRender'; document.body.appendChild(box); }
+  box.innerHTML=htmlSaldo(r);
+  try { await _carregaH2C(); } catch(e){ toast('❌ Não consegui gerar a imagem (sem internet?)'); return; }
+  const cv=await html2canvas(box,{scale:3,backgroundColor:'#ffffff',logging:false});
+  _infDirBlob=await new Promise(ok=>cv.toBlob(ok,'image/png'));
+  let m=document.getElementById('infDirModal'); if (!m){ m=document.createElement('div'); m.id='infDirModal'; document.body.appendChild(m); }
+  m.innerHTML=`<div class="idm-bg" onclick="if(event.target===this)fecharInfDir()"><div class="idm"><div class="idm-top"><b>🏦 Enviar saldo atualizado</b><button class="btn btn-outline btn-sm" onclick="fecharInfDir()">✕</button></div>
+    <div class="idm-dica" style="padding:8px 14px 0">É assim que vai chegar no WhatsApp do Maikon:</div>
+    <div class="idm-corpo"><img src="${URL.createObjectURL(_infDirBlob)}" alt="Saldo das contas"></div>
+    <div class="idm-acoes"><button class="btn btn-success" id="saldoEnviarBt" onclick="saldoEnviar()">📤 Enviar para o Maikon</button><button class="btn btn-outline" onclick="infDirBaixar()">⬇️ Baixar</button></div>
+    <div class="idm-dica" id="saldoAviso"></div></div></div>`;
+}
+async function saldoEnviar(){
+  const b=document.getElementById('saldoEnviarBt'), av=document.getElementById('saldoAviso');
+  if(!_infDirBlob || !diaAtual) return;
+  b.disabled=true; b.textContent='⏳ Enviando…'; av.textContent='';
+  try{
+    const png=await new Promise((ok,erro)=>{ const fr=new FileReader(); fr.onload=()=>ok(String(fr.result).split(',')[1]); fr.onerror=erro; fr.readAsDataURL(_infDirBlob); });
+    const r=resumoSaldo(getDia(diaAtual)), ref=fbDB.ref('informar_diretoria').push();
+    await ref.set({ tipo:'saldo', dia:diaAtual, png, total:fmt(r.total), quando:_agoraBr(), quem:_quemPg()||'Financeiro', criado:Date.now() });
+    const res=await new Promise(ok=>{ const t=setTimeout(()=>{ ref.child('resultado').off(); ok(null); },60000);
+      ref.child('resultado').on('value',sn=>{ const x=sn.val(); if(x){ clearTimeout(t); ref.child('resultado').off(); ok(x); } }); });
     if(res && res.ok){ b.textContent='✅ Enviado'; av.innerHTML='✅ <b>Enviado</b> no WhatsApp do Maikon.'; }
     else { b.disabled=false; b.textContent='📤 Tentar de novo'; av.innerHTML='⚠️ <b>Não foi enviado</b>: '+esc((res&&res.erro)||'sem resposta do servidor em 1 minuto'); }
   }catch(e){ b.disabled=false; b.textContent='📤 Tentar de novo'; av.innerHTML='⚠️ Não foi enviado: '+esc(e.message||String(e)); }
