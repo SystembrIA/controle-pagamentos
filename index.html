@@ -750,7 +750,7 @@ body.grupo-on #saldoSection,body.grupo-on #uploadSection,body.grupo-on #contasSe
 .btn-per.on{background:#1e40af;border-color:#1e40af;color:#fff}
 @media (max-width:768px){ .gp-cards{grid-template-columns:1fr 1fr} .gp-tab .mob-hide{display:none}
   /* celular: os botões em duas linhas de quatro, sem ícone e com o nome curto */
-  .grupo-bar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+  .grupo-bar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px} /* 9 botões: 3 x 3 alinhados (06/11) */
   .grupo-bar .fm-chip{padding:6px 2px;font-size:.7rem;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .grupo-bar .gi{display:none} .grupo-bar .fm-chip .gs{display:inline} .grupo-bar .fm-chip:has(.gs) .gl{display:none} }
 /* ══ Cards por empresa no celular em pé (Maikon 12/10) ══ */
@@ -1463,7 +1463,7 @@ function renderSaldos(d) {
 }
 
 // ── FILTRO POR TIPO DE GASTO (Maikon 20/10) ─────────────────
-/* Botões embaixo dos saldos: Boletos · Funcionários · Impostos · Fornecedores · Manutenção · Obra · Prestação de serviço.
+/* Botões embaixo dos saldos: Boletos · Funcionários · Impostos · Fornecedores · Manutenção · Prestação de serviço · Entre contas · Outros · Total.
    Escolhido um, os cards normais saem e aparece o total daquele tipo no período (o dia, o mês ou um período livre),
    o valor de cada empresa e a lista dos lançamentos. Boletos = forma de pagamento; os outros vêm da categoria do lançamento
    (lançamento sem categoria: pelo texto, ex. "FOLHA PAGTO", "DARF"). Motoboy não entra em Funcionários (não é funcionário). */
@@ -1475,6 +1475,8 @@ const GRUPOS=[
   {k:'forn',l:'Fornecedores',ic:'📦',cats:['Insumos','Embalagens e Descartáveis','Revenda de Mercadorias','Aquisição de Material','Aquisição de Equipamentos','Gás','Material de Limpeza/Higiene','Material Promocional']},
   {k:'manut',l:'Manutenção',ic:'🛠️',cats:['Manutenções','Manutenção de Equipamentos','Manutenção Predial']},
   {k:'serv',l:'Prestação de serviço',curto:'Serviços',ic:'🤝',cats:['Prestação de Serviços','Contabilidade','Consultoria/Assessoria','Advocacia','Segurança','Freelancer','Transporte de Terceiros']},
+  // Entre contas (Maikon 06/11): transferências entre as contas do grupo e coberturas de conta (não entram no Total)
+  {k:'entre',l:'Entre contas',ic:'🔁',entre:true},
   // Outros (Maikon 20/10, no lugar de Obra): tudo que não é dos outros tipos — menos as transferências internas do grupo
   {k:'outros',l:'Outros',ic:'🗂️',outros:true},
   // Total (Maikon 20/10): todos os gastos juntos (= soma dos tipos acima, sem Boletos, que é forma de pagamento), menos as transferências internas
@@ -1486,6 +1488,7 @@ const _gNorm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCas
 function noGrupo(c,g){
   if(!c) return false;
   if(g.k==='boleto') return catEfetiva(c)==='boleto';
+  if(g.entre){ const ce=catEfetiva(c); return ce==='entrecontas'||ce==='transfconta'||_G_INTERNAS.includes(catOficial(c.categoria||'')); }
   if(g.total){ const ce=catEfetiva(c); if(ce==='entrecontas'||ce==='transfconta') return false; return !_G_INTERNAS.includes(catOficial(c.categoria||'')); }
   if(g.outros){ const ce=catEfetiva(c); if(ce==='entrecontas'||ce==='transfconta') return false;
     const cat=catOficial(c.categoria||''); if(_G_INTERNAS.includes(cat)) return false;
