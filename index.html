@@ -1004,8 +1004,8 @@ body.grupo-on #saldoSection,body.grupo-on #uploadSection,body.grupo-on #contasSe
           <option value="ted"><i class="fa-solid fa-building-columns"></i> TED</option>
           <option value="motoboy">🏍️ Motoboy</option>
           <option value="cartao">💳 Cartão de Crédito</option>
-          <option value="entrecontas">🔁 Cobertura Conta</option>
-          <option value="transfconta">🔁 Entre Contas</option>
+          <option value="entrecontas">🔁 Entre contas – Cobertura (outra empresa do grupo)</option>
+          <option value="transfconta">🔁 Entre contas – Service (a Service paga)</option>
           <option value="outro">📌 Outro</option>
         </select></div>
       <div class="form-row"><label>Categoria</label>
@@ -1420,7 +1420,10 @@ function renderSaldos(d) {
   // sendo o valor cheio, pra bater com o extrato bancário.
   const totalDesconsiderado=totalEntreContas+totalTransfConta;
   const totalPagarReal=totalPagar-totalDesconsiderado;
-  const totalFinalReal=totalFinal-totalEntreContas;
+  // Maikon 06/11: o líquido real é do GRUPO TODO, com a conta da Service (antes tirava a cobertura duas vezes e misturava
+  // o pagamento da Service sem o saldo dela). Fecha a conta: saldo do grupo − pagamento real = líquido real.
+  const saldoService=(d.saldos||{}).SERVICE||0;
+  const totalFinalReal=totalIni+saldoService-totalPagarReal;
   const totalHtml=`<div class="total-card">
     <div class="emp-name">💰 TOTAL GERAL</div>
     <div class="saldo-mini">
@@ -1428,7 +1431,7 @@ function renderSaldos(d) {
       <div class="mini-val" style="color:#fca5a5">-${fmt(totalPagar)}</div>
       <div class="mini-val">${fmt(totalFinal)}</div>
     </div>
-    ${totalDesconsiderado>0?`<div class="saldo-mini saldo-mini-real" title="Total 'real' desconsidera Cobertura Conta (${fmt(totalEntreContas)}) e Entre Contas (${fmt(totalTransfConta)}) -- transferências internas entre empresas do grupo, incluindo pra Just Service">
+    ${totalDesconsiderado>0?`<div class="saldo-mini saldo-mini-real" title="Grupo todo, com a Service: tira as transferências internas (Cobertura ${fmt(totalEntreContas)} + para a Service ${fmt(totalTransfConta)}). Saldo do grupo ${fmt(totalIni+saldoService)} − pagamento real = líquido real.">
       <div class="mini-val-real mini-val-real-label">🔁 ${fmt(totalDesconsiderado)}</div>
       <div class="mini-val-real" style="color:#fca5a5">-${fmt(totalPagarReal)}</div>
       <div class="mini-val-real" style="color:#86efac">${fmt(totalFinalReal)}</div>
@@ -1678,7 +1681,7 @@ function imprimirTodas(ev) { imprimir(null, ev, true); }
 function imprimir(soEmp, ev, juntas) {
   if (ev) ev.stopPropagation();
   const d = getDia(diaAtual); if (!d) return;
-  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Cobertura Conta',transfconta:'Entre Contas',outro:'Outro'};
+  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre contas – Cobertura',transfconta:'Entre contas – Service',outro:'Outro'};
   const [aa,mm,dd] = String(diaAtual||'').split('-'), dataBR = dd ? `${dd}/${mm}/${aa}` : '';
   const paginas = [];
   for (const emp of EMPRESAS) {
@@ -1745,7 +1748,7 @@ function imprimir(soEmp, ev, juntas) {
 
 function rowHTML(empKey,c,i) {
   const catMap={motoboy:'cat-mb',boleto:'cat-bl',pix:'cat-pix',ted:'cat-ted',cartao:'cat-cartao',entrecontas:'cat-entrecontas',transfconta:'cat-transfconta',outro:'cat-out'};
-  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Cobertura Conta',transfconta:'Entre Contas',outro:'Outro'};
+  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre contas – Cobertura',transfconta:'Entre contas – Service',outro:'Outro'};
   const st=c.status==='pago';
   const venc=c.venc||'';
   const pendente = c.origem==='conciliacao' && !c.conciliado;
@@ -2175,7 +2178,7 @@ function findCol(header,keywords) {
 // (rótulo "Cobertura Conta"), independente do que vier no Método.
 function ehCoberturaConta(descricao) {
   const s=String(descricao||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
-  return s.includes('cobertura cont');
+  return s.includes('cobertura'); // "COBERTURA CONTA" e "ENTRE CONTAS - COBERTURA" (Maikon 06/11)
 }
 
 // "Entre Contas" (ex.: dia de vale, adiantamento salarial) é a empresa transferindo pra Just
@@ -2315,9 +2318,17 @@ async function saldoEnviar(){
   }catch(e){ b.disabled=false; b.textContent='📤 Tentar de novo'; av.innerHTML='⚠️ Não foi enviado: '+esc(e.message||String(e)); }
 }
 function infDirBaixar(){ const a=document.createElement('a'); a.href=URL.createObjectURL(_infDirBlob); a.download=_infDirNome(); document.body.appendChild(a); a.click(); a.remove(); }
+/* Maikon 06/11: "Entre contas" tem dois destinos.
+   - Cobertura (entrecontas): dinheiro para OUTRA EMPRESA DO GRUPO (ex.: Gourmet → Matriz). Fica no grupo: volta para o líquido.
+   - Service (transfconta): a empresa manda para a Just Service, que paga (salário, dias trabalhados…). Não soma duas vezes.
+   Vale o método escolhido ("Entre contas – Cobertura"); para os lançamentos antigos, o texto: "cobertura" ou o destino
+   (Fornecedor) sendo outra empresa do grupo que não a Service → cobertura. */
+const _EMPRESAS_GRUPO_RE=/\b(MATRIZ|GOURMET|PIZZA|SUSHI|ABC|SAO BERNARDO|GUARULHOS|PIRITUBA|FORNERIA|ESFIHA|AHAM|JUST BURGER)\b/;
+function _paraOutraEmpresa(c){ const d=_gNorm(c.desc||''); return !!d && !/SERVICE/.test(d) && _EMPRESAS_GRUPO_RE.test(d); }
 function catEfetiva(c) {
   if (ehCoberturaConta(c.ref)||ehCoberturaConta(c.desc)) return 'entrecontas';
-  if (ehEntreContas(c.ref)||ehEntreContas(c.desc)) return 'transfconta';
+  if (c.cat==='entrecontas' || catOficial(c.categoria||'')==='Cobertura de Conta') return 'entrecontas';
+  if (ehEntreContas(c.ref)||ehEntreContas(c.desc)||c.cat==='transfconta') return _paraOutraEmpresa(c) ? 'entrecontas' : 'transfconta';
   return c.cat;
 }
 
@@ -2843,7 +2854,7 @@ function limparBusca() {
 
 function executarBusca(q) {
   const termo = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Cobertura Conta',transfconta:'Entre Contas',outro:'Outro'};
+  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre contas – Cobertura',transfconta:'Entre contas – Service',outro:'Outro'};
 
   // agrupa resultados por data
   const grupos = {};
@@ -2917,7 +2928,7 @@ function exPeriodo(tipo){
 }
 function exLinhas(){
   const emp=document.getElementById('exEmp').value, de=document.getElementById('exDe').value, ate=document.getElementById('exAte').value;
-  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Cobertura Conta',transfconta:'Entre Contas',outro:'Outro'};
+  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre contas – Cobertura',transfconta:'Entre contas – Service',outro:'Outro'};
   const out=[];
   Object.keys(DB).filter(dt=>/^\d{4}-\d{2}-\d{2}$/.test(dt) && dt>=de && dt<=ate).sort().forEach(dt=>{
     const d=DB[dt]||{};
