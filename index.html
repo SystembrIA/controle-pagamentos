@@ -1004,7 +1004,7 @@ body.grupo-on #saldoSection,body.grupo-on #uploadSection,body.grupo-on #contasSe
           <option value="ted"><i class="fa-solid fa-building-columns"></i> TED</option>
           <option value="motoboy">🏍️ Motoboy</option>
           <option value="cartao">💳 Cartão de Crédito</option>
-          <option value="entrecontas">🔁 Entre contas – Cobertura (outra empresa do grupo)</option>
+          <option value="entrecontas">🔁 Entre contas – Entre empresas do grupo (cobertura, funcionário…)</option>
           <option value="transfconta">🔁 Entre contas – Service (a Service paga)</option>
           <option value="outro">📌 Outro</option>
         </select></div>
@@ -1681,7 +1681,7 @@ function imprimirTodas(ev) { imprimir(null, ev, true); }
 function imprimir(soEmp, ev, juntas) {
   if (ev) ev.stopPropagation();
   const d = getDia(diaAtual); if (!d) return;
-  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre contas – Cobertura',transfconta:'Entre contas – Service',outro:'Outro'};
+  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre empresas',transfconta:'Entre contas – Service',outro:'Outro'};
   const [aa,mm,dd] = String(diaAtual||'').split('-'), dataBR = dd ? `${dd}/${mm}/${aa}` : '';
   const paginas = [];
   for (const emp of EMPRESAS) {
@@ -1748,7 +1748,7 @@ function imprimir(soEmp, ev, juntas) {
 
 function rowHTML(empKey,c,i) {
   const catMap={motoboy:'cat-mb',boleto:'cat-bl',pix:'cat-pix',ted:'cat-ted',cartao:'cat-cartao',entrecontas:'cat-entrecontas',transfconta:'cat-transfconta',outro:'cat-out'};
-  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre contas – Cobertura',transfconta:'Entre contas – Service',outro:'Outro'};
+  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre empresas',transfconta:'Entre contas – Service',outro:'Outro'};
   const st=c.status==='pago';
   const venc=c.venc||'';
   const pendente = c.origem==='conciliacao' && !c.conciliado;
@@ -2319,7 +2319,7 @@ async function saldoEnviar(){
 }
 function infDirBaixar(){ const a=document.createElement('a'); a.href=URL.createObjectURL(_infDirBlob); a.download=_infDirNome(); document.body.appendChild(a); a.click(); a.remove(); }
 /* Maikon 06/11: "Entre contas" tem dois destinos.
-   - Cobertura (entrecontas): dinheiro para OUTRA EMPRESA DO GRUPO (ex.: Gourmet → Matriz). Fica no grupo: volta para o líquido.
+   - Entre empresas (entrecontas): dinheiro para OUTRA EMPRESA DO GRUPO — cobertura (Gourmet → Matriz) ou funcionário (Sushi → Pizza). Fica no grupo: volta para o líquido.
    - Service (transfconta): a empresa manda para a Just Service, que paga (salário, dias trabalhados…). Não soma duas vezes.
    Vale o método escolhido ("Entre contas – Cobertura"); para os lançamentos antigos, o texto: "cobertura" ou o destino
    (Fornecedor) sendo outra empresa do grupo que não a Service → cobertura. */
@@ -2854,7 +2854,7 @@ function limparBusca() {
 
 function executarBusca(q) {
   const termo = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre contas – Cobertura',transfconta:'Entre contas – Service',outro:'Outro'};
+  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre empresas',transfconta:'Entre contas – Service',outro:'Outro'};
 
   // agrupa resultados por data
   const grupos = {};
@@ -2928,7 +2928,7 @@ function exPeriodo(tipo){
 }
 function exLinhas(){
   const emp=document.getElementById('exEmp').value, de=document.getElementById('exDe').value, ate=document.getElementById('exAte').value;
-  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre contas – Cobertura',transfconta:'Entre contas – Service',outro:'Outro'};
+  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre empresas',transfconta:'Entre contas – Service',outro:'Outro'};
   const out=[];
   Object.keys(DB).filter(dt=>/^\d{4}-\d{2}-\d{2}$/.test(dt) && dt>=de && dt<=ate).sort().forEach(dt=>{
     const d=DB[dt]||{};
