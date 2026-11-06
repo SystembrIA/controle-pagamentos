@@ -1536,7 +1536,7 @@ function renderGrupo(){
       const e=porEmp[emp.key]||(porEmp[emp.key]={v:0,n:0,via:0});
       // "Entre contas" = a empresa manda para a Just Service, que paga (o pagamento já aparece na SERVICE): não soma de novo,
       // só mostra no card da empresa como "via Service" (mesma regra do total real dos saldos)
-      if(catEfetiva(c)==='transfconta'){ e.via+=v; return; }
+      if(catEfetiva(c)==='transfconta' && !g.entre){ e.via+=v; return; } // no filtro Entre contas elas são o próprio assunto: entram no valor e na lista
       e.v+=v; e.n++; total+=v; linhas.push({dt,emp,c,v});
     }); });
   });
