@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Previsão de recebimento</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/firebase@9.23.0/firebase-app-compat.min.js"></script>
@@ -24,7 +24,7 @@ const PG_PERMITIDOS = ['justadm', 'juliana', 'pedro', 'jaqueline'];
 <style>
 :root { --bg:#f0f4f8; --card:#fff; --fg:#0f172a; --muted:#64748b; --line:#e2e8f0; --ifood:#ea1d2c; --keeta:#facc15; --ok:#15803d; --okbg:#e9f7ee; --bad:#b91c1c; --badbg:#fdeceb; --azul:#1e3a8a; }
 * { box-sizing:border-box; }
-body { margin:0; background:var(--bg); color:var(--fg); font:14.5px/1.45 Inter, 'Segoe UI', Arial, sans-serif; font-variant-numeric:tabular-nums; }
+html, body { overflow-x:hidden; } body { touch-action:manipulation; -webkit-text-size-adjust:100%; margin:0; background:var(--bg); color:var(--fg); font:14.5px/1.45 Inter, 'Segoe UI', Arial, sans-serif; font-variant-numeric:tabular-nums; }
 main { max-width:1600px; margin:0 auto; padding:14px; display:flex; flex-direction:column; gap:14px; }
 .barra { display:flex; gap:10px; align-items:center; flex-wrap:wrap; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:10px 12px; }
 .barra label { font:800 11px Inter, sans-serif; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
@@ -33,8 +33,8 @@ main { max-width:1600px; margin:0 auto; padding:14px; display:flex; flex-directi
 .btn.esc { background:var(--azul); color:#fff; } .btn.cl { background:#eef2f7; color:var(--fg); }
 .st { margin-left:auto; font:800 12.5px Inter, sans-serif; border-radius:999px; padding:6px 12px; }
 .st.prev { background:#fef3c7; color:#92400e; } .st.fim { background:var(--okbg); color:var(--ok); } .st.vazio { background:#eef2f7; color:var(--muted); }
-.duas { display:grid; grid-template-columns:minmax(0,1.3fr) minmax(0,1fr); gap:14px; align-items:stretch; } /* iFood mais largo (mais colunas); os dois quadros com a mesma altura */
-@media (max-width:980px) { .duas { grid-template-columns:1fr; } }
+.duas { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:14px; align-items:stretch; } /* Maikon 12/11: iFood e Keeta do mesmo tamanho, mesmas colunas, mesma altura */
+@media (max-width:1100px) { .duas { grid-template-columns:1fr; } }
 .col { display:flex; flex-direction:column; gap:10px; min-width:0; }
 .botao { display:grid; grid-template-columns:auto 1fr; gap:2px 16px; align-items:center; border-radius:14px; padding:9px 16px; cursor:pointer; border:0; text-align:left; font-family:inherit; width:100%; }
 .botao.ifood { background:var(--ifood); color:#fff; } .botao.keeta { background:var(--keeta); color:#1f2937; }
@@ -59,10 +59,10 @@ tr.grp td:first-child { color:var(--azul); }
 tr.total td { background:#e9f7ee; font-weight:900; color:#14532d; font-size:15px; }
 .val { font-weight:700; }
 /* números da mesma coluna alinhados à direita no mesmo ponto (texto, caixinha e totais) */
-td:not(:first-child):not(.ed), th:not(:first-child):not(:empty) { padding-right:15px; }
+td:not(:first-child):not(.ed), th:not(:first-child):not(:empty) { padding-right:11px; padding-left:4px; }
 td input.v { margin-right:-9px; }
 .ed { width:26px; padding:0 4px 0 0 !important; } .lapis { border:0; background:none; cursor:pointer; font-size:13px; opacity:.55; padding:2px; } .lapis:hover { opacity:1; }
-input.v { width:96px; text-align:right; border:1px solid #cbd5e1; border-radius:7px; padding:3px 8px; font:700 13.5px Inter, sans-serif; font-variant-numeric:tabular-nums; background:#fff; }
+input.v { width:86px; text-align:right; border:1px solid #cbd5e1; border-radius:7px; padding:3px 8px; font:700 13.5px Inter, sans-serif; font-variant-numeric:tabular-nums; background:#fff; }
 input.v:focus { outline:2px solid #93c5fd; border-color:#3b82f6; }
 input.v.vazio { background:#fffbeb; }
 .tri { display:inline-block; width:21px; font-size:13px; } .tri-b { cursor:pointer; }
@@ -86,11 +86,15 @@ input.v.vazio { background:#fffbeb; }
 .mod-acoes { padding:12px 14px; display:flex; gap:8px; } .mod-dica { padding:6px 14px 10px; font-size:13px; color:var(--muted); font-weight:600; }
 .salvo { font:700 12px Inter, sans-serif; color:var(--ok); min-width:70px; }
 @media (max-width:640px) { .botao { grid-template-columns:1fr; } .botao .nome { grid-row:auto; font-size:26px; } .botao .tot b { font-size:14px; } .botao { padding:14px 14px; } .botao .sub { grid-column:1; }
-  .geral { overflow-x:auto; } .geral h3 { font-size:14px; } main { padding:10px; }
+  .geral { overflow-x:auto; } .geral h3 { font-size:14px; } main { padding:8px; }
   table { font-size:12.5px; } th { font-size:9px; padding:5px 4px; } td { padding:2px 4px; height:28px; } input.v { width:80px; font-size:12.5px; }
-  td:not(:first-child):not(.ed), th:not(:first-child):not(:empty) { padding-right:12px; } td input.v { margin-right:-8px; }
+  td:not(:first-child):not(.ed), th:not(:first-child):not(:empty) { padding-right:7px; padding-left:2px; } td input.v { margin-right:-6px; width:70px; padding:3px 5px; }
+  th:first-child, td:first-child { padding-left:8px; } .tri { width:16px; font-size:11px; } .dif-mais .sufixo { display:none; } .lapis { font-size:11px; }
+  tr.total td { font-size:13px; } .botao .tot b { font-size:13.5px; } .cd, .ce { display:none; } td:first-child { white-space:normal; min-width:0; } .ed { width:20px; }
+  .barra select, .tab .cab input, input.v { font-size:16px; } /* 16px: o iPhone não dá zoom ao tocar */
   .barra select { width:100%; } .inf td { padding-left:10px !important; padding-right:10px !important; }
   .barra { gap:6px; } .barra .btn { padding:7px 10px; font-size:12.5px; } .st { margin-left:0; } }
+@media (min-width:1101px) and (max-width:1360px) { main { padding:8px; } .duas { gap:10px; } table { font-size:13px; } th { font-size:9.5px; letter-spacing:.02em; } input.v { width:78px; font-size:13px; } td:first-child, th:first-child { padding-left:8px; } .tri { width:18px; } }
 </style>
 </head>
 <body>
@@ -174,7 +178,7 @@ function justifica(key) {
   if (m == null) return; const t = m.trim();
   grava('just/' + key, t ? { valor: Math.abs(c.dif), tipo: c.dif > 0 ? 'menos' : 'mais', motivo: t.slice(0, 300), por: U, em: Date.now() } : null);
 }
-const difTxt = (d, x) => d == null ? '' : Math.abs(d) < 0.01 ? '<span class="dif-ok">✓ ok</span>' : d < 0 ? `<span class="dif-mais" title="Caiu mais do que o previsto">+${fmt(-d)} a mais</span>` : x && x.just ? `<span class="dif-just" title="${esc(x.just.motivo)}">${fmt(d)}</span>` : `<span class="dif-bad">${fmt(d)}</span>`;
+const difTxt = (d, x) => d == null ? '' : Math.abs(d) < 0.01 ? '<span class="dif-ok">✓ ok</span>' : d < 0 ? `<span class="dif-mais" title="Caiu mais do que o previsto">+${fmt(-d)}</span>` : x && x.just ? `<span class="dif-just" title="${esc(x.just.motivo)}">${fmt(d)}</span>` : `<span class="dif-bad">${fmt(d)}</span>`;
 // coluna Empréstimo: só Matriz, Gourmet e Pizza. Com diferença ainda não aceita → pergunta se é do empréstimo
 function empCel(c) {
   if (!c.temEmp) return '<span class="sem">—</span>';
@@ -308,17 +312,17 @@ function desenha() {
   const fi = calcIfood(s), fk = calcKeeta(s), f = s.ifood || {}, k = s.keeta || {}, REC = fase(s) !== 'prev'; // na fase do previsto o recebido fica fechado
   const inpR = (c, v, r) => REC ? inp(c, v, r) : '';
   // iFood
-  let ti = `<table><tr><th>Loja / conta</th><th>Previsto</th><th>Recebido</th><th>Descontos</th><th>Empréstimo</th><th>Diferença</th><th></th></tr>`;
+  let ti = `<table><tr><th>Loja / conta</th><th>Previsto</th><th>Recebido</th><th class="cd">Descontos</th><th class="ce">Empréstimo</th><th>Diferença</th><th></th></tr>`;
   fi.contas.forEach(c => {
-    if (c.lojas.length > 1) c.lojas.forEach(([lk, ln]) => { ti += `<tr><td>${tri()}${esc(ln)}</td><td>${inp('ifood/prev/' + lk, (f.prev || {})[lk], 'i-' + lk)}</td><td></td><td></td><td></td><td></td>${ed('i-' + lk, [(f.prev || {})[lk]])}</tr>`; });
+    if (c.lojas.length > 1) c.lojas.forEach(([lk, ln]) => { ti += `<tr><td>${tri()}${esc(ln)}</td><td>${inp('ifood/prev/' + lk, (f.prev || {})[lk], 'i-' + lk)}</td><td></td><td class="cd"></td><td class="ce"></td><td></td>${ed('i-' + lk, [(f.prev || {})[lk]])}</tr>`; });
     ti += `<tr class="grp"><td>${tri(c.dif, c)}${esc(c.nome)}</td><td>${c.lojas.length > 1 ? fmt(c.prev) : inp('ifood/prev/' + c.lojas[0][0], (f.prev || {})[c.lojas[0][0]], 'i-' + c.id)}</td>
-      <td>${inpR('ifood/rec/' + c.id, c.rec, 'i-' + c.id)}</td><td>${c.desc == null ? '' : fmt(c.desc)}</td><td>${empCel(c)}</td><td>${difTxt(c.dif, c)}</td>${ed('i-' + c.id, [c.lojas.length > 1 ? null : (f.prev || {})[c.lojas[0][0]], c.rec, c.emp])}</tr>`;
+      <td>${inpR('ifood/rec/' + c.id, c.rec, 'i-' + c.id)}</td><td class="cd">${c.desc == null ? '' : fmt(c.desc)}</td><td class="ce">${empCel(c)}</td><td>${difTxt(c.dif, c)}</td>${ed('i-' + c.id, [c.lojas.length > 1 ? null : (f.prev || {})[c.lojas[0][0]], c.rec, c.emp])}</tr>`;
   });
-  ti += `<tr class="total"><td>${tri()}Total iFood</td><td>${fmt(fi.t.prev)}</td><td>${fi.t.rec == null ? '—' : fmt(fi.t.rec)}</td><td>${fi.t.desc == null ? '—' : fmt(fi.t.desc)}</td><td>${fmt(fi.t.emp)}</td><td>${difTxt(fi.t.dif)}</td><td></td></tr></table>`;
+  ti += `<tr class="total"><td>${tri()}Total iFood</td><td>${fmt(fi.t.prev)}</td><td>${fi.t.rec == null ? '—' : fmt(fi.t.rec)}</td><td class="cd">${fi.t.desc == null ? '—' : fmt(fi.t.desc)}</td><td class="ce">${fmt(fi.t.emp)}</td><td>${difTxt(fi.t.dif)}</td><td></td></tr></table>`;
   // Keeta
-  let tk = `<table><tr><th>Loja</th><th>Previsto</th><th>Recebido</th><th>Diferença</th><th></th></tr>`;
-  fk.lojas.forEach(l => { tk += `<tr><td title="${esc(l.cnpj)} · ID ${esc(l.lid)}">${tri(l.desc, l)}${esc(l.nome)}</td><td>${inp('keeta/prev/' + l.id, l.prev, 'k-' + l.id)}</td><td>${inpR('keeta/rec/' + l.id, l.rec, 'k-' + l.id)}</td><td>${difTxt(l.desc, l)}</td>${ed('k-' + l.id, [l.prev, l.rec])}</tr>`; });
-  tk += `<tr class="enche"><td colspan="5" style="padding:0;height:0;border:0"></td></tr><tr class="total"><td>${tri()}Total Keeta</td><td>${fmt(fk.t.prev)}</td><td>${fk.t.rec == null ? '—' : fmt(fk.t.rec)}</td><td>${difTxt(fk.t.desc)}</td><td></td></tr></table>`;
+  let tk = `<table><tr><th>Loja</th><th>Previsto</th><th>Recebido</th><th class="cd">Descontos</th><th class="ce">Empréstimo</th><th>Diferença</th><th></th></tr>`; // mesmas colunas do iFood (Keeta não tem empréstimo: tracinho)
+  fk.lojas.forEach(l => { tk += `<tr><td title="${esc(l.cnpj)} · ID ${esc(l.lid)}">${tri(l.desc, l)}${esc(l.nome)}</td><td>${inp('keeta/prev/' + l.id, l.prev, 'k-' + l.id)}</td><td>${inpR('keeta/rec/' + l.id, l.rec, 'k-' + l.id)}</td><td class="cd">${l.desc == null ? '' : fmt(l.desc)}</td><td class="ce"><span class="sem">—</span></td><td>${difTxt(l.desc, l)}</td>${ed('k-' + l.id, [l.prev, l.rec])}</tr>`; });
+  tk += `<tr class="enche"><td colspan="7" style="padding:0;height:0;border:0"></td></tr><tr class="total"><td>${tri()}Total Keeta</td><td>${fmt(fk.t.prev)}</td><td>${fk.t.rec == null ? '—' : fmt(fk.t.rec)}</td><td class="cd">${fk.t.desc == null ? '—' : fmt(fk.t.desc)}</td><td class="ce">—</td><td>${difTxt(fk.t.desc)}</td><td></td></tr></table>`;
   const cab = (p, x) => `<div class="cab"># <input value="${esc(x.num || '')}" data-c="${p}/num" onchange="salvaTxt(this)"> Apuração <input type="date" value="${esc(x.de || '')}" data-c="${p}/de" onchange="salvaTxt(this)"> a <input type="date" value="${esc(x.ate || '')}" data-c="${p}/ate" onchange="salvaTxt(this)"></div>`;
   const botao = (cls, nome, t) => `<button class="botao ${cls}" onclick="this.parentNode.querySelector('.tab').hidden=!this.parentNode.querySelector('.tab').hidden">
     <span class="nome">${nome}</span><span class="tot"><div><small>Previsto</small><b>${fmt(t.prev)}</b></div><div><small>Recebido</small><b>${t.rec == null ? '—' : fmt(t.rec)}</b></div><div><small>Descontos</small><b>${t.desc == null ? '—' : fmt(t.desc)}</b></div></span></button>`;
