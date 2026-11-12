@@ -154,7 +154,7 @@ function aceitaEmp(id) {
 function desfazEmp(id) { if (confirm('Tirar o empréstimo desta conta?')) grava('ifood/emp/' + id, null); }
 // empréstimo já aceito no mês do pagamento (todas as semanas)
 function empMes(q) { const m = q.slice(0, 7); return Object.values(SEM).filter(x => (x.pagto || '').startsWith(m)).reduce((t, x) => t + soma(Object.values((x.ifood || {}).emp || {})), 0); }
-const inp = (caminho, v) => `<input class="v ${v == null ? 'vazio' : ''}" inputmode="decimal" value="${v == null ? '' : fmt(v)}" data-c="${caminho}" onchange="salva(this)" onfocus="this.select()" placeholder="lançar">`;
+const inp = (caminho, v) => `<input class="v ${v == null ? 'vazio' : ''}" inputmode="decimal" value="${v == null ? '' : fmt(v)}" data-c="${caminho}" onchange="salva(this)" onfocus="this.select()" onkeydown="enterDesce(event, this)" enterkeyhint="next" placeholder="lançar">`;
 
 function desenha() {
   const lista = Object.values(SEM).sort((a, b) => a.pagto < b.pagto ? 1 : -1);
@@ -195,6 +195,17 @@ function desenha() {
     <tr><td>Keeta</td><td>${fmt(fk.t.prev)}</td><td>${fk.t.rec == null ? '—' : fmt(fk.t.rec)}</td><td>${fk.t.desc == null ? '—' : fmt(fk.t.desc)}</td><td>—</td><td>${difTxt(fk.t.desc)}</td></tr>
     <tr class="total"><td>Total geral</td><td>${fmt(gp)}</td><td>${gr == null ? '—' : fmt(gr)}</td><td>${gd == null ? '—' : fmt(gd)}</td><td>${fmt(fi.t.emp)}</td><td>${difTxt(gdif)}</td></tr></table></div>`;
   $('main').innerHTML = h;
+  if (FOCO) { const n = document.querySelector(`input[data-c="${FOCO}"]`); FOCO = null; if (n) { n.focus(); n.select(); } }
+}
+// Maikon 12/11: Enter salva e desce para o campo de baixo da mesma coluna (ex.: Esfiha → ABC)
+let FOCO = null;
+function enterDesce(e, el) {
+  if (e.key !== 'Enter') return; e.preventDefault();
+  const col = el.dataset.c.replace(/\/[^/]+$/, ''), todos = [...document.querySelectorAll('input.v')].filter(x => x.dataset.c.replace(/\/[^/]+$/, '') === col);
+  const prox = todos[todos.indexOf(el) + 1];
+  FOCO = prox ? prox.dataset.c : null;
+  if (el.value !== el.defaultValue) salva(el); // redesenha e já põe o cursor no de baixo
+  else if (prox) { FOCO = null; prox.focus(); prox.select(); } else el.blur();
 }
 async function grava(caminho, v) {
   if (!ATUAL) return; const s = SEM[ATUAL], ps = caminho.split('/'); let o = s; ps.slice(0, -1).forEach(p => { o[p] = o[p] || {}; o = o[p]; });
@@ -203,7 +214,7 @@ async function grava(caminho, v) {
   try { await fbRec(`semanas/${ATUAL}/${caminho}`).set(v == null ? null : v); await fbRec(`semanas/${ATUAL}`).update({ atualizado: Date.now(), por: U }); if ($('salvo')) $('salvo').textContent = '✓ salvo'; }
   catch (e) { if ($('salvo')) $('salvo').textContent = '⚠️ não salvou'; alert('Não salvou: ' + (e.message || e)); }
 }
-function salva(el) { const v = num(el.value); if (el.value.trim() && v == null) { el.style.borderColor = '#dc2626'; return; } grava(el.dataset.c, v); }
+function salva(el) { if (el._salvo === el.value) return; el._salvo = el.value; const v = num(el.value); if (el.value.trim() && v == null) { el.style.borderColor = '#dc2626'; FOCO = null; return; } grava(el.dataset.c, v); }
 function salvaTxt(el) {
   const v = el.value.trim(), c = el.dataset.c;
   if (c.endsWith('/de') && v) { const p = c.slice(0, -3); SEM[ATUAL][p.split('/')[0]].ate = mais(v, 6); grava(p + '/ate', mais(v, 6)); } // 7 dias: já sugere o fim
