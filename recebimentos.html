@@ -25,7 +25,7 @@ const PG_PERMITIDOS = ['justadm', 'juliana', 'pedro', 'jaqueline'];
 :root { --bg:#f0f4f8; --card:#fff; --fg:#0f172a; --muted:#64748b; --line:#e2e8f0; --ifood:#ea1d2c; --keeta:#facc15; --ok:#15803d; --okbg:#e9f7ee; --bad:#b91c1c; --badbg:#fdeceb; --azul:#1e3a8a; }
 * { box-sizing:border-box; }
 body { margin:0; background:var(--bg); color:var(--fg); font:14.5px/1.45 Inter, 'Segoe UI', Arial, sans-serif; font-variant-numeric:tabular-nums; }
-main { max-width:1400px; margin:0 auto; padding:14px; display:flex; flex-direction:column; gap:14px; }
+main { max-width:1600px; margin:0 auto; padding:14px; display:flex; flex-direction:column; gap:14px; }
 .barra { display:flex; gap:10px; align-items:center; flex-wrap:wrap; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:10px 12px; }
 .barra label { font:800 11px Inter, sans-serif; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
 .barra select, .barra input { border:1px solid var(--line); border-radius:10px; padding:8px 10px; font:700 14px Inter, sans-serif; background:#f8fafc; }
@@ -33,7 +33,7 @@ main { max-width:1400px; margin:0 auto; padding:14px; display:flex; flex-directi
 .btn.esc { background:var(--azul); color:#fff; } .btn.cl { background:#eef2f7; color:var(--fg); }
 .st { margin-left:auto; font:800 12.5px Inter, sans-serif; border-radius:999px; padding:6px 12px; }
 .st.prev { background:#fef3c7; color:#92400e; } .st.fim { background:var(--okbg); color:var(--ok); } .st.vazio { background:#eef2f7; color:var(--muted); }
-.duas { display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start; }
+.duas { display:grid; grid-template-columns:minmax(0,1.3fr) minmax(0,1fr); gap:14px; align-items:stretch; } /* iFood mais largo (mais colunas); os dois quadros com a mesma altura */
 @media (max-width:980px) { .duas { grid-template-columns:1fr; } }
 .col { display:flex; flex-direction:column; gap:10px; min-width:0; }
 .botao { display:grid; grid-template-columns:auto 1fr; gap:2px 16px; align-items:center; border-radius:14px; padding:9px 16px; cursor:pointer; border:0; text-align:left; font-family:inherit; width:100%; }
@@ -43,9 +43,9 @@ main { max-width:1400px; margin:0 auto; padding:14px; display:flex; flex-directi
 .botao .tot div small { display:block; font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; opacity:.85; }
 .botao .tot div b { font-size:16px; font-weight:900; }
 .botao .sub { grid-column:2; text-align:right; font-size:12.5px; font-weight:700; opacity:.9; }
-.tab { background:var(--card); border:1px solid var(--line); border-radius:14px; overflow-x:auto; }
-.tab .cab { display:flex; gap:12px; flex-wrap:wrap; align-items:center; padding:10px 14px; border-bottom:1px solid var(--line); background:#f8fafc; font-size:12.5px; font-weight:700; color:var(--muted); }
-.tab .cab input { width:72px; } .tab .cab input[type=date] { width:auto; }
+.tab { background:var(--card); border:1px solid var(--line); border-radius:14px; overflow-x:auto; flex:1; }
+.tab .cab { display:flex; gap:8px; flex-wrap:wrap; align-items:center; padding:10px 14px; border-bottom:1px solid var(--line); background:#f8fafc; font-size:12.5px; font-weight:700; color:var(--muted); }
+.tab .cab input { width:56px; } .tab .cab input[type=date] { width:128px; }
 .tab .cab input { border:1px solid var(--line); border-radius:8px; padding:5px 7px; font:700 13px Inter, sans-serif; }
 table { width:100%; border-collapse:collapse; }
 th { font:800 10.5px Inter, sans-serif; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); padding:6px 6px; text-align:right; border-bottom:1px solid var(--line); white-space:nowrap; }
@@ -190,7 +190,7 @@ function desenha() {
   let tk = `<table><tr><th>Loja</th><th>Previsto</th><th>Recebido</th><th>Diferença</th><th></th></tr>`;
   fk.lojas.forEach(l => { tk += `<tr><td title="${esc(l.cnpj)} · ID ${esc(l.lid)}">${esc(l.nome)}</td><td>${inp('keeta/prev/' + l.id, l.prev, 'k-' + l.id)}</td><td>${inp('keeta/rec/' + l.id, l.rec, 'k-' + l.id)}</td><td>${difTxt(l.desc)}</td>${ed('k-' + l.id, [l.prev, l.rec])}</tr>`; });
   tk += `<tr class="total"><td>Total Keeta</td><td>${fmt(fk.t.prev)}</td><td>${fk.t.rec == null ? '—' : fmt(fk.t.rec)}</td><td>${difTxt(fk.t.desc)}</td><td></td></tr></table>`;
-  const cab = (p, x) => `<div class="cab"># <input value="${esc(x.num || '')}" data-c="${p}/num" onchange="salvaTxt(this)"> Apuração <input type="date" value="${esc(x.de || '')}" data-c="${p}/de" onchange="salvaTxt(this)"> a <input type="date" value="${esc(x.ate || '')}" data-c="${p}/ate" onchange="salvaTxt(this)"> · pagto ${br(s.pagto)}</div>`;
+  const cab = (p, x) => `<div class="cab"># <input value="${esc(x.num || '')}" data-c="${p}/num" onchange="salvaTxt(this)"> Apuração <input type="date" value="${esc(x.de || '')}" data-c="${p}/de" onchange="salvaTxt(this)"> a <input type="date" value="${esc(x.ate || '')}" data-c="${p}/ate" onchange="salvaTxt(this)"></div>`;
   const botao = (cls, nome, t) => `<button class="botao ${cls}" onclick="this.parentNode.querySelector('.tab').hidden=!this.parentNode.querySelector('.tab').hidden">
     <span class="nome">${nome}</span><span class="tot"><div><small>Previsto</small><b>${fmt(t.prev)}</b></div><div><small>Recebido</small><b>${t.rec == null ? '—' : fmt(t.rec)}</b></div><div><small>Descontos</small><b>${t.desc == null ? '—' : fmt(t.desc)}</b></div></span></button>`;
   h += `<div class="duas"><div class="col">${botao('ifood', 'iFood', fi.t)}
