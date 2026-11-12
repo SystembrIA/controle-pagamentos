@@ -171,28 +171,48 @@ const ed = (row, vals) => `<td class="ed">${vals.some(v => v != null) && !EDIT.h
 function edita(row) { EDIT.add(row); desenha(); const n = document.querySelector(`input[data-r="${row}"]`); if (n) { n.focus(); n.select(); } }
 const inp = (caminho, v, row) => v != null && !EDIT.has(row) ? `<span class="val">${fmt(v)}</span>` : `<input data-r="${row}" class="v ${v == null ? 'vazio' : ''}" inputmode="decimal" value="${v == null ? '' : fmt(v)}" data-c="${caminho}" onchange="salva(this)" onfocus="this.select()" onkeydown="enterDesce(event, this)" oninput="digitou(this)" enterkeyhint="next" placeholder="lançar">`;
 
+// Maikon 12/11: etapas da semana — 'prev' (segunda: só o previsto) → Finalizar → 'rec' (quarta: abre o recebido) → Finalizar → 'fim'
+const fase = x => x ? (x.fase || ((Object.keys((x.ifood || {}).rec || {}).length || Object.keys((x.keeta || {}).rec || {}).length) ? 'rec' : 'prev')) : '';
+const FASE_TXT = { prev: 'lançando o previsto', rec: 'aguardando o recebido', fim: 'finalizada' };
+async function finaliza() {
+  const s = SEM[ATUAL]; if (!s) return; const fa = fase(s), fi = calcIfood(s), fk = calcKeeta(s);
+  if (fa === 'prev') {
+    const falta = IFOOD.flatMap(c => c.lojas).filter(([k]) => ((s.ifood || {}).prev || {})[k] == null).length + KEETA.filter(([k]) => ((s.keeta || {}).prev || {})[k] == null).length;
+    if (!confirm((falta ? `Faltam ${falta} loja(s) sem previsto.\n\n` : '') + 'Finalizar o previsto? Na quarta você entra nesta semana para lançar o recebido.')) return;
+    await grava('fase', 'rec');
+    if (confirm('Previsto finalizado. Abrir a próxima semana para lançar?')) criaSemana();
+  } else if (fa === 'rec') {
+    const nb = fi.t.quais.concat(fk.t.quais), falta = fi.t.falta + fk.t.falta;
+    if (!confirm((falta ? `Faltam ${falta} conta(s) sem recebido.\n` : '') + (nb.length ? `Não bate: ${nb.join(', ')}.\n` : '') + '\nFinalizar o recebido desta semana?')) return;
+    await grava('fase', 'fim');
+  }
+}
 function desenha() {
   const lista = Object.values(SEM).sort((a, b) => a.pagto < b.pagto ? 1 : -1);
   const s = SEM[ATUAL];
-  const opt = lista.map(x => `<option value="${x.pagto}" ${x.pagto === ATUAL ? 'selected' : ''}>Pagto ${br(x.pagto)} · iFood #${esc((x.ifood || {}).num)} · Keeta #${esc((x.keeta || {}).num)}</option>`).join('');
+  const opt = lista.map(x => `<option value="${x.pagto}" ${x.pagto === ATUAL ? 'selected' : ''}>Pagto ${br(x.pagto)} · iFood #${esc((x.ifood || {}).num)} · Keeta #${esc((x.keeta || {}).num)} · ${FASE_TXT[fase(x)]}</option>`).join('');
   let st = '<span class="st vazio">Sem semana</span>';
   if (s) { const fi = calcIfood(s), fk = calcKeeta(s), prevOk = fi.t.prev > 0 || fk.t.prev > 0, recOk = prevOk && !fi.t.falta && !fk.t.falta && (fi.t.rec != null || fk.t.rec != null), nb = fi.t.naoBate + fk.t.naoBate;
-    st = recOk && nb ? `<span class="st prev" style="background:var(--badbg);color:var(--bad)">⚠️ Não bate: ${esc(fi.t.quais.concat(fk.t.quais).join(', '))}</span>` : recOk ? '<span class="st fim">✅ Recebimento conferido</span>' : prevOk ? '<span class="st prev">⏳ Previsto lançado · aguardando a quarta</span>' : '<span class="st vazio">Lance o previsto (segunda)</span>'; }
+    const fa = fase(s), qn = esc(fi.t.quais.concat(fk.t.quais).join(', '));
+    st = fa === 'fim' ? `<span class="st fim">✅ Finalizada${nb ? ' · não bate: ' + qn : ''}</span>`
+      : fa === 'rec' ? (nb ? `<span class="st prev" style="background:var(--badbg);color:var(--bad)">⚠️ Não bate: ${qn}</span>` : '<span class="st prev">⏳ Aguardando o recebido (quarta)</span>')
+      : '<span class="st vazio">Lançando o previsto (segunda)</span>'; }
   let h = `<div class="barra"><label>Semana</label><select onchange="ATUAL=this.value;desenha()">${opt || '<option>—</option>'}</select>
-    <button class="btn esc" onclick="criaSemana()">+ Nova semana</button>${s ? '<button class="btn cl" style="color:#b91c1c" onclick="excluiSemana()">🗑 Excluir semana</button>' : ''}<span class="salvo" id="salvo"></span>${st}</div>`;
+    <button class="btn esc" onclick="criaSemana()">+ Nova semana</button>${s ? '<button class="btn cl" style="color:#b91c1c" onclick="excluiSemana()">🗑 Excluir semana</button>' + (fase(s) === 'fim' ? '' : `<button class="btn" style="background:#15803d;color:#fff" onclick="finaliza()">✔ Finalizar ${fase(s) === 'prev' ? 'previsto' : 'recebido'}</button>`) : ''}<span class="salvo" id="salvo"></span>${st}</div>`;
   if (!s) { $('main').innerHTML = h + '<div class="vazio-box">Nenhuma semana ainda. Toque em <b>+ Nova semana</b> (a quarta do pagamento).</div>'; return; }
-  const fi = calcIfood(s), fk = calcKeeta(s), f = s.ifood || {}, k = s.keeta || {};
+  const fi = calcIfood(s), fk = calcKeeta(s), f = s.ifood || {}, k = s.keeta || {}, REC = fase(s) !== 'prev'; // na fase do previsto o recebido fica fechado
+  const inpR = (c, v, r) => REC ? inp(c, v, r) : '';
   // iFood
   let ti = `<table><tr><th>Loja / conta</th><th>Previsto</th><th>Recebido</th><th>Descontos</th><th>Empréstimo</th><th>Diferença</th><th></th></tr>`;
   fi.contas.forEach(c => {
     if (c.lojas.length > 1) c.lojas.forEach(([lk, ln]) => { ti += `<tr><td>${tri()}${esc(ln)}</td><td>${inp('ifood/prev/' + lk, (f.prev || {})[lk], 'i-' + lk)}</td><td></td><td></td><td></td><td></td>${ed('i-' + lk, [(f.prev || {})[lk]])}</tr>`; });
     ti += `<tr class="grp"><td>${tri(c.dif)}${esc(c.nome)}</td><td>${c.lojas.length > 1 ? fmt(c.prev) : inp('ifood/prev/' + c.lojas[0][0], (f.prev || {})[c.lojas[0][0]], 'i-' + c.id)}</td>
-      <td>${inp('ifood/rec/' + c.id, c.rec, 'i-' + c.id)}</td><td>${c.desc == null ? '' : fmt(c.desc)}</td><td>${empCel(c)}</td><td>${difTxt(c.dif)}</td>${ed('i-' + c.id, [c.lojas.length > 1 ? null : (f.prev || {})[c.lojas[0][0]], c.rec, c.emp])}</tr>`;
+      <td>${inpR('ifood/rec/' + c.id, c.rec, 'i-' + c.id)}</td><td>${c.desc == null ? '' : fmt(c.desc)}</td><td>${empCel(c)}</td><td>${difTxt(c.dif)}</td>${ed('i-' + c.id, [c.lojas.length > 1 ? null : (f.prev || {})[c.lojas[0][0]], c.rec, c.emp])}</tr>`;
   });
   ti += `<tr class="total"><td>${tri()}Total iFood</td><td>${fmt(fi.t.prev)}</td><td>${fi.t.rec == null ? '—' : fmt(fi.t.rec)}</td><td>${fi.t.desc == null ? '—' : fmt(fi.t.desc)}</td><td>${fmt(fi.t.emp)}</td><td>${difTxt(fi.t.dif)}</td><td></td></tr></table>`;
   // Keeta
   let tk = `<table><tr><th>Loja</th><th>Previsto</th><th>Recebido</th><th>Diferença</th><th></th></tr>`;
-  fk.lojas.forEach(l => { tk += `<tr><td title="${esc(l.cnpj)} · ID ${esc(l.lid)}">${tri(l.desc)}${esc(l.nome)}</td><td>${inp('keeta/prev/' + l.id, l.prev, 'k-' + l.id)}</td><td>${inp('keeta/rec/' + l.id, l.rec, 'k-' + l.id)}</td><td>${difTxt(l.desc)}</td>${ed('k-' + l.id, [l.prev, l.rec])}</tr>`; });
+  fk.lojas.forEach(l => { tk += `<tr><td title="${esc(l.cnpj)} · ID ${esc(l.lid)}">${tri(l.desc)}${esc(l.nome)}</td><td>${inp('keeta/prev/' + l.id, l.prev, 'k-' + l.id)}</td><td>${inpR('keeta/rec/' + l.id, l.rec, 'k-' + l.id)}</td><td>${difTxt(l.desc)}</td>${ed('k-' + l.id, [l.prev, l.rec])}</tr>`; });
   tk += `<tr class="enche"><td colspan="5" style="padding:0;height:0;border:0"></td></tr><tr class="total"><td>${tri()}Total Keeta</td><td>${fmt(fk.t.prev)}</td><td>${fk.t.rec == null ? '—' : fmt(fk.t.rec)}</td><td>${difTxt(fk.t.desc)}</td><td></td></tr></table>`;
   const cab = (p, x) => `<div class="cab"># <input value="${esc(x.num || '')}" data-c="${p}/num" onchange="salvaTxt(this)"> Apuração <input type="date" value="${esc(x.de || '')}" data-c="${p}/de" onchange="salvaTxt(this)"> a <input type="date" value="${esc(x.ate || '')}" data-c="${p}/ate" onchange="salvaTxt(this)"></div>`;
   const botao = (cls, nome, t) => `<button class="botao ${cls}" onclick="this.parentNode.querySelector('.tab').hidden=!this.parentNode.querySelector('.tab').hidden">
@@ -283,7 +303,7 @@ function lerData(t) {
   return isoD(dt);
 }
 async function criaSemana() {
-  const sug = quartaDe(isoD(new Date())), q = prompt('Quarta-feira do pagamento (pode digitar só os números, ex.: 0411):', br(sug)); if (!q) return;
+  const ult = Object.keys(SEM).sort().pop(), sug = ult && mais(ult, 7) > quartaDe(isoD(new Date())) ? mais(ult, 7) : quartaDe(isoD(new Date())), q = prompt('Quarta-feira do pagamento (pode digitar só os números, ex.: 0411):', br(sug)); if (!q) return;
   const iso = lerData(q); if (!iso) return alert('Não entendi a data. Ex.: 0411 ou 04112026');
   if (new Date(iso + 'T12:00:00').getDay() !== 3 && !confirm(`${br(iso)} não é quarta-feira. Criar assim mesmo?`)) return;
   if (SEM[iso]) { ATUAL = iso; desenha(); return; }
