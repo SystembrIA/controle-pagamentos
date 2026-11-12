@@ -219,10 +219,22 @@ async function excluiSemana() {
     delete SEM[ATUAL]; ATUAL = Object.keys(SEM).sort().reverse()[0] || ''; desenha();
   } catch (e) { alert('Não excluiu: ' + (e.message || e)); }
 }
+// Maikon 12/11: digita só os números — 0411 (ano atual), 041126 ou 04112026; com barra também vale (4/11, 04/11/2026)
+function lerData(t) {
+  t = String(t || '').trim(); let d, m, a;
+  const sl = t.match(/^(\d{1,2})[\/.\-](\d{1,2})(?:[\/.\-](\d{2}|\d{4}))?$/), so = t.replace(/\D/g, '');
+  if (sl) { d = sl[1]; m = sl[2]; a = sl[3]; }
+  else if (/^\d+$/.test(t) && [4, 6, 8].includes(so.length)) { d = so.slice(0, 2); m = so.slice(2, 4); a = so.slice(4) || undefined; }
+  else return null;
+  a = !a ? new Date().getFullYear() : a.length === 2 ? 2000 + Number(a) : Number(a);
+  const dt = new Date(a, Number(m) - 1, Number(d), 12);
+  if (dt.getDate() !== Number(d) || dt.getMonth() !== Number(m) - 1) return null;
+  return isoD(dt);
+}
 async function criaSemana() {
-  const sug = quartaDe(isoD(new Date())), q = prompt('Quarta-feira do pagamento (dd/mm/aaaa):', br(sug)); if (!q) return;
-  const m = q.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); if (!m) return alert('Use dd/mm/aaaa');
-  const iso = `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  const sug = quartaDe(isoD(new Date())), q = prompt('Quarta-feira do pagamento (pode digitar só os números, ex.: 0411):', br(sug)); if (!q) return;
+  const iso = lerData(q); if (!iso) return alert('Não entendi a data. Ex.: 0411 ou 04112026');
+  if (new Date(iso + 'T12:00:00').getDay() !== 3 && !confirm(`${br(iso)} não é quarta-feira. Criar assim mesmo?`)) return;
   if (SEM[iso]) { ATUAL = iso; desenha(); return; }
   const s = novaSemana(iso); SEM[iso] = s; ATUAL = iso; desenha();
   try { await fbRec(`semanas/${iso}`).set(s); } catch (e) { alert('Não salvou: ' + (e.message || e)); }
