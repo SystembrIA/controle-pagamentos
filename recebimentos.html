@@ -65,7 +65,8 @@ td input.v { margin-right:-9px; }
 input.v { width:96px; text-align:right; border:1px solid #cbd5e1; border-radius:7px; padding:3px 8px; font:700 13.5px Inter, sans-serif; font-variant-numeric:tabular-nums; background:#fff; }
 input.v:focus { outline:2px solid #93c5fd; border-color:#3b82f6; }
 input.v.vazio { background:#fffbeb; }
-.tri { display:inline-block; width:21px; font-size:13px; }
+.tri { display:inline-block; width:21px; font-size:13px; } .tri-b { cursor:pointer; }
+.dif-just { color:#b45309; font-weight:900; }
 .dif-ok { color:var(--ok); font-weight:900; } .dif-bad { color:var(--bad); font-weight:900; } .dif-mais { color:#1d4ed8; font-weight:800; }
 .geral { background:var(--card); border:2px solid #1e293b; border-radius:16px; overflow:hidden; }
 .geral h3 { margin:0; background:#1e293b; color:#fff; padding:12px 16px; font-size:16px; font-weight:900; display:flex; justify-content:space-between; }
@@ -73,9 +74,23 @@ input.v.vazio { background:#fffbeb; }
 .nota { padding:9px 14px; font-size:12.5px; color:var(--muted); border-top:1px solid var(--line); background:#f8fafc; }
 .btn-emp { border:1px solid #f59e0b; background:#fffbeb; color:#92400e; border-radius:7px; padding:3px 7px; font:800 11.5px Inter, sans-serif; cursor:pointer; white-space:nowrap; }
 .emp-ok { font-weight:800; color:#92400e; } .mini { border:0; background:none; color:var(--muted); cursor:pointer; font-size:12px; margin-right:4px; } .sem { color:#cbd5e1; }
+.geral { max-width:760px; width:100%; margin:0 auto; } /* Maikon 12/11: total geral menor e centralizado */
+.btn.inf { background:#fff7ed; color:#9a3412; border:1px solid #fdba74; } .btn.feito { background:#f1f5f9; color:#94a3b8; border:1px solid #e2e8f0; }
+.inf td { height:auto; } .inf td:first-child { white-space:normal !important; min-width:0; } .inf { font-variant-numeric:normal; }
+.barra select { max-width:100%; }
+.um { max-width:760px; width:100%; margin:0 auto; display:flex; flex-direction:column; gap:10px; }
+.mod-bg { position:fixed; inset:0; background:rgba(15,23,42,.55); z-index:600; display:flex; align-items:center; justify-content:center; padding:16px; }
+.mod { background:#fff; border-radius:16px; width:100%; max-width:560px; max-height:92vh; overflow:auto; }
+.mod-top { display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid var(--line); }
+.mod-img { padding:12px; background:#f1f5f9; } .mod-img img { width:100%; display:block; border-radius:10px; }
+.mod-acoes { padding:12px 14px; display:flex; gap:8px; } .mod-dica { padding:6px 14px 10px; font-size:13px; color:var(--muted); font-weight:600; }
 .salvo { font:700 12px Inter, sans-serif; color:var(--ok); min-width:70px; }
 @media (max-width:640px) { .botao { grid-template-columns:1fr; } .botao .nome { grid-row:auto; font-size:26px; } .botao .tot b { font-size:14px; } .botao { padding:14px 14px; } .botao .sub { grid-column:1; }
-  .geral { overflow-x:auto; } .geral h3 { font-size:14px; } main { padding:10px; } }
+  .geral { overflow-x:auto; } .geral h3 { font-size:14px; } main { padding:10px; }
+  table { font-size:12.5px; } th { font-size:9px; padding:5px 4px; } td { padding:2px 4px; height:28px; } input.v { width:80px; font-size:12.5px; }
+  td:not(:first-child):not(.ed), th:not(:first-child):not(:empty) { padding-right:12px; } td input.v { margin-right:-8px; }
+  .barra select { width:100%; } .inf td { padding-left:10px !important; padding-right:10px !important; }
+  .barra { gap:6px; } .barra .btn { padding:7px 10px; font-size:12.5px; } .st { margin-left:0; } }
 </style>
 </head>
 <body>
@@ -129,26 +144,37 @@ function calcIfood(s) {
   const f = s.ifood || {}, P = f.prev || {}, R = f.rec || {}, E = f.emp || {};
   const contas = IFOOD.map(c => { const prev = soma(c.lojas.map(([k]) => P[k])), temRec = R[c.id] != null, rec = temRec ? R[c.id] : null;
     const temEmp = EMP_CONTAS.includes(c.id), desc = temRec ? Math.round((prev - rec) * 100) / 100 : null, emp = temEmp && E[c.id] != null ? E[c.id] : null;
-    const dif = desc == null ? null : Math.round((desc - (emp || 0)) * 100) / 100; return { ...c, temEmp, prev, rec, desc, emp, dif }; });
+    const dif = desc == null ? null : Math.round((desc - (emp || 0)) * 100) / 100; const key = 'i-' + c.id, just = (s.just || {})[key] || null; return { ...c, key, just, nomeC: 'iFood ' + c.nome, temEmp, prev, rec, desc, emp, dif, trava: dif != null && dif >= 0.01 && !just }; });
   const t = { prev: soma(contas.map(c => c.prev)), rec: contas.some(c => c.rec != null) ? soma(contas.map(c => c.rec)) : null,
     desc: contas.some(c => c.desc != null) ? soma(contas.map(c => c.desc)) : null, emp: soma(contas.map(c => c.emp)),
     dif: contas.some(c => c.dif != null) ? soma(contas.map(c => c.dif)) : null, falta: contas.filter(c => c.prev && c.rec == null).length,
-    naoBate: contas.filter(c => !bate(c.dif)).length, quais: contas.filter(c => !bate(c.dif)).map(c => 'iFood ' + c.nome) };
+    naoBate: contas.filter(c => !bate(c.dif)).length, quais: contas.filter(c => !bate(c.dif)).map(c => c.nomeC), travadas: contas.filter(c => c.trava).map(c => c.nomeC) };
   return { contas, t };
 }
 function calcKeeta(s) {
   const k = s.keeta || {}, P = k.prev || {}, R = k.rec || {};
   const lojas = KEETA.map(([id, nome, cnpj, lid]) => { const prev = P[id] != null ? P[id] : null, rec = R[id] != null ? R[id] : null;
-    return { id, nome, cnpj, lid, prev, rec, desc: rec == null || prev == null ? null : Math.round((prev - rec) * 100) / 100 }; });
+    const desc = rec == null || prev == null ? null : Math.round((prev - rec) * 100) / 100, key = 'k-' + id, just = (s.just || {})[key] || null;
+    return { id, key, just, nomeC: 'Keeta ' + nome, nome, cnpj, lid, prev, rec, desc, dif: desc, trava: desc != null && desc >= 0.01 && !just }; });
   const t = { prev: soma(lojas.map(l => l.prev)), rec: lojas.some(l => l.rec != null) ? soma(lojas.map(l => l.rec)) : null,
     desc: lojas.some(l => l.desc != null) ? soma(lojas.map(l => l.desc)) : null, falta: lojas.filter(l => l.prev && l.rec == null).length,
-    naoBate: lojas.filter(l => !bate(l.desc)).length, quais: lojas.filter(l => !bate(l.desc)).map(l => 'Keeta ' + l.nome) };
+    naoBate: lojas.filter(l => !bate(l.desc)).length, quais: lojas.filter(l => !bate(l.desc)).map(l => l.nomeC), travadas: lojas.filter(l => l.trava).map(l => l.nomeC) };
   return { lojas, t };
 }
 // Maikon 12/11: triângulo na frente do nome da conta que não bate
 const bate = d => d == null || Math.abs(d) < 0.01;
-const tri = d => bate(d) ? '<span class="tri"></span>' : '<span class="tri" title="Esta conta não bate">⚠️</span>'; // espaço fixo: nomes continuam alinhados
-const difTxt = d => d == null ? '' : Math.abs(d) < 0.01 ? '<span class="dif-ok">✓ ok</span>' : d < 0 ? `<span class="dif-mais" title="Caiu mais do que o previsto">+${fmt(-d)} a mais</span>` : `<span class="dif-bad">${fmt(d)}</span>`;
+// Maikon 12/11: a MAIS pode fechar (ajuste do iFood); a MENOS sem ser empréstimo trava o Finalizar até justificar (valor + motivo) — toque no ⚠️
+const tri = (d, x) => bate(d) ? '<span class="tri"></span>' : x && x.just ? `<span class="tri tri-b" title="Justificado: ${esc(x.just.motivo)}" onclick="justifica('${x.key}')">📝</span>`
+  : x ? `<span class="tri tri-b" title="${d > 0 ? 'Diferença a menos: toque para justificar' : 'Caiu a mais (pode fechar)'}" onclick="justifica('${x.key}')">⚠️</span>` : '<span class="tri">⚠️</span>'; // espaço fixo: nomes alinhados
+function achaConta(key) { const s = SEM[ATUAL]; return key[0] === 'i' ? calcIfood(s).contas.find(c => c.key === key) : calcKeeta(s).lojas.find(l => l.key === key); }
+function justifica(key) {
+  const c = achaConta(key); if (!c || c.dif == null) return;
+  const tipo = c.dif > 0 ? `faltou R$ ${fmt(c.dif)}` : `caiu R$ ${fmt(-c.dif)} a mais`;
+  const m = prompt(`${c.nomeC}: ${tipo}.\n\nO que aconteceu? (vai para a diretoria junto com o recebido)${c.just ? '\n\nApague o texto para tirar a justificativa.' : ''}`, c.just ? c.just.motivo : '');
+  if (m == null) return; const t = m.trim();
+  grava('just/' + key, t ? { valor: Math.abs(c.dif), tipo: c.dif > 0 ? 'menos' : 'mais', motivo: t.slice(0, 300), por: U, em: Date.now() } : null);
+}
+const difTxt = (d, x) => d == null ? '' : Math.abs(d) < 0.01 ? '<span class="dif-ok">✓ ok</span>' : d < 0 ? `<span class="dif-mais" title="Caiu mais do que o previsto">+${fmt(-d)} a mais</span>` : x && x.just ? `<span class="dif-just" title="${esc(x.just.motivo)}">${fmt(d)}</span>` : `<span class="dif-bad">${fmt(d)}</span>`;
 // coluna Empréstimo: só Matriz, Gourmet e Pizza. Com diferença ainda não aceita → pergunta se é do empréstimo
 function empCel(c) {
   if (!c.temEmp) return '<span class="sem">—</span>';
@@ -180,12 +206,90 @@ async function finaliza() {
     const falta = IFOOD.flatMap(c => c.lojas).filter(([k]) => ((s.ifood || {}).prev || {})[k] == null).length + KEETA.filter(([k]) => ((s.keeta || {}).prev || {})[k] == null).length;
     if (!confirm((falta ? `Faltam ${falta} loja(s) sem previsto.\n\n` : '') + 'Finalizar o previsto? Na quarta você entra nesta semana para lançar o recebido.')) return;
     await grava('fase', 'rec');
-    if (confirm('Previsto finalizado. Abrir a próxima semana para lançar?')) criaSemana();
+    setTimeout(() => informar('prev'), 50); // já abre o Informar previsto (e dali, a próxima semana)
   } else if (fa === 'rec') {
-    const nb = fi.t.quais.concat(fk.t.quais), falta = fi.t.falta + fk.t.falta;
+    const nb = fi.t.quais.concat(fk.t.quais), falta = fi.t.falta + fk.t.falta, trav = fi.t.travadas.concat(fk.t.travadas);
+    if (trav.length) return alert(`Ainda não dá para finalizar.\n\nDiferença a menos sem explicação: ${trav.join(', ')}.\n\nLocalize a diferença: se for empréstimo, toque em "Empréstimo?"; se não for, toque no ⚠️ na frente do nome e escreva o que aconteceu.`);
     if (!confirm((falta ? `Faltam ${falta} conta(s) sem recebido.\n` : '') + (nb.length ? `Não bate: ${nb.join(', ')}.\n` : '') + '\nFinalizar o recebido desta semana?')) return;
     await grava('fase', 'fim');
+    setTimeout(() => informar('rec'), 50);
   }
+}
+
+/* ══ Informar a diretoria (Maikon 12/11) ══
+   Previsto: iFood, Keeta e total geral. Recebido: previsto × recebido, empréstimo abatido no mês (semana a semana, somando) e as diferenças
+   com a explicação que ela escreveu. A imagem vai para pagamentos_diarios/informar_diretoria (tipo 'recebimento') e a função manda no WhatsApp do Maikon.
+   Na visão da diretoria a tela mostra este mesmo resumo; tocar no iFood ou na Keeta abre os lançamentos. */
+const DIRETORIA = ['justadm', 'maikon', 'juliana'];
+let VISAO = 'lanc', ABRE = '';
+const ddmm = iso => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) : '';
+function resumoSem(s) {
+  const fi = calcIfood(s), fk = calcKeeta(s), m = s.pagto.slice(0, 7);
+  const sems = Object.values(SEM).filter(x => (x.pagto || '').startsWith(m) && x.pagto <= s.pagto).sort((a, b) => a.pagto < b.pagto ? -1 : 1)
+    .map(x => ({ pagto: x.pagto, emp: soma(Object.values((x.ifood || {}).emp || {})) })).filter(x => x.emp >= 0.01);
+  const difs = fi.contas.concat(fk.lojas).filter(c => !bate(c.dif)).map(c => ({ nome: c.nomeC, dif: c.dif, motivo: c.just ? c.just.motivo : '' }));
+  return { fi, fk, sems, empMes: soma(sems.map(x => x.emp)), prev: fi.t.prev + fk.t.prev, rec: fi.t.rec == null && fk.t.rec == null ? null : (fi.t.rec || 0) + (fk.t.rec || 0), difs };
+}
+function htmlInforme(s, etapa, clicavel) {
+  const r = resumoSem(s), f = s.ifood || {}, k = s.keeta || {}, REC = etapa === 'rec';
+  const V = v => v == null ? '—' : fmt(v), lk = q => clicavel ? ` onclick="ABRE=ABRE==='${q}'?'':'${q}';desenha()" style="cursor:pointer"` : '';
+  const cel = (v, b) => `<td style="text-align:right;padding:10px 14px;font-weight:${b ? 900 : 700};white-space:nowrap">${V(v)}</td>`;
+  const linha = (nome, sub, q, cor, a, b) => `<tr${q ? lk(q) : ''} style="border-bottom:1px solid #e2e8f0${q && ABRE === q ? ';background:#f1f5f9' : ''}"><td style="padding:10px 14px"><b style="font-size:16px;color:${cor}">${nome}</b>${sub ? `<div style="font-size:11.5px;color:#64748b;font-weight:600">${sub}</div>` : ''}</td>${cel(a)}${REC ? cel(b) : ''}</tr>`;
+  let h = `<div class="inf" style="width:100%;max-width:620px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;font-family:Inter,'Segoe UI',Arial,sans-serif;color:#0f172a">
+    <div style="background:#1e293b;color:#fff;padding:16px 18px"><div style="font-size:11px;font-weight:800;letter-spacing:.08em;opacity:.7">HUB JUST BURGER · RECEBIMENTOS</div>
+      <div style="font-size:22px;font-weight:900;margin-top:2px">${REC ? 'Recebimento iFood e Keeta' : 'Previsão de recebimento'}</div>
+      <div style="font-size:13.5px;font-weight:700;opacity:.85">Pagamento quarta ${br(s.pagto)}</div></div>
+    <table style="width:100%;border-collapse:collapse;font-size:15px"><tr style="background:#f8fafc;font-size:10.5px;font-weight:800;color:#64748b;letter-spacing:.05em"><td style="padding:8px 14px"></td><td style="text-align:right;padding:8px 14px">PREVISTO</td>${REC ? '<td style="text-align:right;padding:8px 14px">RECEBIDO</td>' : ''}</tr>
+    ${linha('iFood', `#${esc(f.num || '')} · apuração ${ddmm(f.de)} a ${ddmm(f.ate)}${clicavel ? ' · toque para ver' : ''}`, 'ifood', '#ea1d2c', r.fi.t.prev, r.fi.t.rec)}
+    ${linha('Keeta', `#${esc(k.num || '')} · apuração ${ddmm(k.de)} a ${ddmm(k.ate)}${clicavel ? ' · toque para ver' : ''}`, 'keeta', '#a16207', r.fk.t.prev, r.fk.t.rec)}
+    <tr style="background:#e9f7ee;color:#14532d"><td style="padding:12px 14px;font-weight:900;font-size:16px">TOTAL GERAL</td>${cel(r.prev, 1)}${REC ? cel(r.rec, 1) : ''}</tr></table>`;
+  if (REC && r.empMes >= 0.01) h += `<div style="padding:12px 18px;border-top:1px solid #e2e8f0"><div style="font-size:11px;font-weight:800;color:#92400e;letter-spacing:.05em">EMPRÉSTIMO DESCONTADO NO iFOOD · ${['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'][Number(s.pagto.slice(5, 7)) - 1]}</div>
+    ${r.sems.map(x => `<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;padding:3px 0"><span>Semana do pagamento ${ddmm(x.pagto)}</span><span>${fmt(x.emp)}</span></div>`).join('')}
+    <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:900;color:#92400e;border-top:1px dashed #f59e0b;margin-top:4px;padding-top:5px"><span>Total de empréstimo no mês</span><span>${fmt(r.empMes)}</span></div></div>`;
+  if (REC && r.difs.length) h += `<div style="padding:12px 18px;border-top:1px solid #e2e8f0;background:#fffbeb"><div style="font-size:11px;font-weight:800;color:#b91c1c;letter-spacing:.05em">⚠️ DIFERENÇAS</div>
+    ${r.difs.map(d => `<div style="padding:5px 0"><div style="display:flex;justify-content:space-between;font-size:14px;font-weight:800"><span>${esc(d.nome)}</span><span style="color:${d.dif > 0 ? '#b91c1c' : '#1d4ed8'}">${d.dif > 0 ? '− ' + fmt(d.dif) + ' a menos' : '+ ' + fmt(-d.dif) + ' a mais'}</span></div>${d.motivo ? `<div style="font-size:13px;color:#475569;font-weight:600">Obs.: ${esc(d.motivo)}</div>` : ''}</div>`).join('')}</div>`;
+  return h + `<div style="text-align:center;font-size:11px;color:#94a3b8;padding:8px">Enviado por ${esc(QUEM || U || 'Financeiro')} · Hub Just Burger</div></div>`;
+}
+let QUEM = '';
+try { const u = JSON.parse(localStorage.getItem('jb_user') || '{}'); QUEM = u.nome || u.username || ''; } catch (e) {}
+const h2c = () => window.html2canvas ? Promise.resolve() : new Promise((ok, erro) => { const x = document.createElement('script'); x.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'; x.onload = ok; x.onerror = () => erro(new Error('html2canvas')); document.head.appendChild(x); });
+let BLOB = null;
+async function informar(etapa) {
+  const s = SEM[ATUAL]; if (!s) return;
+  let box = $('infBox'); if (!box) { box = document.createElement('div'); box.id = 'infBox'; box.style.cssText = 'position:fixed;left:-2000px;top:0;width:620px'; document.body.appendChild(box); }
+  box.innerHTML = htmlInforme(s, etapa, false);
+  try { await h2c(); } catch (e) { return alert('Não consegui gerar a imagem (sem internet?)'); }
+  const cv = await html2canvas(box.firstElementChild, { scale: 2, backgroundColor: '#ffffff', logging: false });
+  BLOB = await new Promise(ok => cv.toBlob(ok, 'image/png'));
+  let m = $('infModal'); if (!m) { m = document.createElement('div'); m.id = 'infModal'; document.body.appendChild(m); }
+  m.innerHTML = `<div class="mod-bg" onclick="if(event.target===this)this.parentNode.innerHTML=''"><div class="mod"><div class="mod-top"><b>📤 Informar ${etapa === 'rec' ? 'recebido' : 'previsto'} à diretoria</b><button class="btn cl" onclick="$('infModal').innerHTML=''">✕</button></div>
+    <div class="mod-dica">É assim que vai chegar no WhatsApp do Maikon:</div><div class="mod-img"><img src="${URL.createObjectURL(BLOB)}" alt="Resumo"></div>
+    <div class="mod-acoes"><button class="btn" style="background:#15803d;color:#fff" id="infEnviar" onclick="infEnviar('${etapa}')">📤 Enviar para o Maikon</button></div><div class="mod-dica" id="infAviso"></div></div></div>`;
+}
+async function infEnviar(etapa) {
+  const b = $('infEnviar'), av = $('infAviso'), s = SEM[ATUAL]; if (!BLOB || !s) return;
+  b.disabled = true; b.textContent = '⏳ Enviando…'; av.textContent = '';
+  try {
+    const png = await new Promise((ok, erro) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(',')[1]); fr.onerror = erro; fr.readAsDataURL(BLOB); });
+    const r = resumoSem(s), ref = firebase.database().ref('pagamentos_diarios/informar_diretoria').push();
+    await ref.set({ tipo: 'recebimento', etapa, dia: s.pagto, png, total: 'R$ ' + fmt(etapa === 'rec' ? r.rec : r.prev), quem: QUEM || U || 'Financeiro', criado: Date.now() });
+    const res = await new Promise(ok => { const t = setTimeout(() => { ref.child('resultado').off(); ok(null); }, 60000);
+      ref.child('resultado').on('value', sn => { const v = sn.val(); if (v) { clearTimeout(t); ref.child('resultado').off(); ok(v); } }); });
+    if (res && res.ok) {
+      await grava('informado/' + etapa, { em: Date.now(), por: U });
+      b.textContent = '✅ Enviado'; av.innerHTML = '✅ <b>Enviado</b> no WhatsApp do Maikon.' + (etapa === 'prev' ? ' <button class="btn esc" style="margin-left:8px" onclick="$(\'infModal\').innerHTML=\'\';criaSemana()">+ Abrir a próxima semana</button>' : '');
+    } else { b.disabled = false; b.textContent = '📤 Tentar de novo'; av.innerHTML = '⚠️ <b>Não foi enviado</b>: ' + esc((res && res.erro) || 'sem resposta do servidor em 1 minuto'); }
+  } catch (e) { b.disabled = false; b.textContent = '📤 Tentar de novo'; av.innerHTML = '⚠️ Não foi enviado: ' + esc(e.message || String(e)); }
+}
+function botoesInforme(s) {
+  const fa = fase(s), inf = s.informado || {}, bt = (et, txt) => inf[et] ? `<button class="btn feito" title="Enviado ${new Date(inf[et].em).toLocaleString('pt-BR')} — toque para mandar de novo" onclick="if(confirm('Já foi enviado. Mandar de novo?'))informar('${et}')">✓ ${txt} informado</button>` : `<button class="btn inf" onclick="informar('${et}')">📤 Informar ${txt.toLowerCase()}</button>`;
+  return (fa !== 'prev' ? bt('prev', 'Previsto') : '') + (fa === 'fim' ? bt('rec', 'Recebido') : '');
+}
+function desenhaDiretoria(s, opt, st) {
+  let h = `<div class="barra"><label>Semana</label><select onchange="ATUAL=this.value;ABRE='';desenha()">${opt}</select><button class="btn cl" onclick="VISAO='lanc';desenha()">📋 Ver todos os lançamentos</button>${st}</div>`;
+  if (!s) return h + '<div class="vazio-box">Nenhuma semana lançada ainda.</div>';
+  h += htmlInforme(s, fase(s) === 'prev' ? 'prev' : 'rec', true);
+  return h;
 }
 function desenha() {
   const lista = Object.values(SEM).sort((a, b) => a.pagto < b.pagto ? 1 : -1);
@@ -198,7 +302,8 @@ function desenha() {
       : fa === 'rec' ? (nb ? `<span class="st prev" style="background:var(--badbg);color:var(--bad)">⚠️ Não bate: ${qn}</span>` : '<span class="st prev">⏳ Aguardando o recebido (quarta)</span>')
       : '<span class="st vazio">Lançando o previsto (segunda)</span>'; }
   let h = `<div class="barra"><label>Semana</label><select onchange="ATUAL=this.value;desenha()">${opt || '<option>—</option>'}</select>
-    <button class="btn esc" onclick="criaSemana()">+ Nova semana</button>${s ? '<button class="btn cl" style="color:#b91c1c" onclick="excluiSemana()">🗑 Excluir semana</button>' + (fase(s) === 'fim' ? '' : `<button class="btn" style="background:#15803d;color:#fff" onclick="finaliza()">✔ Finalizar ${fase(s) === 'prev' ? 'previsto' : 'recebido'}</button>`) : ''}<span class="salvo" id="salvo"></span>${st}</div>`;
+    <button class="btn esc" onclick="criaSemana()">+ Nova semana</button>${s ? '<button class="btn cl" style="color:#b91c1c" onclick="excluiSemana()">🗑 Excluir semana</button>' + (fase(s) === 'fim' ? '' : `<button class="btn" style="background:#15803d;color:#fff" onclick="finaliza()">✔ Finalizar ${fase(s) === 'prev' ? 'previsto' : 'recebido'}</button>`) + botoesInforme(s) : ''}${DIRETORIA.includes(U) ? '<button class="btn cl" onclick="VISAO=\'dir\';ABRE=\'\';desenha()">📊 Resumo</button>' : ''}<span class="salvo" id="salvo"></span>${st}</div>`;
+  if (VISAO === 'dir' && !s) { $('main').innerHTML = desenhaDiretoria(s, opt, st); return; }
   if (!s) { $('main').innerHTML = h + '<div class="vazio-box">Nenhuma semana ainda. Toque em <b>+ Nova semana</b> (a quarta do pagamento).</div>'; return; }
   const fi = calcIfood(s), fk = calcKeeta(s), f = s.ifood || {}, k = s.keeta || {}, REC = fase(s) !== 'prev'; // na fase do previsto o recebido fica fechado
   const inpR = (c, v, r) => REC ? inp(c, v, r) : '';
@@ -206,21 +311,20 @@ function desenha() {
   let ti = `<table><tr><th>Loja / conta</th><th>Previsto</th><th>Recebido</th><th>Descontos</th><th>Empréstimo</th><th>Diferença</th><th></th></tr>`;
   fi.contas.forEach(c => {
     if (c.lojas.length > 1) c.lojas.forEach(([lk, ln]) => { ti += `<tr><td>${tri()}${esc(ln)}</td><td>${inp('ifood/prev/' + lk, (f.prev || {})[lk], 'i-' + lk)}</td><td></td><td></td><td></td><td></td>${ed('i-' + lk, [(f.prev || {})[lk]])}</tr>`; });
-    ti += `<tr class="grp"><td>${tri(c.dif)}${esc(c.nome)}</td><td>${c.lojas.length > 1 ? fmt(c.prev) : inp('ifood/prev/' + c.lojas[0][0], (f.prev || {})[c.lojas[0][0]], 'i-' + c.id)}</td>
-      <td>${inpR('ifood/rec/' + c.id, c.rec, 'i-' + c.id)}</td><td>${c.desc == null ? '' : fmt(c.desc)}</td><td>${empCel(c)}</td><td>${difTxt(c.dif)}</td>${ed('i-' + c.id, [c.lojas.length > 1 ? null : (f.prev || {})[c.lojas[0][0]], c.rec, c.emp])}</tr>`;
+    ti += `<tr class="grp"><td>${tri(c.dif, c)}${esc(c.nome)}</td><td>${c.lojas.length > 1 ? fmt(c.prev) : inp('ifood/prev/' + c.lojas[0][0], (f.prev || {})[c.lojas[0][0]], 'i-' + c.id)}</td>
+      <td>${inpR('ifood/rec/' + c.id, c.rec, 'i-' + c.id)}</td><td>${c.desc == null ? '' : fmt(c.desc)}</td><td>${empCel(c)}</td><td>${difTxt(c.dif, c)}</td>${ed('i-' + c.id, [c.lojas.length > 1 ? null : (f.prev || {})[c.lojas[0][0]], c.rec, c.emp])}</tr>`;
   });
   ti += `<tr class="total"><td>${tri()}Total iFood</td><td>${fmt(fi.t.prev)}</td><td>${fi.t.rec == null ? '—' : fmt(fi.t.rec)}</td><td>${fi.t.desc == null ? '—' : fmt(fi.t.desc)}</td><td>${fmt(fi.t.emp)}</td><td>${difTxt(fi.t.dif)}</td><td></td></tr></table>`;
   // Keeta
   let tk = `<table><tr><th>Loja</th><th>Previsto</th><th>Recebido</th><th>Diferença</th><th></th></tr>`;
-  fk.lojas.forEach(l => { tk += `<tr><td title="${esc(l.cnpj)} · ID ${esc(l.lid)}">${tri(l.desc)}${esc(l.nome)}</td><td>${inp('keeta/prev/' + l.id, l.prev, 'k-' + l.id)}</td><td>${inpR('keeta/rec/' + l.id, l.rec, 'k-' + l.id)}</td><td>${difTxt(l.desc)}</td>${ed('k-' + l.id, [l.prev, l.rec])}</tr>`; });
+  fk.lojas.forEach(l => { tk += `<tr><td title="${esc(l.cnpj)} · ID ${esc(l.lid)}">${tri(l.desc, l)}${esc(l.nome)}</td><td>${inp('keeta/prev/' + l.id, l.prev, 'k-' + l.id)}</td><td>${inpR('keeta/rec/' + l.id, l.rec, 'k-' + l.id)}</td><td>${difTxt(l.desc, l)}</td>${ed('k-' + l.id, [l.prev, l.rec])}</tr>`; });
   tk += `<tr class="enche"><td colspan="5" style="padding:0;height:0;border:0"></td></tr><tr class="total"><td>${tri()}Total Keeta</td><td>${fmt(fk.t.prev)}</td><td>${fk.t.rec == null ? '—' : fmt(fk.t.rec)}</td><td>${difTxt(fk.t.desc)}</td><td></td></tr></table>`;
   const cab = (p, x) => `<div class="cab"># <input value="${esc(x.num || '')}" data-c="${p}/num" onchange="salvaTxt(this)"> Apuração <input type="date" value="${esc(x.de || '')}" data-c="${p}/de" onchange="salvaTxt(this)"> a <input type="date" value="${esc(x.ate || '')}" data-c="${p}/ate" onchange="salvaTxt(this)"></div>`;
   const botao = (cls, nome, t) => `<button class="botao ${cls}" onclick="this.parentNode.querySelector('.tab').hidden=!this.parentNode.querySelector('.tab').hidden">
     <span class="nome">${nome}</span><span class="tot"><div><small>Previsto</small><b>${fmt(t.prev)}</b></div><div><small>Recebido</small><b>${t.rec == null ? '—' : fmt(t.rec)}</b></div><div><small>Descontos</small><b>${t.desc == null ? '—' : fmt(t.desc)}</b></div></span></button>`;
-  h += `<div class="duas"><div class="col">${botao('ifood', 'iFood', fi.t)}
-      <div class="tab">${cab('ifood', f)}${ti}</div></div>
-    <div class="col">${botao('keeta', 'Keeta', fk.t)}
-      <div class="tab">${cab('keeta', k)}${tk}</div></div></div>`;
+  const colI = `<div class="col">${botao('ifood', 'iFood', fi.t)}\n      <div class="tab">${cab('ifood', f)}${ti}</div></div>`, colK = `<div class="col">${botao('keeta', 'Keeta', fk.t)}\n      <div class="tab">${cab('keeta', k)}${tk}</div></div>`;
+  if (VISAO === 'dir') { $('main').innerHTML = desenhaDiretoria(s, opt, st) + (ABRE ? `<div class="um">${ABRE === 'ifood' ? colI : colK}</div>` : ''); return; }
+  h += `<div class="duas">${colI}${colK}</div>`;
   // total geral dos dois
   const gp = fi.t.prev + fk.t.prev, gr = fi.t.rec == null && fk.t.rec == null ? null : (fi.t.rec || 0) + (fk.t.rec || 0), gd = gr == null ? null : (fi.t.desc || 0) + (fk.t.desc || 0), gdif = fi.t.dif == null && fk.t.desc == null ? null : (fi.t.dif || 0) + (fk.t.desc || 0);
   h += `<div class="geral"><h3><span>Total geral · iFood + Keeta</span><span>pagto ${br(s.pagto)}</span></h3><table>
@@ -315,6 +419,7 @@ async function criaSemana() {
     const u = window.JbLogin && JbLogin.pronto ? await JbLogin.pronto() : null;
     U = u ? String(((await u.getIdTokenResult()).claims || {}).username || '').toLowerCase() : '';
     if (!window.JB_DEMO && !PG_PERMITIDOS.includes(U)) { $('main').innerHTML = '<div class="vazio-box">🔒 Seu usuário não tem acesso aos Pagamentos. <a href="https://systembria.github.io/hub/">Ir para o Hub</a></div>'; return; }
+    VISAO = DIRETORIA.includes(U) ? 'dir' : 'lanc';
     SEM = (await fbRec('semanas').once('value')).val() || {};
     const lista = Object.keys(SEM).sort().reverse(), q = quartaDe(isoD(new Date()));
     ATUAL = SEM[q] ? q : (lista[0] || '');
