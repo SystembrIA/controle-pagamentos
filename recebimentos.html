@@ -41,7 +41,7 @@ main { max-width:1600px; margin:0 auto; padding:14px; display:flex; flex-directi
 .botao .nome { font-size:22px; font-weight:900; }
 .botao .tot { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px; text-align:right; }
 .botao .tot div small { display:block; font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; opacity:.85; }
-.botao .tot div b { font-size:16px; font-weight:900; }
+.botao .tot div b { font-size:19px; font-weight:900; } .botao.totg .desc-v { color:#f87171; } .cab-txt { white-space:nowrap; } .cab-txt b { color:var(--fg); }
 .botao .sub { grid-column:2; text-align:right; font-size:12.5px; font-weight:700; opacity:.9; }
 .tab { background:var(--card); border:1px solid var(--line); border-radius:14px; overflow-x:auto; flex:1; }
 .tab .cab { display:flex; gap:8px; flex-wrap:wrap; align-items:center; padding:10px 14px; border-bottom:1px solid var(--line); background:#f8fafc; font-size:12.5px; font-weight:700; color:var(--muted); }
@@ -78,7 +78,7 @@ input.v.vazio { background:#fffbeb; }
 .btn.inf { background:#fff7ed; color:#9a3412; border:1px solid #fdba74; } .btn.feito { background:#f1f5f9; color:#94a3b8; border:1px solid #e2e8f0; }
 .inf td { height:auto; } .inf td:first-child { white-space:normal !important; min-width:0; } .inf { font-variant-numeric:normal; }
 .barra select { max-width:100%; }
-.botao.totg { background:#1e293b; color:#fff; cursor:default; max-width:760px; margin:0 auto; } .botao.totg .nome { font-size:18px; } .botao.totg .nome small { display:block; font-size:11.5px; font-weight:700; opacity:.75; }
+.botao.totg { background:#1e293b; color:#fff; cursor:default; max-width:760px; margin:0 auto; } .botao.totg .nome { font-size:22px; } .botao.totg .nome small { display:block; font-size:11.5px; font-weight:700; opacity:.75; }
 .aviso-nb { max-width:760px; width:100%; margin:0 auto; background:var(--badbg); color:var(--bad); border-radius:12px; padding:10px 14px; font-weight:800; font-size:13.5px; text-align:center; }
 .mini-bt { padding:6px 10px !important; margin-left:auto; }
 .um { max-width:760px; width:100%; margin:0 auto; display:flex; flex-direction:column; gap:10px; }
@@ -93,10 +93,10 @@ input.v.vazio { background:#fffbeb; }
   table { font-size:12.5px; } th { font-size:9px; padding:5px 4px; } td { padding:2px 4px; height:28px; } input.v { width:80px; font-size:12.5px; }
   td:not(:first-child):not(.ed), th:not(:first-child):not(:empty) { padding-right:7px; padding-left:2px; } td input.v { margin-right:-6px; width:70px; padding:3px 5px; }
   th:first-child, td:first-child { padding-left:8px; } .tri { width:16px; font-size:11px; } .dif-mais .sufixo { display:none; } .lapis { font-size:11px; }
-  td:first-child { white-space:nowrap !important; } .tab { overflow-x:auto; } .botao.totg .tot b { font-size:13.5px; }
+  td:first-child { white-space:nowrap !important; } .tab { overflow-x:auto; } 
   .barra .mini-bt { width:auto; }
   .modo-dir .ed, .modo-dir th:last-child { display:none; } .tab .cab input[type=date] { width:140px; }
-  tr.total td { font-size:13px; } .botao .tot b { font-size:13.5px; } .cd, .ce { display:none; } td:first-child { white-space:normal; min-width:0; } .ed { width:20px; }
+  tr.total td { font-size:13px; } .botao .tot div b { font-size:16.5px; } .botao.totg .nome { font-size:21px; } .cd, .ce { display:none; } td:first-child { white-space:normal; min-width:0; } .ed { width:20px; }
   .barra select, .tab .cab input, input.v { font-size:16px; } /* 16px: o iPhone não dá zoom ao tocar */
   .barra select { flex:1; min-width:0; width:auto; } .inf td { padding-left:10px !important; padding-right:10px !important; }
   .barra { gap:6px; } .barra .btn { padding:7px 10px; font-size:12.5px; } .st { margin-left:0; } }
@@ -301,7 +301,7 @@ function botoesInforme(s) {
 function desenha() {
   const lista = Object.values(SEM).sort((a, b) => a.pagto < b.pagto ? 1 : -1);
   const s = SEM[ATUAL];
-  const opt = lista.map(x => `<option value="${x.pagto}" ${x.pagto === ATUAL ? 'selected' : ''}>Pagto ${br(x.pagto)} · iFood #${esc((x.ifood || {}).num)} · Keeta #${esc((x.keeta || {}).num)} · ${FASE_TXT[fase(x)]}</option>`).join('');
+  const opt = lista.map(x => `<option value="${x.pagto}" ${x.pagto === ATUAL ? 'selected' : ''}>Pagamento ${br(x.pagto)} · ${FASE_TXT[fase(x)]}</option>`).join('');
   let st = '<span class="st vazio">Sem semana</span>';
   if (s) { const fi = calcIfood(s), fk = calcKeeta(s), prevOk = fi.t.prev > 0 || fk.t.prev > 0, recOk = prevOk && !fi.t.falta && !fk.t.falta && (fi.t.rec != null || fk.t.rec != null), nb = fi.t.naoBate + fk.t.naoBate;
     const fa = fase(s), qn = esc(fi.t.quais.concat(fk.t.quais).join(', '));
@@ -326,7 +326,9 @@ function desenha() {
   let tk = `<table><tr><th>Loja</th><th>Previsto</th><th>Recebido</th><th class="cd">Descontos</th><th class="ce">Empréstimo</th><th>Diferença</th><th></th></tr>`; // mesmas colunas do iFood (Keeta não tem empréstimo: tracinho)
   fk.lojas.forEach(l => { tk += `<tr><td title="${esc(l.cnpj)} · ID ${esc(l.lid)}">${tri(l.desc, l)}${esc(l.nome)}</td><td>${inp('keeta/prev/' + l.id, l.prev, 'k-' + l.id)}</td><td>${inpR('keeta/rec/' + l.id, l.rec, 'k-' + l.id)}</td><td class="cd">${l.desc == null ? '' : fmt(l.desc)}</td><td class="ce"><span class="sem">—</span></td><td>${difTxt(l.desc, l)}</td>${ed('k-' + l.id, [l.prev, l.rec])}</tr>`; });
   tk += `<tr class="enche"><td colspan="7" style="padding:0;height:0;border:0"></td></tr><tr class="total"><td>${tri()}Total Keeta</td><td>${fmt(fk.t.prev)}</td><td>${fk.t.rec == null ? '—' : fmt(fk.t.rec)}</td><td class="cd">${fk.t.desc == null ? '—' : fmt(fk.t.desc)}</td><td class="ce">—</td><td>${difTxt(fk.t.desc)}</td><td></td></tr></table>`;
-  const cab = (p, x) => `<div class="cab"># <input value="${esc(x.num || '')}" data-c="${p}/num" onchange="salvaTxt(this)"> Apuração <input type="date" value="${esc(x.de || '')}" data-c="${p}/de" onchange="salvaTxt(this)"> a <input type="date" value="${esc(x.ate || '')}" data-c="${p}/ate" onchange="salvaTxt(this)"></div>`;
+  // Maikon 12/11: sem o número (#); a data da apuração só muda enquanto ela lança o previsto — depois fica fixa (e na visão da diretoria é sempre texto)
+  const cab = (p, x) => VISAO !== 'dir' && fase(s) === 'prev' ? `<div class="cab">Apuração <input type="date" value="${esc(x.de || '')}" data-c="${p}/de" onchange="salvaTxt(this)"> a <input type="date" value="${esc(x.ate || '')}" data-c="${p}/ate" onchange="salvaTxt(this)"></div>`
+    : `<div class="cab cab-txt">Apuração <b>${br(x.de)}</b> a <b>${br(x.ate)}</b></div>`;
   const botao = (cls, nome, t) => `<button class="botao ${cls}" onclick="abreFecha('${cls}', this)">
     <span class="nome">${nome}</span><span class="tot"><div><small>Previsto</small><b>${fmt(t.prev)}</b></div><div><small>Recebido</small><b>${t.rec == null ? '—' : fmt(t.rec)}</b></div><div><small>Descontos</small><b>${t.desc == null ? '—' : fmt(t.desc)}</b></div></span></button>`;
   const colI = `<div class="col">${botao('ifood', 'iFood', fi.t)}\n      <div class="tab">${cab('ifood', f)}${ti}</div></div>`, colK = `<div class="col">${botao('keeta', 'Keeta', fk.t)}\n      <div class="tab">${cab('keeta', k)}${tk}</div></div>`;
@@ -336,7 +338,7 @@ function desenha() {
     const gp = fi.t.prev + fk.t.prev, gr = fi.t.rec == null && fk.t.rec == null ? null : (fi.t.rec || 0) + (fk.t.rec || 0), gd = gr == null ? null : (fi.t.desc || 0) + (fk.t.desc || 0), qn = fi.t.quais.concat(fk.t.quais);
     $('main').innerHTML = `<div class="barra"><label>Semana</label><select onchange="ATUAL=this.value;desenha()">${optD}</select><button class="btn cl mini-bt" title="Tela completa (lançar)" onclick="VISAO='lanc';desenha()">⚙️</button></div>
       <div class="duas">${fecha(colI, 'ifood')}${fecha(colK, 'keeta')}</div>
-      <div class="botao totg"><span class="nome">Total iFood + Keeta<small>pagamento ${br(s.pagto)}</small></span><span class="tot"><div><small>Previsto</small><b>${fmt(gp)}</b></div><div><small>Recebido</small><b>${gr == null ? '—' : fmt(gr)}</b></div><div><small>Descontos</small><b>${gd == null ? '—' : fmt(gd)}</b></div></span></div>
+      <div class="botao totg"><span class="nome">Total iFood + Keeta</span><span class="tot"><div><small>Previsto</small><b>${fmt(gp)}</b></div><div><small>Recebido</small><b>${gr == null ? '—' : fmt(gr)}</b></div><div><small>Descontos</small><b class="desc-v">${gd == null ? '—' : fmt(gd)}</b></div></span></div>
       ${qn.length ? `<div class="aviso-nb">⚠️ Não bate: ${esc(qn.join(', '))}</div>` : ''}`;
     $('main').classList.add('modo-dir'); alinhaTotais(); return;
   }
