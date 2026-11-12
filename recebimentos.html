@@ -81,6 +81,10 @@ input.v.vazio { background:#fffbeb; }
 .botao.totg { background:#1e293b; color:#fff; cursor:default; max-width:760px; margin:0 auto; } .botao.totg .nome { font-size:22px; } .botao.totg .nome small { display:block; font-size:11.5px; font-weight:700; opacity:.75; }
 .aviso-nb { max-width:760px; width:100%; margin:0 auto; background:var(--badbg); color:var(--bad); border-radius:12px; padding:10px 14px; font-weight:800; font-size:13.5px; text-align:center; }
 .mini-bt { padding:6px 10px !important; margin-left:auto; }
+.barra.semanas { flex-wrap:nowrap; padding:8px; } .chips { display:flex; gap:8px; overflow-x:auto; flex:1; min-width:0; scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch; padding-bottom:2px; }
+.chip { flex:0 0 auto; scroll-snap-align:center; border:1px solid var(--line); background:#f8fafc; border-radius:12px; padding:6px 12px; text-align:center; cursor:pointer; font-family:inherit; color:var(--fg); }
+.chip b { display:block; font-size:15px; font-weight:900; } .chip small { display:block; font-size:10.5px; color:var(--muted); font-weight:700; }
+.chip.on { background:var(--azul); border-color:var(--azul); color:#fff; } .chip.on small { color:#c7d2fe; }
 .um { max-width:760px; width:100%; margin:0 auto; display:flex; flex-direction:column; gap:10px; }
 .mod-bg { position:fixed; inset:0; background:rgba(15,23,42,.55); z-index:600; display:flex; align-items:center; justify-content:center; padding:16px; }
 .mod { background:#fff; border-radius:16px; width:100%; max-width:560px; max-height:92vh; overflow:auto; }
@@ -174,7 +178,7 @@ function calcKeeta(s) {
 // Maikon 12/11: triângulo na frente do nome da conta que não bate
 const bate = d => d == null || Math.abs(d) < 0.01;
 // Maikon 12/11: a MAIS pode fechar (ajuste do iFood); a MENOS sem ser empréstimo trava o Finalizar até justificar (valor + motivo) — toque no ⚠️
-const tri = (d, x) => bate(d) ? '<span class="tri"></span>' : x && x.just ? `<span class="tri tri-b" title="Justificado: ${esc(x.just.motivo)}" onclick="justifica('${x.key}')">📝</span>`
+const tri = (d, x) => (x = VISAO === 'dir' ? null : x, bate(d)) ? '<span class="tri"></span>' : x && x.just ? `<span class="tri tri-b" title="Justificado: ${esc(x.just.motivo)}" onclick="justifica('${x.key}')">📝</span>`
   : x ? `<span class="tri tri-b" title="${d > 0 ? 'Diferença a menos: toque para justificar' : 'Caiu a mais (pode fechar)'}" onclick="justifica('${x.key}')">⚠️</span>` : '<span class="tri">⚠️</span>'; // espaço fixo: nomes alinhados
 function achaConta(key) { const s = SEM[ATUAL]; return key[0] === 'i' ? calcIfood(s).contas.find(c => c.key === key) : calcKeeta(s).lojas.find(l => l.key === key); }
 function justifica(key) {
@@ -189,7 +193,7 @@ const difTxt = (d, x) => d == null ? '' : Math.abs(d) < 0.01 ? '<span class="dif
 function empCel(c) {
   if (!c.temEmp) return '<span class="sem">—</span>';
   if (c.emp != null) return !EDIT.has('i-' + c.id) ? `<span class="emp-ok">${fmt(c.emp)}</span>` : `<button class="mini" title="Desfazer" onclick="desfazEmp('${c.id}')">✕</button><span class="emp-ok">${fmt(c.emp)}</span>`;
-  if (c.desc != null && c.desc >= 0.01) return `<button class="btn-emp" onclick="aceitaEmp('${c.id}')">Empréstimo?</button>`;
+  if (c.desc != null && c.desc >= 0.01 && VISAO !== 'dir') return `<button class="btn-emp" onclick="aceitaEmp('${c.id}')">Empréstimo?</button>`;
   return '';
 }
 function aceitaEmp(id) {
@@ -203,9 +207,9 @@ function desfazEmp(id) { if (confirm('Tirar o empréstimo desta conta?')) grava(
 function empMes(q) { const m = q.slice(0, 7); return Object.values(SEM).filter(x => (x.pagto || '').startsWith(m)).reduce((t, x) => t + soma(Object.values((x.ifood || {}).emp || {})), 0); }
 // Maikon 12/11: valor lançado vira texto (não muda sem querer); o lápis no fim da linha libera para alterar
 const EDIT = new Set();
-const ed = (row, vals) => `<td class="ed">${vals.some(v => v != null) && !EDIT.has(row) ? `<button class="lapis" title="Alterar esta linha" onclick="edita('${row}')">✏️</button>` : ''}</td>`;
+const ed = (row, vals) => `<td class="ed">${VISAO !== 'dir' && vals.some(v => v != null) && !EDIT.has(row) ? `<button class="lapis" title="Alterar esta linha" onclick="edita('${row}')">✏️</button>` : ''}</td>`;
 function edita(row) { EDIT.add(row); desenha(); const n = document.querySelector(`input[data-r="${row}"]`); if (n) { n.focus(); n.select(); } }
-const inp = (caminho, v, row) => v != null && !EDIT.has(row) ? `<span class="val">${fmt(v)}</span>` : `<input data-r="${row}" class="v ${v == null ? 'vazio' : ''}" inputmode="decimal" value="${v == null ? '' : fmt(v)}" data-c="${caminho}" onchange="salva(this)" onfocus="this.select()" onkeydown="enterDesce(event, this)" oninput="digitou(this)" enterkeyhint="next" placeholder="lançar">`;
+const inp = (caminho, v, row) => VISAO === 'dir' ? (v == null ? '' : `<span class="val">${fmt(v)}</span>`) : v != null && !EDIT.has(row) ? `<span class="val">${fmt(v)}</span>` : `<input data-r="${row}" class="v ${v == null ? 'vazio' : ''}" inputmode="decimal" value="${v == null ? '' : fmt(v)}" data-c="${caminho}" onchange="salva(this)" onfocus="this.select()" onkeydown="enterDesce(event, this)" oninput="digitou(this)" enterkeyhint="next" placeholder="lançar">`;
 
 // Maikon 12/11: etapas da semana — 'prev' (segunda: só o previsto) → Finalizar → 'rec' (quarta: abre o recebido) → Finalizar → 'fim'
 const fase = x => x ? (x.fase || ((Object.keys((x.ifood || {}).rec || {}).length || Object.keys((x.keeta || {}).rec || {}).length) ? 'rec' : 'prev')) : '';
@@ -328,19 +332,21 @@ function desenha() {
   tk += `<tr class="enche"><td colspan="7" style="padding:0;height:0;border:0"></td></tr><tr class="total"><td>${tri()}Total Keeta</td><td>${fmt(fk.t.prev)}</td><td>${fk.t.rec == null ? '—' : fmt(fk.t.rec)}</td><td class="cd">${fk.t.desc == null ? '—' : fmt(fk.t.desc)}</td><td class="ce">—</td><td>${difTxt(fk.t.desc)}</td><td></td></tr></table>`;
   // Maikon 12/11: sem o número (#); a data da apuração só muda enquanto ela lança o previsto — depois fica fixa (e na visão da diretoria é sempre texto)
   const cab = (p, x) => VISAO !== 'dir' && fase(s) === 'prev' ? `<div class="cab">Apuração <input type="date" value="${esc(x.de || '')}" data-c="${p}/de" onchange="salvaTxt(this)"> a <input type="date" value="${esc(x.ate || '')}" data-c="${p}/ate" onchange="salvaTxt(this)"></div>`
-    : `<div class="cab cab-txt">Apuração <b>${br(x.de)}</b> a <b>${br(x.ate)}</b></div>`;
+    : `<div class="cab cab-txt">Apuração <b>${ddmm(x.de)}</b> a <b>${ddmm(x.ate)}</b></div>`;
   const botao = (cls, nome, t) => `<button class="botao ${cls}" onclick="abreFecha('${cls}', this)">
     <span class="nome">${nome}</span><span class="tot"><div><small>Previsto</small><b>${fmt(t.prev)}</b></div><div><small>Recebido</small><b>${t.rec == null ? '—' : fmt(t.rec)}</b></div><div><small>Descontos</small><b>${t.desc == null ? '—' : fmt(t.desc)}</b></div></span></button>`;
   const colI = `<div class="col">${botao('ifood', 'iFood', fi.t)}\n      <div class="tab">${cab('ifood', f)}${ti}</div></div>`, colK = `<div class="col">${botao('keeta', 'Keeta', fk.t)}\n      <div class="tab">${cab('keeta', k)}${tk}</div></div>`;
   if (VISAO === 'dir') { // Maikon 12/11: tarja do iFood, tarja da Keeta (fechadas; toca para abrir), tarja preta do total e o aviso embaixo
     const fecha = (x, q) => ABERTOS.has(q) ? x : x.replace('<div class="tab">', '<div class="tab" hidden>');
-    const optD = lista.map(x => `<option value="${x.pagto}" ${x.pagto === ATUAL ? 'selected' : ''}>Pagamento ${br(x.pagto)}</option>`).join('');
     const gp = fi.t.prev + fk.t.prev, gr = fi.t.rec == null && fk.t.rec == null ? null : (fi.t.rec || 0) + (fk.t.rec || 0), gd = gr == null ? null : (fi.t.desc || 0) + (fk.t.desc || 0), qn = fi.t.quais.concat(fk.t.quais);
-    $('main').innerHTML = `<div class="barra"><label>Semana</label><select onchange="ATUAL=this.value;desenha()">${optD}</select><button class="btn cl mini-bt" title="Tela completa (lançar)" onclick="VISAO='lanc';desenha()">⚙️</button></div>
+    // Maikon 12/11: histórico — as semanas numa faixa que rola para o lado; toca para ver
+    const chips = lista.map(x => { const a = calcIfood(x), b = calcKeeta(x), r = a.t.rec == null && b.t.rec == null ? null : (a.t.rec || 0) + (b.t.rec || 0);
+      return `<button class="chip ${x.pagto === ATUAL ? 'on' : ''}" onclick="ATUAL='${x.pagto}';desenha()"><b>${ddmm(x.pagto)}</b><small>${r == null ? 'previsto ' + fmt(a.t.prev + b.t.prev) : fmt(r)}</small></button>`; }).join('');
+    $('main').innerHTML = `<div class="barra semanas"><div class="chips" id="chips">${chips}</div><button class="btn cl mini-bt" title="Tela completa (lançar)" onclick="VISAO='lanc';desenha()">⚙️</button></div>
       <div class="duas">${fecha(colI, 'ifood')}${fecha(colK, 'keeta')}</div>
       <div class="botao totg"><span class="nome">Total iFood + Keeta</span><span class="tot"><div><small>Previsto</small><b>${fmt(gp)}</b></div><div><small>Recebido</small><b>${gr == null ? '—' : fmt(gr)}</b></div><div><small>Descontos</small><b class="desc-v">${gd == null ? '—' : fmt(gd)}</b></div></span></div>
       ${qn.length ? `<div class="aviso-nb">⚠️ Não bate: ${esc(qn.join(', '))}</div>` : ''}`;
-    $('main').classList.add('modo-dir'); alinhaTotais(); return;
+    $('main').classList.add('modo-dir'); alinhaTotais(); const on = document.querySelector('.chip.on'); if (on) on.scrollIntoView({ inline: 'center', block: 'nearest' }); return;
   }
   $('main').classList.remove('modo-dir');
   h += `<div class="duas">${colI}${colK}</div>`;
