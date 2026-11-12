@@ -99,7 +99,8 @@ const IFOOD = [ // conta = o que cai junto (recebido e desconto do empréstimo p
   { id: 'pizza_esfiha', nome: 'Pizza + Esfiha', lojas: [['pizza', 'Pizza'], ['esfiha', 'Esfiha']] },
   { id: 'abc', nome: 'ABC', lojas: [['abc', 'ABC']] },
   { id: 'gru', nome: 'GRU', lojas: [['gru', 'GRU']] },
-  { id: 'pirituba', nome: 'Pirituba', lojas: [['pir_gourmet', 'Pirituba Gourmet'], ['pir_pizza', 'Pirituba Pizza'], ['pir_esfiha', 'Pirituba Esfiha'], ['pir_burger', 'Pirituba Burger']] },
+  { id: 'pirituba', nome: 'Pirituba', lojas: [['pir_gourmet', 'Pirituba Gourmet'], ['pir_pizza', 'Pirituba Pizza'], ['pir_esfiha', 'Pirituba Esfiha']] }, // Maikon 12/11: Gourmet+Pizza+Esfiha caem juntas
+  { id: 'pir_burger', nome: 'Pirituba Burger', lojas: [['pir_burger', 'Pirituba Burger']] }, // Burger cai sozinha
 ];
 const KEETA = [
   ['matriz', 'Matriz', '31.394.735/0001-70', '159650457'], ['gourmet', 'Gourmet', '31.394.735/0001-70', '159624884'],
@@ -187,7 +188,7 @@ function desenha() {
   ti += `<tr class="total"><td>Total iFood</td><td>${fmt(fi.t.prev)}</td><td>${fi.t.rec == null ? '—' : fmt(fi.t.rec)}</td><td>${fi.t.desc == null ? '—' : fmt(fi.t.desc)}</td><td>${fmt(fi.t.emp)}</td><td>${difTxt(fi.t.dif)}</td><td></td></tr></table>`;
   // Keeta
   let tk = `<table><tr><th>Loja</th><th>Previsto</th><th>Recebido</th><th>Diferença</th><th></th></tr>`;
-  fk.lojas.forEach(l => { tk += `<tr><td>${esc(l.nome)}<small>${esc(l.cnpj)} · ${esc(l.lid)}</small></td><td>${inp('keeta/prev/' + l.id, l.prev, 'k-' + l.id)}</td><td>${inp('keeta/rec/' + l.id, l.rec, 'k-' + l.id)}</td><td>${difTxt(l.desc)}</td>${ed('k-' + l.id, [l.prev, l.rec])}</tr>`; });
+  fk.lojas.forEach(l => { tk += `<tr><td title="${esc(l.cnpj)} · ID ${esc(l.lid)}">${esc(l.nome)}</td><td>${inp('keeta/prev/' + l.id, l.prev, 'k-' + l.id)}</td><td>${inp('keeta/rec/' + l.id, l.rec, 'k-' + l.id)}</td><td>${difTxt(l.desc)}</td>${ed('k-' + l.id, [l.prev, l.rec])}</tr>`; });
   tk += `<tr class="total"><td>Total Keeta</td><td>${fmt(fk.t.prev)}</td><td>${fk.t.rec == null ? '—' : fmt(fk.t.rec)}</td><td>${difTxt(fk.t.desc)}</td><td></td></tr></table>`;
   const cab = (p, x) => `<div class="cab"># <input value="${esc(x.num || '')}" data-c="${p}/num" onchange="salvaTxt(this)"> Apuração <input type="date" value="${esc(x.de || '')}" data-c="${p}/de" onchange="salvaTxt(this)"> a <input type="date" value="${esc(x.ate || '')}" data-c="${p}/ate" onchange="salvaTxt(this)"> · pagto ${br(s.pagto)}</div>`;
   const botao = (cls, nome, t) => `<button class="botao ${cls}" onclick="this.parentNode.querySelector('.tab').hidden=!this.parentNode.querySelector('.tab').hidden">
