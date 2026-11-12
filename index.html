@@ -1396,7 +1396,7 @@ function renderSaldos(d) {
     const pagar=contas.reduce((s,c)=>s+(c.valor||0),0);
     const entreContas=contas.filter(c=>catEfetiva(c)==='entrecontas').reduce((s,c)=>s+(c.valor||0),0);
     const transfConta=contas.filter(c=>catEfetiva(c)==='transfconta').reduce((s,c)=>s+(c.valor||0),0);
-    const final=ini-pagar+entreContas;
+    const final=ini-pagar; // Maikon 12/11: transferência entre contas NÃO mexe no saldo — saldo − contas a pagar, como era antes
     if (emp.key==='SERVICE') { totalPagarService+=pagar; }
     else { totalIni+=ini; totalPagarSemService+=pagar; totalEntreContas+=entreContas; totalTransfConta+=transfConta; }
     const isServ = emp.key === 'SERVICE';
@@ -1415,7 +1415,7 @@ function renderSaldos(d) {
   // banco — cada transferência realmente saiu da conta de origem, mesmo as internas).
   // totalFinal  = saldo inicial - apenas empresas sem service + entre contas [Cobertura] (liquido real)
   const totalPagar=totalPagarSemService+totalPagarService;
-  const totalFinal=totalIni-totalPagarSemService+totalEntreContas;
+  const totalFinal=totalIni-totalPagarSemService; // Maikon 12/11: sem somar de volta as transferências entre contas
   // "Real" = desconsiderando as transferências internas do grupo: Cobertura Conta (não é
   // dinheiro saindo do grupo) e Entre Contas (mesmo gasto contado 2x -- saída da empresa +
   // saída da Just Service pro fornecedor real). Só uma referência; o total de cima continua
@@ -1585,7 +1585,7 @@ function renderContas(d) {
     const travado=!!(d.travados||{})[emp.key];
     const ini=(d.saldos||{})[emp.key]||0;
     const entreContas=contas.filter(c=>catEfetiva(c)==='entrecontas').reduce((s,c)=>s+(c.valor||0),0);
-    const final=ini-total+entreContas;
+    const final=ini-total; // Maikon 12/11: transferência entre contas não mexe no saldo
     const fechado=cards && !_mobAbertos.has(emp.key);
     const fSel=FILTROS_MET.find(x=>x[0]===_filtroMet[emp.key]);
     const listaVis=fSel ? contas.map((c,i)=>[c,i]).filter(([c])=>fSel[2].includes(catEfetiva(c))) : contas.map((c,i)=>[c,i]);
@@ -1693,7 +1693,7 @@ function imprimir(soEmp, ev, juntas) {
     const total = contas.reduce((s,c)=>s+(c.valor||0),0);
     const ini = (d.saldos||{})[emp.key]||0;
     const entreContas = contas.filter(c=>catEfetiva(c)==='entrecontas').reduce((s,c)=>s+(c.valor||0),0);
-    const final = ini - total + entreContas;
+    const final = ini - total; // Maikon 12/11: transferência entre contas não mexe no saldo
     const fSel = FILTROS_MET.find(x=>x[0]===_filtroMet[emp.key]);
     const lista = fSel ? contas.filter(c=>fSel[2].includes(catEfetiva(c))) : contas;
     const totalLista = lista.reduce((s,c)=>s+(c.valor||0),0);
@@ -2210,7 +2210,7 @@ function resumoDiretoria(d){
     const ini=d.saldos[emp.key]||0, contas=d.contas[emp.key]||[];
     const pagar=contas.reduce((s,c)=>s+(c.valor||0),0);
     const entre=contas.filter(c=>catEfetiva(c)==='entrecontas').reduce((s,c)=>s+(c.valor||0),0);
-    const linha={emp, ini, pagar, final:ini-pagar+entre, n:contas.length};
+    const linha={emp, ini, pagar, final:ini-pagar, n:contas.length}; // Maikon 12/11: transferência entre contas não mexe no saldo
     if (emp.key==='SERVICE'){ r.serv=linha; continue; }
     r.emps.push(linha); r.ini+=ini; r.pagar+=pagar; r.final+=linha.final; r.n+=contas.length;
   }
