@@ -242,25 +242,26 @@ function resumoSem(s) {
   const difs = fi.contas.concat(fk.lojas).filter(c => !bate(c.dif)).map(c => ({ nome: c.nomeC, dif: c.dif, motivo: c.just ? c.just.motivo : '' }));
   return { fi, fk, sems, empMes: soma(sems.map(x => x.emp)), prev: fi.t.prev + fk.t.prev, rec: fi.t.rec == null && fk.t.rec == null ? null : (fi.t.rec || 0) + (fk.t.rec || 0), difs };
 }
-function htmlInforme(s, etapa, clicavel) {
-  const r = resumoSem(s), f = s.ifood || {}, k = s.keeta || {}, REC = etapa === 'rec';
-  const V = v => v == null ? '—' : fmt(v), lk = q => clicavel ? ` onclick="ABRE=ABRE==='${q}'?'':'${q}';desenha()" style="cursor:pointer"` : '';
-  const cel = (v, b) => `<td style="text-align:right;padding:10px 14px;font-weight:${b ? 900 : 700};white-space:nowrap">${V(v)}</td>`;
-  const linha = (nome, sub, q, cor, a, b) => `<tr${q ? lk(q) : ''} style="border-bottom:1px solid #e2e8f0${q && ABRE === q ? ';background:#f1f5f9' : ''}"><td style="padding:10px 14px"><b style="font-size:16px;color:${cor}">${nome}</b>${sub ? `<div style="font-size:11.5px;color:#64748b;font-weight:600">${sub}</div>` : ''}</td>${cel(a)}${REC ? cel(b) : ''}</tr>`;
-  let h = `<div class="inf" style="width:100%;max-width:620px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;font-family:Inter,'Segoe UI',Arial,sans-serif;color:#0f172a">
-    <div style="background:#1e293b;color:#fff;padding:16px 18px"><div style="font-size:11px;font-weight:800;letter-spacing:.08em;opacity:.7">HUB JUST BURGER · RECEBIMENTOS</div>
-      <div style="font-size:22px;font-weight:900;margin-top:2px">${REC ? 'Recebimento iFood e Keeta' : 'Previsão de recebimento'}</div>
-      <div style="font-size:13.5px;font-weight:700;opacity:.85">Pagamento quarta ${br(s.pagto)}</div></div>
-    <table style="width:100%;border-collapse:collapse;font-size:15px"><tr style="background:#f8fafc;font-size:10.5px;font-weight:800;color:#64748b;letter-spacing:.05em"><td style="padding:8px 14px"></td><td style="text-align:right;padding:8px 14px">PREVISTO</td>${REC ? '<td style="text-align:right;padding:8px 14px">RECEBIDO</td>' : ''}</tr>
-    ${linha('iFood', `#${esc(f.num || '')} · apuração ${ddmm(f.de)} a ${ddmm(f.ate)}${clicavel ? ' · toque para ver' : ''}`, 'ifood', '#ea1d2c', r.fi.t.prev, r.fi.t.rec)}
-    ${linha('Keeta', `#${esc(k.num || '')} · apuração ${ddmm(k.de)} a ${ddmm(k.ate)}${clicavel ? ' · toque para ver' : ''}`, 'keeta', '#a16207', r.fk.t.prev, r.fk.t.rec)}
-    <tr style="background:#e9f7ee;color:#14532d"><td style="padding:12px 14px;font-weight:900;font-size:16px">TOTAL GERAL</td>${cel(r.prev, 1)}${REC ? cel(r.rec, 1) : ''}</tr></table>`;
-  if (REC && r.empMes >= 0.01) h += `<div style="padding:12px 18px;border-top:1px solid #e2e8f0"><div style="font-size:11px;font-weight:800;color:#92400e;letter-spacing:.05em">EMPRÉSTIMO DESCONTADO NO iFOOD · ${['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'][Number(s.pagto.slice(5, 7)) - 1]}</div>
-    ${r.sems.map(x => `<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;padding:3px 0"><span>Semana do pagamento ${ddmm(x.pagto)}</span><span>${fmt(x.emp)}</span></div>`).join('')}
-    <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:900;color:#92400e;border-top:1px dashed #f59e0b;margin-top:4px;padding-top:5px"><span>Total de empréstimo no mês</span><span>${fmt(r.empMes)}</span></div></div>`;
-  if (REC && r.difs.length) h += `<div style="padding:12px 18px;border-top:1px solid #e2e8f0;background:#fffbeb"><div style="font-size:11px;font-weight:800;color:#b91c1c;letter-spacing:.05em">⚠️ DIFERENÇAS</div>
-    ${r.difs.map(d => `<div style="padding:5px 0"><div style="display:flex;justify-content:space-between;font-size:14px;font-weight:800"><span>${esc(d.nome)}</span><span style="color:${d.dif > 0 ? '#b91c1c' : '#1d4ed8'}">${d.dif > 0 ? '− ' + fmt(d.dif) + ' a menos' : '+ ' + fmt(-d.dif) + ' a mais'}</span></div>${d.motivo ? `<div style="font-size:13px;color:#475569;font-weight:600">Obs.: ${esc(d.motivo)}</div>` : ''}</div>`).join('')}</div>`;
-  return h + `<div style="text-align:center;font-size:11px;color:#94a3b8;padding:8px">Enviado por ${esc(QUEM || U || 'Financeiro')} · Hub Just Burger</div></div>`;
+function htmlInforme(s, etapa) { // Maikon 12/11: imagem no formato das tarjas (vermelha iFood, amarela Keeta, preta total), só os valores
+  const r = resumoSem(s), REC = etapa === 'rec', F = "font-family:Inter,'Segoe UI',Arial,sans-serif";
+  const V = v => v == null ? '—' : fmt(v);
+  const vals = (a, b, cor) => `<div style="display:flex;gap:18px;justify-content:flex-end;text-align:right">${[['Previsto', a]].concat(REC ? [['Recebido', b]] : []).map(([t, v]) => `<div style="min-width:150px"><div style="font-size:11px;font-weight:800;letter-spacing:.06em;opacity:.8;text-transform:uppercase">${t}</div><div style="font-size:24px;font-weight:900;color:${cor}">${V(v)}</div></div>`).join('')}</div>`;
+  const tarja = (nome, fundo, cor, a, b) => `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:${fundo};color:${cor};border-radius:14px;padding:14px 18px;margin-top:10px"><div style="font-size:24px;font-weight:900">${nome}</div>${vals(a, b, cor)}</div>`;
+  let h = `<div class="inf" style="width:620px;background:#f5f6f2;padding:18px;${F};color:#0f172a;box-sizing:border-box">
+    <div style="font-size:11px;font-weight:800;letter-spacing:.08em;color:#64748b">HUB JUST BURGER</div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:24px;font-weight:900">${REC ? 'Recebimento' : 'Previsão de recebimento'}</div><div style="font-size:14px;font-weight:800;color:#64748b">pagamento ${br(s.pagto)}</div></div>
+    ${tarja('iFood', '#ea1d2c', '#fff', r.fi.t.prev, r.fi.t.rec)}
+    ${tarja('Keeta', '#facc15', '#1f2937', r.fk.t.prev, r.fk.t.rec)}
+    ${tarja('Total geral', '#1e293b', '#fff', r.prev, r.rec)}`;
+  const linha = (t, v, cor) => `<div style="display:flex;justify-content:space-between;font-size:16px;font-weight:800;padding:4px 0"><span>${t}</span><span style="color:${cor}">${v}</span></div>`;
+  if (REC && (r.empMes >= 0.01 || r.difs.length)) {
+    h += `<div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:10px 18px;margin-top:10px">`;
+    if (r.empMes >= 0.01) h += linha(`Empréstimo descontado iFood (${['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'][Number(s.pagto.slice(5, 7)) - 1]})`, fmt(r.empMes), '#92400e');
+    r.difs.forEach(d => { h += linha(`⚠️ ${esc(d.nome)}`, d.dif > 0 ? '− ' + fmt(d.dif) : '+ ' + fmt(-d.dif), d.dif > 0 ? '#b91c1c' : '#1d4ed8');
+      if (d.dif > 0 && d.motivo) h += `<div style="font-size:13px;color:#475569;font-weight:600;margin:-2px 0 4px">${esc(d.motivo)}</div>`; });
+    h += '</div>';
+  }
+  return h + '</div>';
 }
 let QUEM = '';
 try { const u = JSON.parse(localStorage.getItem('jb_user') || '{}'); QUEM = u.nome || u.username || ''; } catch (e) {}
@@ -269,7 +270,7 @@ let BLOB = null;
 async function informar(etapa) {
   const s = SEM[ATUAL]; if (!s) return;
   let box = $('infBox'); if (!box) { box = document.createElement('div'); box.id = 'infBox'; box.style.cssText = 'position:fixed;left:-2000px;top:0;width:620px'; document.body.appendChild(box); }
-  box.innerHTML = htmlInforme(s, etapa, false);
+  box.innerHTML = htmlInforme(s, etapa);
   try { await h2c(); } catch (e) { return alert('Não consegui gerar a imagem (sem internet?)'); }
   const cv = await html2canvas(box.firstElementChild, { scale: 2, backgroundColor: '#ffffff', logging: false });
   BLOB = await new Promise(ok => cv.toBlob(ok, 'image/png'));
@@ -296,12 +297,6 @@ async function infEnviar(etapa) {
 function botoesInforme(s) {
   const fa = fase(s), inf = s.informado || {}, bt = (et, txt) => inf[et] ? `<button class="btn feito" title="Enviado ${new Date(inf[et].em).toLocaleString('pt-BR')} — toque para mandar de novo" onclick="if(confirm('Já foi enviado. Mandar de novo?'))informar('${et}')">✓ ${txt} informado</button>` : `<button class="btn inf" onclick="informar('${et}')">📤 Informar ${txt.toLowerCase()}</button>`;
   return (fa !== 'prev' ? bt('prev', 'Previsto') : '') + (fa === 'fim' ? bt('rec', 'Recebido') : '');
-}
-function desenhaDiretoria(s, opt, st) {
-  let h = `<div class="barra"><label>Semana</label><select onchange="ATUAL=this.value;ABRE='';desenha()">${opt}</select><button class="btn cl" onclick="VISAO='lanc';desenha()">📋 Ver todos os lançamentos</button>${st}</div>`;
-  if (!s) return h + '<div class="vazio-box">Nenhuma semana lançada ainda.</div>';
-  h += htmlInforme(s, fase(s) === 'prev' ? 'prev' : 'rec', true);
-  return h;
 }
 function desenha() {
   const lista = Object.values(SEM).sort((a, b) => a.pagto < b.pagto ? 1 : -1);
