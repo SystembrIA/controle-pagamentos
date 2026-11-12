@@ -93,7 +93,7 @@ const IFOOD = [ // conta = o que cai junto (recebido e desconto do empréstimo p
   { id: 'pizza_esfiha', nome: 'Pizza + Esfiha', lojas: [['pizza', 'Pizza'], ['esfiha', 'Esfiha']] },
   { id: 'abc', nome: 'ABC', lojas: [['abc', 'ABC']] },
   { id: 'gru', nome: 'GRU', lojas: [['gru', 'GRU']] },
-  { id: 'pirituba', nome: 'Pirituba', lojas: [['pir_gourmet', 'Pirituba Gourmet'], ['pir_pizza', 'Pirituba Pizza'], ['pir_burger', 'Pirituba Burger']] },
+  { id: 'pirituba', nome: 'Pirituba', lojas: [['pir_gourmet', 'Pirituba Gourmet'], ['pir_pizza', 'Pirituba Pizza'], ['pir_esfiha', 'Pirituba Esfiha'], ['pir_burger', 'Pirituba Burger']] },
 ];
 const KEETA = [
   ['matriz', 'Matriz', '31.394.735/0001-70', '159650457'], ['gourmet', 'Gourmet', '31.394.735/0001-70', '159624884'],
@@ -154,7 +154,7 @@ function aceitaEmp(id) {
 function desfazEmp(id) { if (confirm('Tirar o empréstimo desta conta?')) grava('ifood/emp/' + id, null); }
 // empréstimo já aceito no mês do pagamento (todas as semanas)
 function empMes(q) { const m = q.slice(0, 7); return Object.values(SEM).filter(x => (x.pagto || '').startsWith(m)).reduce((t, x) => t + soma(Object.values((x.ifood || {}).emp || {})), 0); }
-const inp = (caminho, v) => `<input class="v ${v == null ? 'vazio' : ''}" inputmode="decimal" value="${v == null ? '' : fmt(v)}" data-c="${caminho}" onchange="salva(this)" onfocus="this.select()" onkeydown="enterDesce(event, this)" enterkeyhint="next" placeholder="lançar">`;
+const inp = (caminho, v) => `<input class="v ${v == null ? 'vazio' : ''}" inputmode="decimal" value="${v == null ? '' : fmt(v)}" data-c="${caminho}" onchange="salva(this)" onfocus="this.select()" onkeydown="enterDesce(event, this)" oninput="digitou(this)" enterkeyhint="next" placeholder="lançar">`;
 
 function desenha() {
   const lista = Object.values(SEM).sort((a, b) => a.pagto < b.pagto ? 1 : -1);
@@ -194,8 +194,13 @@ function desenha() {
     <tr><td>iFood</td><td>${fmt(fi.t.prev)}</td><td>${fi.t.rec == null ? '—' : fmt(fi.t.rec)}</td><td>${fi.t.desc == null ? '—' : fmt(fi.t.desc)}</td><td>${fmt(fi.t.emp)}</td><td>${difTxt(fi.t.dif)}</td></tr>
     <tr><td>Keeta</td><td>${fmt(fk.t.prev)}</td><td>${fk.t.rec == null ? '—' : fmt(fk.t.rec)}</td><td>${fk.t.desc == null ? '—' : fmt(fk.t.desc)}</td><td>—</td><td>${difTxt(fk.t.desc)}</td></tr>
     <tr class="total"><td>Total geral</td><td>${fmt(gp)}</td><td>${gr == null ? '—' : fmt(gr)}</td><td>${gd == null ? '—' : fmt(gd)}</td><td>${fmt(fi.t.emp)}</td><td>${difTxt(gdif)}</td></tr></table></div>`;
+  const ae = document.activeElement, ativo = ae && ae.dataset && ae.dataset.c; // mantém o cursor onde ela clicou (a tela é redesenhada)
   $('main').innerHTML = h;
-  if (FOCO) { const n = document.querySelector(`input[data-c="${FOCO}"]`); FOCO = null; if (n) { n.focus(); n.select(); } }
+  const digitando = ativo && !FOCO && ae.value !== ae.defaultValue ? ae.value : null, alvo = FOCO || ativo, porEnter = !!FOCO; FOCO = null;
+  if (alvo) { const n = document.querySelector(`[data-c="${alvo}"]`); if (n) {
+    if (digitando != null) { n.value = digitando; n._salvo = undefined; n.classList.remove('vazio'); }
+    n.focus(); if (porEnter && n.select) n.select(); else if (digitando != null && n.setSelectionRange) n.setSelectionRange(n.value.length, n.value.length);
+  } }
 }
 // Maikon 12/11: Enter salva e desce para o campo de baixo da mesma coluna (ex.: Esfiha → ABC)
 let FOCO = null;
@@ -210,11 +215,24 @@ function enterDesce(e, el) {
 async function grava(caminho, v) {
   if (!ATUAL) return; const s = SEM[ATUAL], ps = caminho.split('/'); let o = s; ps.slice(0, -1).forEach(p => { o[p] = o[p] || {}; o = o[p]; });
   if (v == null) delete o[ps[ps.length - 1]]; else o[ps[ps.length - 1]] = v;
-  desenha(); const t = $('salvo'); if (t) t.textContent = 'salvando…';
+  setTimeout(desenha, 0); const t = $('salvo'); if (t) t.textContent = 'salvando…';
   try { await fbRec(`semanas/${ATUAL}/${caminho}`).set(v == null ? null : v); await fbRec(`semanas/${ATUAL}`).update({ atualizado: Date.now(), por: U }); if ($('salvo')) $('salvo').textContent = '✓ salvo'; }
   catch (e) { if ($('salvo')) $('salvo').textContent = '⚠️ não salvou'; alert('Não salvou: ' + (e.message || e)); }
 }
-function salva(el) { if (el._salvo === el.value) return; el._salvo = el.value; const v = num(el.value); if (el.value.trim() && v == null) { el.style.borderColor = '#dc2626'; FOCO = null; return; } grava(el.dataset.c, v); }
+// Maikon 12/11: sem botão salvar — grava enquanto digita (0,6 s depois de parar) e antes de sair/atualizar a página
+const PEND = new Map();
+function gravaJa(el) {
+  PEND.delete(el.dataset.c); const v = num(el.value); if (el.value.trim() && v == null) return;
+  const ps = el.dataset.c.split('/'); let o = SEM[ATUAL]; if (!o) return; ps.slice(0, -1).forEach(p => { o[p] = o[p] || {}; o = o[p]; });
+  if (v == null) delete o[ps[ps.length - 1]]; else o[ps[ps.length - 1]] = v;
+  if ($('salvo')) $('salvo').textContent = 'salvando…';
+  fbRec(`semanas/${ATUAL}/${el.dataset.c}`).set(v).then(() => { if ($('salvo')) $('salvo').textContent = '✓ salvo'; }).catch(() => { if ($('salvo')) $('salvo').textContent = '⚠️ não salvou'; });
+}
+function digitou(el) { el.classList.remove('vazio'); clearTimeout(PEND.get(el.dataset.c)); PEND.set(el.dataset.c, setTimeout(() => gravaJa(el), 600)); if ($('salvo')) $('salvo').textContent = 'digitando…'; }
+function gravaPendentes() { document.querySelectorAll('input.v').forEach(el => { if (PEND.has(el.dataset.c)) { clearTimeout(PEND.get(el.dataset.c)); gravaJa(el); } }); }
+addEventListener('pagehide', gravaPendentes); addEventListener('beforeunload', gravaPendentes);
+document.addEventListener('visibilitychange', () => { if (document.hidden) gravaPendentes(); });
+function salva(el) { clearTimeout(PEND.get(el.dataset.c)); PEND.delete(el.dataset.c); if (el._salvo === el.value) return; el._salvo = el.value; const v = num(el.value); if (el.value.trim() && v == null) { el.style.borderColor = '#dc2626'; FOCO = null; return; } grava(el.dataset.c, v); }
 function salvaTxt(el) {
   const v = el.value.trim(), c = el.dataset.c;
   if (c.endsWith('/de') && v) { const p = c.slice(0, -3); SEM[ATUAL][p.split('/')[0]].ate = mais(v, 6); grava(p + '/ate', mais(v, 6)); } // 7 dias: já sugere o fim
