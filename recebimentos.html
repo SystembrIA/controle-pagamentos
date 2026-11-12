@@ -189,7 +189,7 @@ function desenha() {
   // Keeta
   let tk = `<table><tr><th>Loja</th><th>Previsto</th><th>Recebido</th><th>Diferença</th><th></th></tr>`;
   fk.lojas.forEach(l => { tk += `<tr><td title="${esc(l.cnpj)} · ID ${esc(l.lid)}">${esc(l.nome)}</td><td>${inp('keeta/prev/' + l.id, l.prev, 'k-' + l.id)}</td><td>${inp('keeta/rec/' + l.id, l.rec, 'k-' + l.id)}</td><td>${difTxt(l.desc)}</td>${ed('k-' + l.id, [l.prev, l.rec])}</tr>`; });
-  tk += `<tr class="total"><td>Total Keeta</td><td>${fmt(fk.t.prev)}</td><td>${fk.t.rec == null ? '—' : fmt(fk.t.rec)}</td><td>${difTxt(fk.t.desc)}</td><td></td></tr></table>`;
+  tk += `<tr class="enche"><td colspan="5" style="padding:0;height:0;border:0"></td></tr><tr class="total"><td>Total Keeta</td><td>${fmt(fk.t.prev)}</td><td>${fk.t.rec == null ? '—' : fmt(fk.t.rec)}</td><td>${difTxt(fk.t.desc)}</td><td></td></tr></table>`;
   const cab = (p, x) => `<div class="cab"># <input value="${esc(x.num || '')}" data-c="${p}/num" onchange="salvaTxt(this)"> Apuração <input type="date" value="${esc(x.de || '')}" data-c="${p}/de" onchange="salvaTxt(this)"> a <input type="date" value="${esc(x.ate || '')}" data-c="${p}/ate" onchange="salvaTxt(this)"></div>`;
   const botao = (cls, nome, t) => `<button class="botao ${cls}" onclick="this.parentNode.querySelector('.tab').hidden=!this.parentNode.querySelector('.tab').hidden">
     <span class="nome">${nome}</span><span class="tot"><div><small>Previsto</small><b>${fmt(t.prev)}</b></div><div><small>Recebido</small><b>${t.rec == null ? '—' : fmt(t.rec)}</b></div><div><small>Descontos</small><b>${t.desc == null ? '—' : fmt(t.desc)}</b></div></span></button>`;
@@ -205,7 +205,7 @@ function desenha() {
     <tr><td>Keeta</td><td>${fmt(fk.t.prev)}</td><td>${fk.t.rec == null ? '—' : fmt(fk.t.rec)}</td><td>${fk.t.desc == null ? '—' : fmt(fk.t.desc)}</td><td>—</td><td>${difTxt(fk.t.desc)}</td></tr>
     <tr class="total"><td>Total geral</td><td>${fmt(gp)}</td><td>${gr == null ? '—' : fmt(gr)}</td><td>${gd == null ? '—' : fmt(gd)}</td><td>${fmt(fi.t.emp)}</td><td>${difTxt(gdif)}</td></tr></table></div>`;
   const ae = document.activeElement, ativo = ae && ae.dataset && ae.dataset.c; // mantém o cursor onde ela clicou (a tela é redesenhada)
-  $('main').innerHTML = h;
+  $('main').innerHTML = h; alinhaTotais();
   const digitando = ativo && !FOCO && ae.value !== ae.defaultValue ? ae.value : null, alvo = FOCO || ativo, porEnter = !!FOCO; FOCO = null;
   if (alvo) { const n = document.querySelector(`[data-c="${alvo}"]`); if (n) {
     if (digitando != null) { n.value = digitando; n._salvo = undefined; n.classList.remove('vazio'); }
@@ -214,6 +214,14 @@ function desenha() {
 }
 // Maikon 12/11: Enter salva e desce para o campo de baixo da mesma coluna (ex.: Esfiha → ABC)
 let FOCO = null;
+// Maikon 12/11: o Total da Keeta na mesma linha do Total do iFood (linha vazia que cresce o que falta)
+function alinhaTotais() {
+  const tabs = document.querySelectorAll('.duas .tab'), en = document.querySelector('tr.enche td'); if (tabs.length < 2 || !en) return;
+  en.style.height = '0px'; if (getComputedStyle(document.querySelector('.duas')).gridTemplateColumns.split(' ').length < 2) return;
+  const tI = tabs[0].querySelector('tr.total'), tK = tabs[1].querySelector('tr.total'); if (!tI || !tK) return;
+  const d = tI.getBoundingClientRect().top - tK.getBoundingClientRect().top; if (d > 0) en.style.height = d + 'px';
+}
+addEventListener('resize', alinhaTotais); if (document.fonts) document.fonts.ready.then(alinhaTotais);
 function enterDesce(e, el) {
   if (e.key !== 'Enter') return; e.preventDefault();
   const col = el.dataset.c.replace(/\/[^/]+$/, ''), todos = [...document.querySelectorAll('input.v')].filter(x => x.dataset.c.replace(/\/[^/]+$/, '') === col);
