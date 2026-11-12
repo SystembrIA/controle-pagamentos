@@ -64,6 +64,9 @@ input.v.vazio { background:#fffbeb; }
 .geral { background:var(--card); border:2px solid #1e293b; border-radius:16px; overflow:hidden; }
 .geral h3 { margin:0; background:#1e293b; color:#fff; padding:12px 16px; font-size:16px; font-weight:900; display:flex; justify-content:space-between; }
 .vazio-box { text-align:center; color:var(--muted); padding:40px; background:var(--card); border:1px dashed var(--line); border-radius:14px; }
+.nota { padding:9px 14px; font-size:12.5px; color:var(--muted); border-top:1px solid var(--line); background:#f8fafc; }
+.btn-emp { border:1px solid #f59e0b; background:#fffbeb; color:#92400e; border-radius:8px; padding:6px 9px; font:800 12.5px Inter, sans-serif; cursor:pointer; white-space:nowrap; }
+.emp-ok { font-weight:800; color:#92400e; } .mini { border:0; background:none; color:var(--muted); cursor:pointer; font-size:12px; margin-right:4px; } .sem { color:#cbd5e1; }
 .salvo { font:700 12px Inter, sans-serif; color:var(--ok); min-width:70px; }
 @media (max-width:640px) { .botao { grid-template-columns:1fr; } .botao .nome { grid-row:auto; font-size:26px; } .botao .tot b { font-size:14px; } .botao { padding:14px 14px; } .botao .sub { grid-column:1; }
   .geral { overflow-x:auto; } .geral h3 { font-size:14px; } main { padding:10px; } }
@@ -100,23 +103,29 @@ const KEETA = [
   ['pizza', 'Pizza Penha', '49.576.555/0001-75', '159646712'], ['esfiha', 'Esfiha Penha', '49.576.555/0001-75', '159638925'],
   ['sushi', 'Sushi', '64.664.897/0001-30', '159638920'],
 ];
+// Maikon 12/11: o desconto do empréstimo só cai na Burger (Matriz), na Gourmet e na Pizza (Forneria), em partes nas semanas 1–3 do mês.
+// Nessas, a diferença pode ser empréstimo: ela confirma ("esse valor é do empréstimo?"). Nas outras contas tem que bater certinho.
+const EMP_CONTAS = ['matriz', 'gourmet_sushi', 'pizza_esfiha'];
 let SEM = {}, ATUAL = '', U = '';
 
 function quartaDe(iso) { const d = new Date(iso + 'T12:00:00'), w = d.getDay(); d.setDate(d.getDate() + ((3 - w + 7) % 7)); return isoD(d); }
 function novaSemana(q) { // q = quarta do pagamento
-  const ant = Object.values(SEM).sort((a, b) => a.pagto < b.pagto ? 1 : -1)[0] || {};
-  return { pagto: q, ifood: { num: ((ant.ifood || {}).num || 0) + 1 || '', de: mais(q, -30), ate: mais(q, -24), prev: {}, rec: {}, emp: {} },
-    keeta: { num: ((ant.keeta || {}).num || 0) + 1 || '', de: mais(q, -9), ate: mais(q, -3), prev: {}, rec: {} }, criado: Date.now(), por: U };
+  const ant = Object.values(SEM).filter(x => x.pagto < q).sort((a, b) => a.pagto < b.pagto ? 1 : -1)[0] || {}, ai = ant.ifood || {}, ak = ant.keeta || {};
+  // apuração = 7 dias (ex.: 14/09 a 20/09), continuando de onde a semana anterior parou; pagamento na quarta
+  const di = ai.ate ? mais(ai.ate, 1) : mais(q, -30), dk = ak.ate ? mais(ak.ate, 1) : mais(q, -9);
+  return { pagto: q, ifood: { num: (Number(ai.num) || 0) + 1, de: di, ate: mais(di, 6), prev: {}, rec: {}, emp: {} },
+    keeta: { num: (Number(ak.num) || 0) + 1, de: dk, ate: mais(dk, 6), prev: {}, rec: {} }, criado: Date.now(), por: U };
 }
 // contas da semana
 function calcIfood(s) {
   const f = s.ifood || {}, P = f.prev || {}, R = f.rec || {}, E = f.emp || {};
   const contas = IFOOD.map(c => { const prev = soma(c.lojas.map(([k]) => P[k])), temRec = R[c.id] != null, rec = temRec ? R[c.id] : null;
-    const desc = temRec ? Math.round((prev - rec) * 100) / 100 : null, emp = E[c.id] != null ? E[c.id] : null;
-    const dif = desc == null ? null : Math.round((desc - (emp || 0)) * 100) / 100; return { ...c, prev, rec, desc, emp, dif }; });
+    const temEmp = EMP_CONTAS.includes(c.id), desc = temRec ? Math.round((prev - rec) * 100) / 100 : null, emp = temEmp && E[c.id] != null ? E[c.id] : null;
+    const dif = desc == null ? null : Math.round((desc - (emp || 0)) * 100) / 100; return { ...c, temEmp, prev, rec, desc, emp, dif }; });
   const t = { prev: soma(contas.map(c => c.prev)), rec: contas.some(c => c.rec != null) ? soma(contas.map(c => c.rec)) : null,
     desc: contas.some(c => c.desc != null) ? soma(contas.map(c => c.desc)) : null, emp: soma(contas.map(c => c.emp)),
-    dif: contas.some(c => c.dif != null) ? soma(contas.map(c => c.dif)) : null, falta: contas.filter(c => c.prev && c.rec == null).length };
+    dif: contas.some(c => c.dif != null) ? soma(contas.map(c => c.dif)) : null, falta: contas.filter(c => c.prev && c.rec == null).length,
+    naoBate: contas.filter(c => c.dif != null && Math.abs(c.dif) >= 0.01).length };
   return { contas, t };
 }
 function calcKeeta(s) {
@@ -124,10 +133,27 @@ function calcKeeta(s) {
   const lojas = KEETA.map(([id, nome, cnpj, lid]) => { const prev = P[id] != null ? P[id] : null, rec = R[id] != null ? R[id] : null;
     return { id, nome, cnpj, lid, prev, rec, desc: rec == null || prev == null ? null : Math.round((prev - rec) * 100) / 100 }; });
   const t = { prev: soma(lojas.map(l => l.prev)), rec: lojas.some(l => l.rec != null) ? soma(lojas.map(l => l.rec)) : null,
-    desc: lojas.some(l => l.desc != null) ? soma(lojas.map(l => l.desc)) : null, falta: lojas.filter(l => l.prev && l.rec == null).length };
+    desc: lojas.some(l => l.desc != null) ? soma(lojas.map(l => l.desc)) : null, falta: lojas.filter(l => l.prev && l.rec == null).length,
+    naoBate: lojas.filter(l => l.desc != null && Math.abs(l.desc) >= 0.01).length };
   return { lojas, t };
 }
-const difTxt = (d, emp) => d == null ? '' : Math.abs(d) < 0.01 ? '<span class="dif-ok">ok</span>' : d < 0 ? `<span class="dif-mais">+${fmt(-d)} a mais</span>` : `<span class="dif-bad">${rs(d)}</span>`;
+const difTxt = d => d == null ? '' : Math.abs(d) < 0.01 ? '<span class="dif-ok">✓ ok</span>' : d < 0 ? `<span class="dif-mais">+${fmt(-d)} a mais</span>` : `<span class="dif-bad">${fmt(d)}</span>`;
+// coluna Empréstimo: só Matriz, Gourmet e Pizza. Com diferença ainda não aceita → pergunta se é do empréstimo
+function empCel(c) {
+  if (!c.temEmp) return '<span class="sem">—</span>';
+  if (c.emp != null) return `<button class="mini" title="Desfazer" onclick="desfazEmp('${c.id}')">✕</button><span class="emp-ok">${fmt(c.emp)}</span>`;
+  if (c.desc != null && c.desc >= 0.01) return `<button class="btn-emp" onclick="aceitaEmp('${c.id}')">É empréstimo?</button>`;
+  return '';
+}
+function aceitaEmp(id) {
+  const c = calcIfood(SEM[ATUAL]).contas.find(x => x.id === id); if (!c || c.desc == null) return;
+  const r = prompt(`${c.nome}: desconto de R$ ${fmt(c.desc)}.\n\nEsse valor é do empréstimo? Toque OK para confirmar (ou corrija o valor do empréstimo):`, fmt(c.desc));
+  if (r == null) return; const v = num(r); if (v == null) return alert('Valor inválido');
+  grava('ifood/emp/' + id, v);
+}
+function desfazEmp(id) { if (confirm('Tirar o empréstimo desta conta?')) grava('ifood/emp/' + id, null); }
+// empréstimo já aceito no mês do pagamento (todas as semanas)
+function empMes(q) { const m = q.slice(0, 7); return Object.values(SEM).filter(x => (x.pagto || '').startsWith(m)).reduce((t, x) => t + soma(Object.values((x.ifood || {}).emp || {})), 0); }
 const inp = (caminho, v) => `<input class="v ${v == null ? 'vazio' : ''}" inputmode="decimal" value="${v == null ? '' : fmt(v)}" data-c="${caminho}" onchange="salva(this)" onfocus="this.select()" placeholder="lançar">`;
 
 function desenha() {
@@ -135,8 +161,8 @@ function desenha() {
   const s = SEM[ATUAL];
   const opt = lista.map(x => `<option value="${x.pagto}" ${x.pagto === ATUAL ? 'selected' : ''}>Pagto ${br(x.pagto)} · iFood #${esc((x.ifood || {}).num)} · Keeta #${esc((x.keeta || {}).num)}</option>`).join('');
   let st = '<span class="st vazio">Sem semana</span>';
-  if (s) { const fi = calcIfood(s), fk = calcKeeta(s), prevOk = fi.t.prev > 0 || fk.t.prev > 0, recOk = prevOk && !fi.t.falta && !fk.t.falta && (fi.t.rec != null || fk.t.rec != null);
-    st = recOk ? '<span class="st fim">✅ Recebimento conferido</span>' : prevOk ? '<span class="st prev">⏳ Previsto lançado · aguardando a quarta</span>' : '<span class="st vazio">Lance o previsto (segunda)</span>'; }
+  if (s) { const fi = calcIfood(s), fk = calcKeeta(s), prevOk = fi.t.prev > 0 || fk.t.prev > 0, recOk = prevOk && !fi.t.falta && !fk.t.falta && (fi.t.rec != null || fk.t.rec != null), nb = fi.t.naoBate + fk.t.naoBate;
+    st = recOk && nb ? `<span class="st prev" style="background:var(--badbg);color:var(--bad)">⚠️ ${nb} conta(s) não batem</span>` : recOk ? '<span class="st fim">✅ Recebimento conferido</span>' : prevOk ? '<span class="st prev">⏳ Previsto lançado · aguardando a quarta</span>' : '<span class="st vazio">Lance o previsto (segunda)</span>'; }
   let h = `<div class="barra"><label>Semana</label><select onchange="ATUAL=this.value;desenha()">${opt || '<option>—</option>'}</select>
     <button class="btn esc" onclick="criaSemana()">+ Nova semana</button><span class="salvo" id="salvo"></span>${st}</div>`;
   if (!s) { $('main').innerHTML = h + '<div class="vazio-box">Nenhuma semana ainda. Toque em <b>+ Nova semana</b> (a quarta do pagamento).</div>'; return; }
@@ -146,13 +172,14 @@ function desenha() {
   fi.contas.forEach(c => {
     if (c.lojas.length > 1) c.lojas.forEach(([lk, ln]) => { ti += `<tr><td>${esc(ln)}</td><td>${inp('ifood/prev/' + lk, (f.prev || {})[lk])}</td><td></td><td></td><td></td><td></td></tr>`; });
     ti += `<tr class="grp"><td>${c.lojas.length > 1 ? 'Total ' + esc(c.nome) : esc(c.nome)}</td><td>${c.lojas.length > 1 ? fmt(c.prev) : inp('ifood/prev/' + c.lojas[0][0], (f.prev || {})[c.lojas[0][0]])}</td>
-      <td>${inp('ifood/rec/' + c.id, c.rec)}</td><td>${c.desc == null ? '' : fmt(c.desc)}</td><td>${inp('ifood/emp/' + c.id, c.emp)}</td><td>${difTxt(c.dif)}</td></tr>`;
+      <td>${inp('ifood/rec/' + c.id, c.rec)}</td><td>${c.desc == null ? '' : fmt(c.desc)}</td><td>${empCel(c)}</td><td>${difTxt(c.dif)}</td></tr>`;
   });
-  ti += `<tr class="total"><td>Total iFood</td><td>${fmt(fi.t.prev)}</td><td>${fi.t.rec == null ? '—' : fmt(fi.t.rec)}</td><td>${fi.t.desc == null ? '—' : fmt(fi.t.desc)}</td><td>${fmt(fi.t.emp)}</td><td>${difTxt(fi.t.dif)}</td></tr></table>`;
+  ti += `<tr class="total"><td>Total iFood</td><td>${fmt(fi.t.prev)}</td><td>${fi.t.rec == null ? '—' : fmt(fi.t.rec)}</td><td>${fi.t.desc == null ? '—' : fmt(fi.t.desc)}</td><td>${fmt(fi.t.emp)}</td><td>${difTxt(fi.t.dif)}</td></tr></table>
+    <div class="nota">Empréstimo: só Matriz, Gourmet e Pizza (cai em partes nas semanas 1 a 3 do mês). Já descontado em ${['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'][Number(s.pagto.slice(5, 7)) - 1]}: <b>R$ ${fmt(empMes(s.pagto))}</b>. Nas outras contas tem que bater certinho.</div>`;
   // Keeta
-  let tk = `<table><tr><th>Loja</th><th>Previsto</th><th>Recebido</th><th>Descontos</th></tr>`;
-  fk.lojas.forEach(l => { tk += `<tr><td>${esc(l.nome)}<small>${esc(l.cnpj)} · ID ${esc(l.lid)}</small></td><td>${inp('keeta/prev/' + l.id, l.prev)}</td><td>${inp('keeta/rec/' + l.id, l.rec)}</td><td>${l.desc == null ? '' : fmt(l.desc)}</td></tr>`; });
-  tk += `<tr class="total"><td>Total Keeta</td><td>${fmt(fk.t.prev)}</td><td>${fk.t.rec == null ? '—' : fmt(fk.t.rec)}</td><td>${fk.t.desc == null ? '—' : fmt(fk.t.desc)}</td></tr></table>`;
+  let tk = `<table><tr><th>Loja</th><th>Previsto</th><th>Recebido</th><th>Diferença</th></tr>`;
+  fk.lojas.forEach(l => { tk += `<tr><td>${esc(l.nome)}<small>${esc(l.cnpj)} · ID ${esc(l.lid)}</small></td><td>${inp('keeta/prev/' + l.id, l.prev)}</td><td>${inp('keeta/rec/' + l.id, l.rec)}</td><td>${difTxt(l.desc)}</td></tr>`; });
+  tk += `<tr class="total"><td>Total Keeta</td><td>${fmt(fk.t.prev)}</td><td>${fk.t.rec == null ? '—' : fmt(fk.t.rec)}</td><td>${difTxt(fk.t.desc)}</td></tr></table>`;
   const cab = (p, x) => `<div class="cab"># <input value="${esc(x.num || '')}" data-c="${p}/num" onchange="salvaTxt(this)"> Apuração <input type="date" value="${esc(x.de || '')}" data-c="${p}/de" onchange="salvaTxt(this)"> a <input type="date" value="${esc(x.ate || '')}" data-c="${p}/ate" onchange="salvaTxt(this)"> · pagto ${br(s.pagto)}</div>`;
   const botao = (cls, nome, t, sub) => `<button class="botao ${cls}" onclick="this.parentNode.querySelector('.tab').hidden=!this.parentNode.querySelector('.tab').hidden">
     <span class="nome">${nome}</span><span class="tot"><div><small>Previsto</small><b>${fmt(t.prev)}</b></div><div><small>Recebido</small><b>${t.rec == null ? '—' : fmt(t.rec)}</b></div><div><small>Descontos</small><b>${t.desc == null ? '—' : fmt(t.desc)}</b></div></span><span class="sub">${sub}</span></button>`;
@@ -161,11 +188,11 @@ function desenha() {
     <div class="col">${botao('keeta', 'Keeta', fk.t, fk.t.falta ? `${fk.t.falta} loja(s) aguardando o recebido` : fk.t.rec != null ? 'tudo recebido' : 'lance o previsto e, na quarta, o recebido')}
       <div class="tab">${cab('keeta', k)}${tk}</div></div></div>`;
   // total geral dos dois
-  const gp = fi.t.prev + fk.t.prev, gr = fi.t.rec == null && fk.t.rec == null ? null : (fi.t.rec || 0) + (fk.t.rec || 0), gd = gr == null ? null : (fi.t.desc || 0) + (fk.t.desc || 0), gdif = fi.t.dif;
+  const gp = fi.t.prev + fk.t.prev, gr = fi.t.rec == null && fk.t.rec == null ? null : (fi.t.rec || 0) + (fk.t.rec || 0), gd = gr == null ? null : (fi.t.desc || 0) + (fk.t.desc || 0), gdif = fi.t.dif == null && fk.t.desc == null ? null : (fi.t.dif || 0) + (fk.t.desc || 0);
   h += `<div class="geral"><h3><span>Total geral · iFood + Keeta</span><span>pagto ${br(s.pagto)}</span></h3><table>
-    <tr><th></th><th>Previsto</th><th>Recebido</th><th>Descontos</th><th>Empréstimo iFood</th><th>Diferença iFood</th></tr>
+    <tr><th></th><th>Previsto</th><th>Recebido</th><th>Descontos</th><th>Empréstimo</th><th>Diferença</th></tr>
     <tr><td>iFood</td><td>${fmt(fi.t.prev)}</td><td>${fi.t.rec == null ? '—' : fmt(fi.t.rec)}</td><td>${fi.t.desc == null ? '—' : fmt(fi.t.desc)}</td><td>${fmt(fi.t.emp)}</td><td>${difTxt(fi.t.dif)}</td></tr>
-    <tr><td>Keeta</td><td>${fmt(fk.t.prev)}</td><td>${fk.t.rec == null ? '—' : fmt(fk.t.rec)}</td><td>${fk.t.desc == null ? '—' : fmt(fk.t.desc)}</td><td>—</td><td>—</td></tr>
+    <tr><td>Keeta</td><td>${fmt(fk.t.prev)}</td><td>${fk.t.rec == null ? '—' : fmt(fk.t.rec)}</td><td>${fk.t.desc == null ? '—' : fmt(fk.t.desc)}</td><td>—</td><td>${difTxt(fk.t.desc)}</td></tr>
     <tr class="total"><td>Total geral</td><td>${fmt(gp)}</td><td>${gr == null ? '—' : fmt(gr)}</td><td>${gd == null ? '—' : fmt(gd)}</td><td>${fmt(fi.t.emp)}</td><td>${difTxt(gdif)}</td></tr></table></div>`;
   $('main').innerHTML = h;
 }
@@ -177,7 +204,11 @@ async function grava(caminho, v) {
   catch (e) { if ($('salvo')) $('salvo').textContent = '⚠️ não salvou'; alert('Não salvou: ' + (e.message || e)); }
 }
 function salva(el) { const v = num(el.value); if (el.value.trim() && v == null) { el.style.borderColor = '#dc2626'; return; } grava(el.dataset.c, v); }
-function salvaTxt(el) { const v = el.value.trim(); grava(el.dataset.c, v ? (el.dataset.c.endsWith('/num') ? Number(v) || v : v) : null); }
+function salvaTxt(el) {
+  const v = el.value.trim(), c = el.dataset.c;
+  if (c.endsWith('/de') && v) { const p = c.slice(0, -3); SEM[ATUAL][p.split('/')[0]].ate = mais(v, 6); grava(p + '/ate', mais(v, 6)); } // 7 dias: já sugere o fim
+  grava(c, v ? (c.endsWith('/num') ? Number(v) || v : v) : null);
+}
 async function criaSemana() {
   const sug = quartaDe(isoD(new Date())), q = prompt('Quarta-feira do pagamento (dd/mm/aaaa):', br(sug)); if (!q) return;
   const m = q.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); if (!m) return alert('Use dd/mm/aaaa');
