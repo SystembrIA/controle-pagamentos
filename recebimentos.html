@@ -164,7 +164,7 @@ function desenha() {
   if (s) { const fi = calcIfood(s), fk = calcKeeta(s), prevOk = fi.t.prev > 0 || fk.t.prev > 0, recOk = prevOk && !fi.t.falta && !fk.t.falta && (fi.t.rec != null || fk.t.rec != null), nb = fi.t.naoBate + fk.t.naoBate;
     st = recOk && nb ? `<span class="st prev" style="background:var(--badbg);color:var(--bad)">⚠️ ${nb} conta(s) não batem</span>` : recOk ? '<span class="st fim">✅ Recebimento conferido</span>' : prevOk ? '<span class="st prev">⏳ Previsto lançado · aguardando a quarta</span>' : '<span class="st vazio">Lance o previsto (segunda)</span>'; }
   let h = `<div class="barra"><label>Semana</label><select onchange="ATUAL=this.value;desenha()">${opt || '<option>—</option>'}</select>
-    <button class="btn esc" onclick="criaSemana()">+ Nova semana</button><span class="salvo" id="salvo"></span>${st}</div>`;
+    <button class="btn esc" onclick="criaSemana()">+ Nova semana</button>${s ? '<button class="btn cl" style="color:#b91c1c" onclick="excluiSemana()">🗑 Excluir semana</button>' : ''}<span class="salvo" id="salvo"></span>${st}</div>`;
   if (!s) { $('main').innerHTML = h + '<div class="vazio-box">Nenhuma semana ainda. Toque em <b>+ Nova semana</b> (a quarta do pagamento).</div>'; return; }
   const fi = calcIfood(s), fk = calcKeeta(s), f = s.ifood || {}, k = s.keeta || {};
   // iFood
@@ -208,6 +208,16 @@ function salvaTxt(el) {
   const v = el.value.trim(), c = el.dataset.c;
   if (c.endsWith('/de') && v) { const p = c.slice(0, -3); SEM[ATUAL][p.split('/')[0]].ate = mais(v, 6); grava(p + '/ate', mais(v, 6)); } // 7 dias: já sugere o fim
   grava(c, v ? (c.endsWith('/num') ? Number(v) || v : v) : null);
+}
+// Maikon 12/11: lançou na semana errada → exclui. A cópia vai para recebimentos/excluidas (dá para recuperar).
+async function excluiSemana() {
+  const s = SEM[ATUAL]; if (!s) return;
+  if (!confirm(`Excluir a semana do pagamento ${br(s.pagto)} (iFood #${(s.ifood || {}).num || ''} · Keeta #${(s.keeta || {}).num || ''})?\n\nTudo que foi lançado nela sai da tela.`)) return;
+  try {
+    await fbRec(`excluidas/${ATUAL}_${Date.now()}`).set(Object.assign({}, s, { excluidaEm: Date.now(), excluidaPor: U }));
+    await fbRec(`semanas/${ATUAL}`).set(null);
+    delete SEM[ATUAL]; ATUAL = Object.keys(SEM).sort().reverse()[0] || ''; desenha();
+  } catch (e) { alert('Não excluiu: ' + (e.message || e)); }
 }
 async function criaSemana() {
   const sug = quartaDe(isoD(new Date())), q = prompt('Quarta-feira do pagamento (dd/mm/aaaa):', br(sug)); if (!q) return;
