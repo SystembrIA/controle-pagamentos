@@ -848,8 +848,7 @@ body.grupo-on #saldoSection,body.grupo-on #uploadSection,body.grupo-on #contasSe
   <input type="date" id="selData" onchange="carregarDia()" autocomplete="off">
   <!-- Período (Maikon 20/10): a tela abre sempre no dia; o botão abre a janelinha para escolher de / até (vale para os filtros de gastos) -->
   <span class="tb-quebra"></span>
-  <button type="button" class="btn btn-outline btn-sm btn-per" id="btnPer" onclick="abrirPeriodo()">📅 <span id="btnPerTxt">Período</span></button>
-  <button class="btn btn-primary btn-mobile-hide" onclick="novoDia()"><i class="fa-solid fa-plus"></i> Novo controle</button>
+  <!-- Maikon 12/11: tirados os botões Período e Novo controle (não usam) -->
   <button class="btn btn-outline btn-mobile-hide" onclick="abrirSaldoModal()"><i class="fa-solid fa-pen"></i> Editar saldos</button>
   <button class="btn btn-success btn-mobile-hide" onclick="abrirExportar()"><i class="fa-solid fa-download"></i> Exportar</button>
   <button class="btn btn-outline btn-sm btn-mobile-hide" onclick="document.getElementById('fileInput').click()"
@@ -859,7 +858,7 @@ body.grupo-on #saldoSection,body.grupo-on #uploadSection,body.grupo-on #contasSe
   <button class="btn btn-success btn-sm" id="btnInfDir" onclick="informarDiretoria()" title="Gera a imagem com o resumo do dia para mandar à diretoria"><i class="fa-solid fa-bullhorn"></i> Informar diretoria</button>
   <button class="btn btn-success btn-sm" id="btnSaldo" onclick="enviarSaldo()" title="Manda a imagem com o saldo total e de cada conta para o WhatsApp do Maikon"><i class="fa-solid fa-building-columns"></i> Enviar saldo atualizado</button>
   <div class="busca-wrap btn-mobile-hide">
-    <input type="text" id="buscaInput" placeholder="Buscar fornecedor em todas as datas..." oninput="buscaAoDigitar()" autocomplete="off">
+    <input type="text" id="buscaInput" placeholder="Buscar fornecedor ou valor (ex.: 1.514,57) em todas as datas..." oninput="buscaAoDigitar()" autocomplete="off">
     <button class="btn btn-outline btn-sm" onclick="limparBusca()" id="btnLimparBusca" style="display:none">✕</button>
   </div>
 </div>
@@ -2857,7 +2856,16 @@ function limparBusca() {
   document.getElementById('buscaPanel').style.display='none';
 }
 
+// Maikon 12/11: busca também pelo VALOR (às vezes só lembra do valor). Com vírgula = valor exato com os centavos (1.514,57);
+// sem vírgula = todos os valores daquele número inteiro (50 → 50,00 a 50,99). Procura em todas as datas, como a busca por nome.
+function buscaValor(q){
+  const t = String(q).trim().replace(/^r\$\s*/i, '');
+  if(!/^\d{1,3}(\.\d{3})*(,\d{1,2})?$|^\d+(,\d{1,2})?$/.test(t)) return null;
+  const temCent = t.includes(','), n = Number(t.replace(/\./g, '').replace(',', '.'));
+  return isNaN(n) ? null : (v => { v = Math.abs(Number(v) || 0); return temCent ? Math.abs(v - n) < 0.005 : Math.floor(v + 1e-9) === Math.floor(n); });
+}
 function executarBusca(q) {
+  const porValor = buscaValor(q);
   const termo = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre contas – Cobertura',entrefunc:'Entre contas – Funcionário',transfconta:'Entre contas – Service',outro:'Outro'};
 
@@ -2869,7 +2877,7 @@ function executarBusca(q) {
       for (const c of contas) {
         const haystack = [c.desc||'', c.ref||'', c.categoria||'']
           .join(' ').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-        if (!haystack.includes(termo)) continue;
+        if (porValor ? !porValor(c.valor) : !haystack.includes(termo)) continue;
         if (!grupos[dt]) grupos[dt] = [];
         grupos[dt].push({ emp, c });
       }
@@ -2906,7 +2914,7 @@ function executarBusca(q) {
     html += `</div>`;
   }
 
-  title.textContent = `🔍 "${q}" — ${total} resultado(s) em ${datas.length} data(s)`;
+  title.textContent = `🔍 ${porValor ? 'Valor ' + q : '"' + q + '"'} — ${total} resultado(s) em ${datas.length} data(s)`;
   res.innerHTML = html;
   panel.style.display = '';
 }
