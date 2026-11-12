@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Previsão de recebimento</title>
+<meta name="versao-tela" content="20261112-18">
+<script>
+/* Maikon 12/11: o celular guardava a versão antiga (cache de 10 min do site). Ao abrir, confere a versão no servidor e, se mudou, recarrega a nova. */
+(function () { try {
+  var minha = document.querySelector('meta[name="versao-tela"]').content;
+  fetch(location.pathname + '?nc=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (t) {
+    var m = t.match(/name="versao-tela" content="([^"]+)"/);
+    if (m && m[1] !== minha && sessionStorage.getItem('rec_v') !== m[1]) { sessionStorage.setItem('rec_v', m[1]); location.replace(location.pathname + '?v=' + m[1] + location.hash); }
+  }).catch(function () {});
+} catch (e) {} })();
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/firebase@9.23.0/firebase-app-compat.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/firebase@9.23.0/firebase-database-compat.min.js"></script>
@@ -99,7 +110,9 @@ input.v.vazio { background:#fffbeb; }
   th:first-child, td:first-child { padding-left:8px; } .tri { width:16px; font-size:11px; } .dif-mais .sufixo { display:none; } .lapis { font-size:11px; }
   td:first-child { white-space:nowrap !important; } .tab { overflow-x:auto; } 
   .barra .mini-bt { width:auto; }
-  .modo-dir .ed, .modo-dir th:last-child { display:none; } .tab .cab input[type=date] { width:140px; }
+  .modo-dir .ed, .modo-dir th:last-child { display:none; }
+  main.modo-dir { padding:6px; } .modo-dir table { font-size:12px; } .modo-dir td:first-child, .modo-dir th:first-child { padding-left:4px; } .modo-dir .tri { width:14px; }
+  .modo-dir td:not(:first-child):not(.ed), .modo-dir th:not(:first-child):not(:empty) { padding-right:5px; padding-left:0; } .modo-dir th { font-size:8.5px; letter-spacing:0; } .tab .cab input[type=date] { width:140px; }
   tr.total td { font-size:13px; } .botao .tot div b { font-size:16.5px; } .botao.totg .nome { font-size:21px; } .cd, .ce { display:none; } td:first-child { white-space:normal; min-width:0; } .ed { width:20px; }
   .barra select, .tab .cab input, input.v { font-size:16px; } /* 16px: o iPhone não dá zoom ao tocar */
   .barra select { flex:1; min-width:0; width:auto; } .inf td { padding-left:10px !important; padding-right:10px !important; }
