@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Previsão de recebimento</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/firebase@9.23.0/firebase-app-compat.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@9.23.0/firebase-database-compat.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@9.23.0/firebase-auth-compat.min.js"></script>
+<script>
+/* Previsão de recebimento (Maikon 12/11): no lugar da planilha. Os pagamentos do iFood e da Keeta caem na QUARTA.
+   Segunda: lança o PREVISTO de cada loja (iFood e Keeta). Quarta: lança o RECEBIDO (o que entrou no extrato) e fecha a semana.
+   iFood: previsto por loja; recebido e desconto do empréstimo por conta (grupo de lojas que cai junto). Diferença = descontos − empréstimo.
+   Keeta: previsto e recebido por loja. Dados: pagamentos_diarios/recebimentos/semanas/{quarta} (mesma regra do banco dos Pagamentos). */
+firebase.initializeApp({ apiKey: "AIzaSyDt1yzxGGzuT2cSdten1bFuXG7yeDQ90Po", authDomain: "justburger-producao-e9b27.firebaseapp.com",
+  databaseURL: "https://justburger-producao-e9b27-default-rtdb.firebaseio.com", projectId: "justburger-producao-e9b27", appId: "1:387070713910:web:f156d3247a1715a58ab897" });
+const fbRec = p => firebase.database().ref('pagamentos_diarios/recebimentos' + (p ? '/' + p : ''));
+const PG_PERMITIDOS = ['justadm', 'juliana', 'pedro', 'jaqueline'];
+</script>
+<script src="https://systembria.github.io/just-burger-producao/js/hub-login.js?v=20261011"></script>
+<script src="https://systembria.github.io/just-burger-producao/js/demo-mode.js?v=20261112-08"></script>
+<script src="https://systembria.github.io/just-burger-producao/js/jb-topo.js?v=20261017-02" data-titulo="Previsão de recebimento" data-voltar="https://systembria.github.io/controle-pagamentos/"></script>
+<style>
+:root { --bg:#f0f4f8; --card:#fff; --fg:#0f172a; --muted:#64748b; --line:#e2e8f0; --ifood:#ea1d2c; --keeta:#facc15; --ok:#15803d; --okbg:#e9f7ee; --bad:#b91c1c; --badbg:#fdeceb; --azul:#1e3a8a; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font:14.5px/1.45 Inter, 'Segoe UI', Arial, sans-serif; font-variant-numeric:tabular-nums; }
+main { max-width:1400px; margin:0 auto; padding:14px; display:flex; flex-direction:column; gap:14px; }
+.barra { display:flex; gap:10px; align-items:center; flex-wrap:wrap; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:10px 12px; }
+.barra label { font:800 11px Inter, sans-serif; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+.barra select, .barra input { border:1px solid var(--line); border-radius:10px; padding:8px 10px; font:700 14px Inter, sans-serif; background:#f8fafc; }
+.btn { border:0; border-radius:10px; padding:9px 14px; font:800 13.5px Inter, sans-serif; cursor:pointer; }
+.btn.esc { background:var(--azul); color:#fff; } .btn.cl { background:#eef2f7; color:var(--fg); }
+.st { margin-left:auto; font:800 12.5px Inter, sans-serif; border-radius:999px; padding:6px 12px; }
+.st.prev { background:#fef3c7; color:#92400e; } .st.fim { background:var(--okbg); color:var(--ok); } .st.vazio { background:#eef2f7; color:var(--muted); }
+.duas { display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start; }
+@media (max-width:980px) { .duas { grid-template-columns:1fr; } }
+.col { display:flex; flex-direction:column; gap:10px; min-width:0; }
+.botao { display:grid; grid-template-columns:auto 1fr; gap:4px 16px; align-items:center; border-radius:16px; padding:16px 20px; cursor:pointer; border:0; text-align:left; font-family:inherit; width:100%; }
+.botao.ifood { background:var(--ifood); color:#fff; } .botao.keeta { background:var(--keeta); color:#1f2937; }
+.botao .nome { font-size:30px; font-weight:900; grid-row:span 2; }
+.botao .tot { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px; text-align:right; }
+.botao .tot div small { display:block; font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; opacity:.85; }
+.botao .tot div b { font-size:19px; font-weight:900; }
+.botao .sub { grid-column:2; text-align:right; font-size:12.5px; font-weight:700; opacity:.9; }
+.tab { background:var(--card); border:1px solid var(--line); border-radius:14px; overflow-x:auto; }
+.tab .cab { display:flex; gap:12px; flex-wrap:wrap; align-items:center; padding:10px 14px; border-bottom:1px solid var(--line); background:#f8fafc; font-size:12.5px; font-weight:700; color:var(--muted); }
+.tab .cab input { width:72px; } .tab .cab input[type=date] { width:auto; }
+.tab .cab input { border:1px solid var(--line); border-radius:8px; padding:5px 7px; font:700 13px Inter, sans-serif; }
+table { width:100%; border-collapse:collapse; }
+th { font:800 10.5px Inter, sans-serif; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); padding:8px 6px; text-align:right; border-bottom:1px solid var(--line); white-space:nowrap; }
+th:first-child { text-align:left; }
+td { padding:4px 6px; border-bottom:1px solid #f1f5f9; text-align:right; white-space:nowrap; }
+th:first-child, td:first-child { padding-left:12px; } td:first-child { text-align:left; font-weight:700; white-space:normal; min-width:120px; }
+th:last-child, td:last-child { padding-right:12px; }
+td small { display:block; font-weight:600; color:var(--muted); font-size:11px; }
+tr.grp td { background:#eef4ff; font-weight:900; color:var(--azul); }
+tr.grp td:first-child { color:var(--azul); }
+tr.total td { background:#e9f7ee; font-weight:900; color:#14532d; font-size:15px; }
+input.v { width:100px; text-align:right; border:1px solid #cbd5e1; border-radius:8px; padding:6px 8px; font:700 13.5px Inter, sans-serif; font-variant-numeric:tabular-nums; background:#fff; }
+input.v:focus { outline:2px solid #93c5fd; border-color:#3b82f6; }
+input.v.vazio { background:#fffbeb; }
+.dif-ok { color:var(--ok); font-weight:900; } .dif-bad { color:var(--bad); font-weight:900; } .dif-mais { color:#1d4ed8; font-weight:800; }
+.geral { background:var(--card); border:2px solid #1e293b; border-radius:16px; overflow:hidden; }
+.geral h3 { margin:0; background:#1e293b; color:#fff; padding:12px 16px; font-size:16px; font-weight:900; display:flex; justify-content:space-between; }
+.vazio-box { text-align:center; color:var(--muted); padding:40px; background:var(--card); border:1px dashed var(--line); border-radius:14px; }
+.salvo { font:700 12px Inter, sans-serif; color:var(--ok); min-width:70px; }
+@media (max-width:640px) { .botao { grid-template-columns:1fr; } .botao .nome { grid-row:auto; font-size:26px; } .botao .tot b { font-size:14px; } .botao { padding:14px 14px; } .botao .sub { grid-column:1; }
+  .geral { overflow-x:auto; } .geral h3 { font-size:14px; } main { padding:10px; } }
+</style>
+</head>
+<body>
+<main id="main"><div class="vazio-box">Carregando…</div></main>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = v => (v == null || isNaN(v)) ? '' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const rs = v => (v == null || isNaN(v)) ? '—' : 'R$ ' + fmt(v);
+const num = t => { if (t == null) return null; const s = String(t).replace(/r\$\s*/i, '').trim(); if (!s) return null; const n = Number(s.replace(/\./g, '').replace(',', '.')); return isNaN(n) ? null : Math.round(n * 100) / 100; };
+const soma = a => a.reduce((x, y) => x + (Number(y) || 0), 0);
+const br = iso => iso ? iso.split('-').reverse().join('/') : '';
+const isoD = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const mais = (iso, dias) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + dias); return isoD(d); };
+
+// lojas e contas (das planilhas do Maikon, 12/11)
+const IFOOD = [ // conta = o que cai junto (recebido e desconto do empréstimo por conta)
+  { id: 'matriz', nome: 'Matriz', lojas: [['matriz', 'Matriz']] },
+  { id: 'gourmet_sushi', nome: 'Gourmet + Sushi', lojas: [['gourmet', 'Gourmet'], ['sushi', 'Sushi']] },
+  { id: 'pizza_esfiha', nome: 'Pizza + Esfiha', lojas: [['pizza', 'Pizza'], ['esfiha', 'Esfiha']] },
+  { id: 'abc', nome: 'ABC', lojas: [['abc', 'ABC']] },
+  { id: 'gru', nome: 'GRU', lojas: [['gru', 'GRU']] },
+  { id: 'pirituba', nome: 'Pirituba', lojas: [['pir_gourmet', 'Pirituba Gourmet'], ['pir_pizza', 'Pirituba Pizza'], ['pir_burger', 'Pirituba Burger']] },
+];
+const KEETA = [
+  ['matriz', 'Matriz', '31.394.735/0001-70', '159650457'], ['gourmet', 'Gourmet', '31.394.735/0001-70', '159624884'],
+  ['abc', 'ABC', '31.394.735/0001-70', '159647591'], ['gru', 'GRU', '31.394.735/0001-70', '159659195'],
+  ['pir_pizza', 'Pirituba Pizza', '31.394.735/0001-70', '159627924'], ['pir_esfiha', 'Pirituba Esfiha', '31.394.735/0001-70', '159639913'],
+  ['pir_burger', 'Pirituba Burger', '31.394.735/0001-70', '159618004'], ['pir_gourmet', 'Pirituba Gourmet', '31.394.735/0005-02', '159650459'],
+  ['pizza', 'Pizza Penha', '49.576.555/0001-75', '159646712'], ['esfiha', 'Esfiha Penha', '49.576.555/0001-75', '159638925'],
+  ['sushi', 'Sushi', '64.664.897/0001-30', '159638920'],
+];
+let SEM = {}, ATUAL = '', U = '';
+
+function quartaDe(iso) { const d = new Date(iso + 'T12:00:00'), w = d.getDay(); d.setDate(d.getDate() + ((3 - w + 7) % 7)); return isoD(d); }
+function novaSemana(q) { // q = quarta do pagamento
+  const ant = Object.values(SEM).sort((a, b) => a.pagto < b.pagto ? 1 : -1)[0] || {};
+  return { pagto: q, ifood: { num: ((ant.ifood || {}).num || 0) + 1 || '', de: mais(q, -30), ate: mais(q, -24), prev: {}, rec: {}, emp: {} },
+    keeta: { num: ((ant.keeta || {}).num || 0) + 1 || '', de: mais(q, -9), ate: mais(q, -3), prev: {}, rec: {} }, criado: Date.now(), por: U };
+}
+// contas da semana
+function calcIfood(s) {
+  const f = s.ifood || {}, P = f.prev || {}, R = f.rec || {}, E = f.emp || {};
+  const contas = IFOOD.map(c => { const prev = soma(c.lojas.map(([k]) => P[k])), temRec = R[c.id] != null, rec = temRec ? R[c.id] : null;
+    const desc = temRec ? Math.round((prev - rec) * 100) / 100 : null, emp = E[c.id] != null ? E[c.id] : null;
+    const dif = desc == null ? null : Math.round((desc - (emp || 0)) * 100) / 100; return { ...c, prev, rec, desc, emp, dif }; });
+  const t = { prev: soma(contas.map(c => c.prev)), rec: contas.some(c => c.rec != null) ? soma(contas.map(c => c.rec)) : null,
+    desc: contas.some(c => c.desc != null) ? soma(contas.map(c => c.desc)) : null, emp: soma(contas.map(c => c.emp)),
+    dif: contas.some(c => c.dif != null) ? soma(contas.map(c => c.dif)) : null, falta: contas.filter(c => c.prev && c.rec == null).length };
+  return { contas, t };
+}
+function calcKeeta(s) {
+  const k = s.keeta || {}, P = k.prev || {}, R = k.rec || {};
+  const lojas = KEETA.map(([id, nome, cnpj, lid]) => { const prev = P[id] != null ? P[id] : null, rec = R[id] != null ? R[id] : null;
+    return { id, nome, cnpj, lid, prev, rec, desc: rec == null || prev == null ? null : Math.round((prev - rec) * 100) / 100 }; });
+  const t = { prev: soma(lojas.map(l => l.prev)), rec: lojas.some(l => l.rec != null) ? soma(lojas.map(l => l.rec)) : null,
+    desc: lojas.some(l => l.desc != null) ? soma(lojas.map(l => l.desc)) : null, falta: lojas.filter(l => l.prev && l.rec == null).length };
+  return { lojas, t };
+}
+const difTxt = (d, emp) => d == null ? '' : Math.abs(d) < 0.01 ? '<span class="dif-ok">ok</span>' : d < 0 ? `<span class="dif-mais">+${fmt(-d)} a mais</span>` : `<span class="dif-bad">${rs(d)}</span>`;
+const inp = (caminho, v) => `<input class="v ${v == null ? 'vazio' : ''}" inputmode="decimal" value="${v == null ? '' : fmt(v)}" data-c="${caminho}" onchange="salva(this)" onfocus="this.select()" placeholder="lançar">`;
+
+function desenha() {
+  const lista = Object.values(SEM).sort((a, b) => a.pagto < b.pagto ? 1 : -1);
+  const s = SEM[ATUAL];
+  const opt = lista.map(x => `<option value="${x.pagto}" ${x.pagto === ATUAL ? 'selected' : ''}>Pagto ${br(x.pagto)} · iFood #${esc((x.ifood || {}).num)} · Keeta #${esc((x.keeta || {}).num)}</option>`).join('');
+  let st = '<span class="st vazio">Sem semana</span>';
+  if (s) { const fi = calcIfood(s), fk = calcKeeta(s), prevOk = fi.t.prev > 0 || fk.t.prev > 0, recOk = prevOk && !fi.t.falta && !fk.t.falta && (fi.t.rec != null || fk.t.rec != null);
+    st = recOk ? '<span class="st fim">✅ Recebimento conferido</span>' : prevOk ? '<span class="st prev">⏳ Previsto lançado · aguardando a quarta</span>' : '<span class="st vazio">Lance o previsto (segunda)</span>'; }
+  let h = `<div class="barra"><label>Semana</label><select onchange="ATUAL=this.value;desenha()">${opt || '<option>—</option>'}</select>
+    <button class="btn esc" onclick="criaSemana()">+ Nova semana</button><span class="salvo" id="salvo"></span>${st}</div>`;
+  if (!s) { $('main').innerHTML = h + '<div class="vazio-box">Nenhuma semana ainda. Toque em <b>+ Nova semana</b> (a quarta do pagamento).</div>'; return; }
+  const fi = calcIfood(s), fk = calcKeeta(s), f = s.ifood || {}, k = s.keeta || {};
+  // iFood
+  let ti = `<table><tr><th>Loja / conta</th><th>Previsto</th><th>Recebido</th><th>Descontos</th><th>Empréstimo</th><th>Diferença</th></tr>`;
+  fi.contas.forEach(c => {
+    if (c.lojas.length > 1) c.lojas.forEach(([lk, ln]) => { ti += `<tr><td>${esc(ln)}</td><td>${inp('ifood/prev/' + lk, (f.prev || {})[lk])}</td><td></td><td></td><td></td><td></td></tr>`; });
+    ti += `<tr class="grp"><td>${c.lojas.length > 1 ? 'Total ' + esc(c.nome) : esc(c.nome)}</td><td>${c.lojas.length > 1 ? fmt(c.prev) : inp('ifood/prev/' + c.lojas[0][0], (f.prev || {})[c.lojas[0][0]])}</td>
+      <td>${inp('ifood/rec/' + c.id, c.rec)}</td><td>${c.desc == null ? '' : fmt(c.desc)}</td><td>${inp('ifood/emp/' + c.id, c.emp)}</td><td>${difTxt(c.dif)}</td></tr>`;
+  });
+  ti += `<tr class="total"><td>Total iFood</td><td>${fmt(fi.t.prev)}</td><td>${fi.t.rec == null ? '—' : fmt(fi.t.rec)}</td><td>${fi.t.desc == null ? '—' : fmt(fi.t.desc)}</td><td>${fmt(fi.t.emp)}</td><td>${difTxt(fi.t.dif)}</td></tr></table>`;
+  // Keeta
+  let tk = `<table><tr><th>Loja</th><th>Previsto</th><th>Recebido</th><th>Descontos</th></tr>`;
+  fk.lojas.forEach(l => { tk += `<tr><td>${esc(l.nome)}<small>${esc(l.cnpj)} · ID ${esc(l.lid)}</small></td><td>${inp('keeta/prev/' + l.id, l.prev)}</td><td>${inp('keeta/rec/' + l.id, l.rec)}</td><td>${l.desc == null ? '' : fmt(l.desc)}</td></tr>`; });
+  tk += `<tr class="total"><td>Total Keeta</td><td>${fmt(fk.t.prev)}</td><td>${fk.t.rec == null ? '—' : fmt(fk.t.rec)}</td><td>${fk.t.desc == null ? '—' : fmt(fk.t.desc)}</td></tr></table>`;
+  const cab = (p, x) => `<div class="cab"># <input value="${esc(x.num || '')}" data-c="${p}/num" onchange="salvaTxt(this)"> Apuração <input type="date" value="${esc(x.de || '')}" data-c="${p}/de" onchange="salvaTxt(this)"> a <input type="date" value="${esc(x.ate || '')}" data-c="${p}/ate" onchange="salvaTxt(this)"> · pagto ${br(s.pagto)}</div>`;
+  const botao = (cls, nome, t, sub) => `<button class="botao ${cls}" onclick="this.parentNode.querySelector('.tab').hidden=!this.parentNode.querySelector('.tab').hidden">
+    <span class="nome">${nome}</span><span class="tot"><div><small>Previsto</small><b>${fmt(t.prev)}</b></div><div><small>Recebido</small><b>${t.rec == null ? '—' : fmt(t.rec)}</b></div><div><small>Descontos</small><b>${t.desc == null ? '—' : fmt(t.desc)}</b></div></span><span class="sub">${sub}</span></button>`;
+  h += `<div class="duas"><div class="col">${botao('ifood', 'iFood', fi.t, fi.t.falta ? `${fi.t.falta} conta(s) aguardando o recebido` : fi.t.rec != null ? 'tudo recebido' : 'lance o previsto e, na quarta, o recebido')}
+      <div class="tab">${cab('ifood', f)}${ti}</div></div>
+    <div class="col">${botao('keeta', 'Keeta', fk.t, fk.t.falta ? `${fk.t.falta} loja(s) aguardando o recebido` : fk.t.rec != null ? 'tudo recebido' : 'lance o previsto e, na quarta, o recebido')}
+      <div class="tab">${cab('keeta', k)}${tk}</div></div></div>`;
+  // total geral dos dois
+  const gp = fi.t.prev + fk.t.prev, gr = fi.t.rec == null && fk.t.rec == null ? null : (fi.t.rec || 0) + (fk.t.rec || 0), gd = gr == null ? null : (fi.t.desc || 0) + (fk.t.desc || 0), gdif = fi.t.dif;
+  h += `<div class="geral"><h3><span>Total geral · iFood + Keeta</span><span>pagto ${br(s.pagto)}</span></h3><table>
+    <tr><th></th><th>Previsto</th><th>Recebido</th><th>Descontos</th><th>Empréstimo iFood</th><th>Diferença iFood</th></tr>
+    <tr><td>iFood</td><td>${fmt(fi.t.prev)}</td><td>${fi.t.rec == null ? '—' : fmt(fi.t.rec)}</td><td>${fi.t.desc == null ? '—' : fmt(fi.t.desc)}</td><td>${fmt(fi.t.emp)}</td><td>${difTxt(fi.t.dif)}</td></tr>
+    <tr><td>Keeta</td><td>${fmt(fk.t.prev)}</td><td>${fk.t.rec == null ? '—' : fmt(fk.t.rec)}</td><td>${fk.t.desc == null ? '—' : fmt(fk.t.desc)}</td><td>—</td><td>—</td></tr>
+    <tr class="total"><td>Total geral</td><td>${fmt(gp)}</td><td>${gr == null ? '—' : fmt(gr)}</td><td>${gd == null ? '—' : fmt(gd)}</td><td>${fmt(fi.t.emp)}</td><td>${difTxt(gdif)}</td></tr></table></div>`;
+  $('main').innerHTML = h;
+}
+async function grava(caminho, v) {
+  if (!ATUAL) return; const s = SEM[ATUAL], ps = caminho.split('/'); let o = s; ps.slice(0, -1).forEach(p => { o[p] = o[p] || {}; o = o[p]; });
+  if (v == null) delete o[ps[ps.length - 1]]; else o[ps[ps.length - 1]] = v;
+  desenha(); const t = $('salvo'); if (t) t.textContent = 'salvando…';
+  try { await fbRec(`semanas/${ATUAL}/${caminho}`).set(v == null ? null : v); await fbRec(`semanas/${ATUAL}`).update({ atualizado: Date.now(), por: U }); if ($('salvo')) $('salvo').textContent = '✓ salvo'; }
+  catch (e) { if ($('salvo')) $('salvo').textContent = '⚠️ não salvou'; alert('Não salvou: ' + (e.message || e)); }
+}
+function salva(el) { const v = num(el.value); if (el.value.trim() && v == null) { el.style.borderColor = '#dc2626'; return; } grava(el.dataset.c, v); }
+function salvaTxt(el) { const v = el.value.trim(); grava(el.dataset.c, v ? (el.dataset.c.endsWith('/num') ? Number(v) || v : v) : null); }
+async function criaSemana() {
+  const sug = quartaDe(isoD(new Date())), q = prompt('Quarta-feira do pagamento (dd/mm/aaaa):', br(sug)); if (!q) return;
+  const m = q.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); if (!m) return alert('Use dd/mm/aaaa');
+  const iso = `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  if (SEM[iso]) { ATUAL = iso; desenha(); return; }
+  const s = novaSemana(iso); SEM[iso] = s; ATUAL = iso; desenha();
+  try { await fbRec(`semanas/${iso}`).set(s); } catch (e) { alert('Não salvou: ' + (e.message || e)); }
+}
+(async function inicia() {
+  try {
+    const u = window.JbLogin && JbLogin.pronto ? await JbLogin.pronto() : null;
+    U = u ? String(((await u.getIdTokenResult()).claims || {}).username || '').toLowerCase() : '';
+    if (!window.JB_DEMO && !PG_PERMITIDOS.includes(U)) { $('main').innerHTML = '<div class="vazio-box">🔒 Seu usuário não tem acesso aos Pagamentos. <a href="https://systembria.github.io/hub/">Ir para o Hub</a></div>'; return; }
+    SEM = (await fbRec('semanas').once('value')).val() || {};
+    const lista = Object.keys(SEM).sort().reverse(), q = quartaDe(isoD(new Date()));
+    ATUAL = SEM[q] ? q : (lista[0] || '');
+    desenha();
+  } catch (e) { $('main').innerHTML = `<div class="vazio-box">⚠️ Não consegui abrir: ${esc(e.message || e)}</div>`; }
+})();
+</script>
+</body>
+</html>
