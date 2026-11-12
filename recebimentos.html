@@ -199,7 +199,7 @@ function desenha() {
   const digitando = ativo && !FOCO && ae.value !== ae.defaultValue ? ae.value : null, alvo = FOCO || ativo, porEnter = !!FOCO; FOCO = null;
   if (alvo) { const n = document.querySelector(`[data-c="${alvo}"]`); if (n) {
     if (digitando != null) { n.value = digitando; n._salvo = undefined; n.classList.remove('vazio'); }
-    n.focus(); if (porEnter && n.select) n.select(); else if (digitando != null && n.setSelectionRange) n.setSelectionRange(n.value.length, n.value.length);
+    n.focus(); if (porEnter && n.select) n.select(); else if (digitando != null && n.type === "text") n.setSelectionRange(n.value.length, n.value.length);
   } }
 }
 // Maikon 12/11: Enter salva e desce para o campo de baixo da mesma coluna (ex.: Esfiha → ABC)
