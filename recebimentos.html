@@ -78,6 +78,9 @@ input.v.vazio { background:#fffbeb; }
 .btn.inf { background:#fff7ed; color:#9a3412; border:1px solid #fdba74; } .btn.feito { background:#f1f5f9; color:#94a3b8; border:1px solid #e2e8f0; }
 .inf td { height:auto; } .inf td:first-child { white-space:normal !important; min-width:0; } .inf { font-variant-numeric:normal; }
 .barra select { max-width:100%; }
+.botao.totg { background:#1e293b; color:#fff; cursor:default; max-width:760px; margin:0 auto; } .botao.totg .nome { font-size:18px; } .botao.totg .nome small { display:block; font-size:11.5px; font-weight:700; opacity:.75; }
+.aviso-nb { max-width:760px; width:100%; margin:0 auto; background:var(--badbg); color:var(--bad); border-radius:12px; padding:10px 14px; font-weight:800; font-size:13.5px; text-align:center; }
+.mini-bt { padding:6px 10px !important; margin-left:auto; }
 .um { max-width:760px; width:100%; margin:0 auto; display:flex; flex-direction:column; gap:10px; }
 .mod-bg { position:fixed; inset:0; background:rgba(15,23,42,.55); z-index:600; display:flex; align-items:center; justify-content:center; padding:16px; }
 .mod { background:#fff; border-radius:16px; width:100%; max-width:560px; max-height:92vh; overflow:auto; }
@@ -90,9 +93,12 @@ input.v.vazio { background:#fffbeb; }
   table { font-size:12.5px; } th { font-size:9px; padding:5px 4px; } td { padding:2px 4px; height:28px; } input.v { width:80px; font-size:12.5px; }
   td:not(:first-child):not(.ed), th:not(:first-child):not(:empty) { padding-right:7px; padding-left:2px; } td input.v { margin-right:-6px; width:70px; padding:3px 5px; }
   th:first-child, td:first-child { padding-left:8px; } .tri { width:16px; font-size:11px; } .dif-mais .sufixo { display:none; } .lapis { font-size:11px; }
+  td:first-child { white-space:nowrap !important; } .tab { overflow-x:auto; } .botao.totg .tot b { font-size:13.5px; }
+  .barra .mini-bt { width:auto; }
+  .modo-dir .ed, .modo-dir th:last-child { display:none; } .tab .cab input[type=date] { width:140px; }
   tr.total td { font-size:13px; } .botao .tot b { font-size:13.5px; } .cd, .ce { display:none; } td:first-child { white-space:normal; min-width:0; } .ed { width:20px; }
   .barra select, .tab .cab input, input.v { font-size:16px; } /* 16px: o iPhone não dá zoom ao tocar */
-  .barra select { width:100%; } .inf td { padding-left:10px !important; padding-right:10px !important; }
+  .barra select { flex:1; min-width:0; width:auto; } .inf td { padding-left:10px !important; padding-right:10px !important; }
   .barra { gap:6px; } .barra .btn { padding:7px 10px; font-size:12.5px; } .st { margin-left:0; } }
 @media (min-width:1101px) and (max-width:1360px) { main { padding:8px; } .duas { gap:10px; } table { font-size:13px; } th { font-size:9.5px; letter-spacing:.02em; } input.v { width:78px; font-size:13px; } td:first-child, th:first-child { padding-left:8px; } .tri { width:18px; } }
 </style>
@@ -226,6 +232,8 @@ async function finaliza() {
    Na visão da diretoria a tela mostra este mesmo resumo; tocar no iFood ou na Keeta abre os lançamentos. */
 const DIRETORIA = ['justadm', 'maikon', 'juliana'];
 let VISAO = 'lanc', ABRE = '';
+const ABERTOS = new Set(); // na visão da diretoria as tarjas vêm fechadas
+function abreFecha(q, el) { if (VISAO === 'dir') { ABERTOS.has(q) ? ABERTOS.delete(q) : ABERTOS.add(q); desenha(); } else { const t = el.parentNode.querySelector('.tab'); t.hidden = !t.hidden; } }
 const ddmm = iso => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) : '';
 function resumoSem(s) {
   const fi = calcIfood(s), fk = calcKeeta(s), m = s.pagto.slice(0, 7);
@@ -324,10 +332,20 @@ function desenha() {
   fk.lojas.forEach(l => { tk += `<tr><td title="${esc(l.cnpj)} · ID ${esc(l.lid)}">${tri(l.desc, l)}${esc(l.nome)}</td><td>${inp('keeta/prev/' + l.id, l.prev, 'k-' + l.id)}</td><td>${inpR('keeta/rec/' + l.id, l.rec, 'k-' + l.id)}</td><td class="cd">${l.desc == null ? '' : fmt(l.desc)}</td><td class="ce"><span class="sem">—</span></td><td>${difTxt(l.desc, l)}</td>${ed('k-' + l.id, [l.prev, l.rec])}</tr>`; });
   tk += `<tr class="enche"><td colspan="7" style="padding:0;height:0;border:0"></td></tr><tr class="total"><td>${tri()}Total Keeta</td><td>${fmt(fk.t.prev)}</td><td>${fk.t.rec == null ? '—' : fmt(fk.t.rec)}</td><td class="cd">${fk.t.desc == null ? '—' : fmt(fk.t.desc)}</td><td class="ce">—</td><td>${difTxt(fk.t.desc)}</td><td></td></tr></table>`;
   const cab = (p, x) => `<div class="cab"># <input value="${esc(x.num || '')}" data-c="${p}/num" onchange="salvaTxt(this)"> Apuração <input type="date" value="${esc(x.de || '')}" data-c="${p}/de" onchange="salvaTxt(this)"> a <input type="date" value="${esc(x.ate || '')}" data-c="${p}/ate" onchange="salvaTxt(this)"></div>`;
-  const botao = (cls, nome, t) => `<button class="botao ${cls}" onclick="this.parentNode.querySelector('.tab').hidden=!this.parentNode.querySelector('.tab').hidden">
+  const botao = (cls, nome, t) => `<button class="botao ${cls}" onclick="abreFecha('${cls}', this)">
     <span class="nome">${nome}</span><span class="tot"><div><small>Previsto</small><b>${fmt(t.prev)}</b></div><div><small>Recebido</small><b>${t.rec == null ? '—' : fmt(t.rec)}</b></div><div><small>Descontos</small><b>${t.desc == null ? '—' : fmt(t.desc)}</b></div></span></button>`;
   const colI = `<div class="col">${botao('ifood', 'iFood', fi.t)}\n      <div class="tab">${cab('ifood', f)}${ti}</div></div>`, colK = `<div class="col">${botao('keeta', 'Keeta', fk.t)}\n      <div class="tab">${cab('keeta', k)}${tk}</div></div>`;
-  if (VISAO === 'dir') { $('main').innerHTML = desenhaDiretoria(s, opt, st) + (ABRE ? `<div class="um">${ABRE === 'ifood' ? colI : colK}</div>` : ''); return; }
+  if (VISAO === 'dir') { // Maikon 12/11: tarja do iFood, tarja da Keeta (fechadas; toca para abrir), tarja preta do total e o aviso embaixo
+    const fecha = (x, q) => ABERTOS.has(q) ? x : x.replace('<div class="tab">', '<div class="tab" hidden>');
+    const optD = lista.map(x => `<option value="${x.pagto}" ${x.pagto === ATUAL ? 'selected' : ''}>Pagamento ${br(x.pagto)}</option>`).join('');
+    const gp = fi.t.prev + fk.t.prev, gr = fi.t.rec == null && fk.t.rec == null ? null : (fi.t.rec || 0) + (fk.t.rec || 0), gd = gr == null ? null : (fi.t.desc || 0) + (fk.t.desc || 0), qn = fi.t.quais.concat(fk.t.quais);
+    $('main').innerHTML = `<div class="barra"><label>Semana</label><select onchange="ATUAL=this.value;desenha()">${optD}</select><button class="btn cl mini-bt" title="Tela completa (lançar)" onclick="VISAO='lanc';desenha()">⚙️</button></div>
+      <div class="duas">${fecha(colI, 'ifood')}${fecha(colK, 'keeta')}</div>
+      <div class="botao totg"><span class="nome">Total iFood + Keeta<small>pagamento ${br(s.pagto)}</small></span><span class="tot"><div><small>Previsto</small><b>${fmt(gp)}</b></div><div><small>Recebido</small><b>${gr == null ? '—' : fmt(gr)}</b></div><div><small>Descontos</small><b>${gd == null ? '—' : fmt(gd)}</b></div></span></div>
+      ${qn.length ? `<div class="aviso-nb">⚠️ Não bate: ${esc(qn.join(', '))}</div>` : ''}`;
+    $('main').classList.add('modo-dir'); alinhaTotais(); return;
+  }
+  $('main').classList.remove('modo-dir');
   h += `<div class="duas">${colI}${colK}</div>`;
   // total geral dos dois
   const gp = fi.t.prev + fk.t.prev, gr = fi.t.rec == null && fk.t.rec == null ? null : (fi.t.rec || 0) + (fk.t.rec || 0), gd = gr == null ? null : (fi.t.desc || 0) + (fk.t.desc || 0), gdif = fi.t.dif == null && fk.t.desc == null ? null : (fi.t.dif || 0) + (fk.t.desc || 0);
@@ -349,6 +367,7 @@ let FOCO = null;
 // Maikon 12/11: o Total da Keeta na mesma linha do Total do iFood (linha vazia que cresce o que falta)
 function alinhaTotais() {
   const tabs = document.querySelectorAll('.duas .tab'), en = document.querySelector('tr.enche td'); if (tabs.length < 2 || !en) return;
+  if (tabs[0].hidden || tabs[1].hidden) { en.style.height = '0px'; return; }
   en.style.height = '0px'; if (getComputedStyle(document.querySelector('.duas')).gridTemplateColumns.split(' ').length < 2) return;
   const tI = tabs[0].querySelector('tr.total'), tK = tabs[1].querySelector('tr.total'); if (!tI || !tK) return;
   const d = tI.getBoundingClientRect().top - tK.getBoundingClientRect().top; if (d > 0) en.style.height = d + 'px';
