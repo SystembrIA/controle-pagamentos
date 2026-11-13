@@ -688,6 +688,7 @@ body{background:#f4f6fb;color:#1a1d2e}
 .header{position:sticky;padding-left:var(--hdr-esq,60px) !important}
 .header .hdr-voltar{position:absolute;left:12px;top:50%;transform:translateY(-50%)}
 .header .sub{display:none !important}
+html.no-hub .header .hdr-voltar{display:none !important}
 .toolbar{background:#fff;border:1px solid #e8ecf3;border-radius:14px;margin:12px auto 0;max-width:1576px;width:calc(100% - 24px);padding:10px 12px;box-shadow:0 2px 8px rgba(15,23,42,.04)}
 .toolbar label{color:#475569;font-weight:700}
 input[type=date],.busca-wrap input{border:1px solid #dfe4ee;border-radius:10px;padding:8px 12px;background:#f8fafc;font-family:inherit}
@@ -846,7 +847,9 @@ body.grupo-on #saldoSection,body.grupo-on #uploadSection,body.grupo-on #contasSe
   </div>
 </div>
 
-<script>(function(){function al(){try{var h=document.querySelector('.header'),t=document.querySelector('.toolbar'),f=t&&t.firstElementChild;if(!h||!f)return;var x=Math.round(f.getBoundingClientRect().left);document.documentElement.style.setProperty('--hdr-esq',Math.max(window.innerWidth<520?54:60,x)+'px');}catch(e){}}
+<script>(function(){var noHub=false;try{noHub=window.top!==window.self&&/\/hub\//.test(window.top.location.pathname);}catch(e){}
+if(noHub)document.documentElement.classList.add('no-hub'); // dentro do Hub: sem o voltar (volta pela setinha do menu)
+function al(){try{var h=document.querySelector('.header'),t=document.querySelector('.toolbar'),f=t&&t.firstElementChild;if(!h||!f)return;var x=Math.round(f.getBoundingClientRect().left);document.documentElement.style.setProperty('--hdr-esq',Math.max(noHub?16:window.innerWidth<520?54:60,x)+'px');}catch(e){}}
 window.addEventListener('load',al);window.addEventListener('resize',al);setTimeout(al,400);setTimeout(al,1500);})();</script>
 <!-- TOOLBAR -->
 <div class="toolbar">
