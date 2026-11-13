@@ -253,6 +253,7 @@ input.val-edit:focus{outline:none;border-color:#1e40af;background:#eff6ff;}
 .cat-cartao{background:#fef3c7;color:#b45309;}
 .cat-entrecontas{background:#e0e7ff;color:#4338ca;}
 .cat-transfconta{background:#fae8ff;color:#86198f;}
+.cat-repasse{background:#ede9fe;color:#5b21b6;}
 .cat-out{background:#f1f5f9;color:#475569;}
 
 /* status badge — visível na tela, oculto na impressão via .no-print */
@@ -1017,6 +1018,7 @@ window.addEventListener('load',al);window.addEventListener('resize',al);setTimeo
           <option value="entrecontas">🔁 Entre contas – Cobertura (outra empresa do grupo)</option>
           <option value="entrefunc">🔁 Entre contas – Funcionário (outra empresa do grupo)</option>
           <option value="transfconta">🔁 Entre contas – Service (a Service paga)</option>
+          <option value="repasse">🔁 Entre contas – Repasse (entrou na Service, vai para a loja)</option>
           <option value="outro">📌 Outro</option>
         </select></div>
       <div class="form-row"><label>Categoria</label>
@@ -1397,7 +1399,7 @@ function fmt(v){
 // Método.
 function renderSaldos(d) {
   const grid=document.getElementById('saldoGrid');
-  let totalIni=0,totalPagarSemService=0,totalPagarService=0,totalEntreContas=0,totalTransfConta=0;
+  let totalIni=0,totalPagarSemService=0,totalPagarService=0,totalEntreContas=0,totalTransfConta=0,totalRepasse=0;
   let html='';
   for (const emp of EMPRESAS) {
     const ini=d.saldos[emp.key]||0;
@@ -1405,6 +1407,8 @@ function renderSaldos(d) {
     const pagar=contas.reduce((s,c)=>s+(c.valor||0),0);
     const entreContas=contas.filter(c=>catEfetiva(c)==='entrecontas').reduce((s,c)=>s+(c.valor||0),0);
     const transfConta=contas.filter(c=>catEfetiva(c)==='transfconta').reduce((s,c)=>s+(c.valor||0),0);
+    // Maikon 13/11: Repasse (ex.: iFood cai na Service e ela repassa para a Matriz / Sushi) — entra no pagamento do dia, mas o dinheiro fica no grupo
+    totalRepasse+=contas.filter(c=>catEfetiva(c)==='repasse').reduce((s,c)=>s+(c.valor||0),0);
     const final=ini-pagar; // Maikon 12/11: transferência entre contas NÃO mexe no saldo — saldo − contas a pagar, como era antes
     if (emp.key==='SERVICE') { totalPagarService+=pagar; }
     else { totalIni+=ini; totalPagarSemService+=pagar; totalEntreContas+=entreContas; totalTransfConta+=transfConta; }
@@ -1429,7 +1433,7 @@ function renderSaldos(d) {
   // dinheiro saindo do grupo) e Entre Contas (mesmo gasto contado 2x -- saída da empresa +
   // saída da Just Service pro fornecedor real). Só uma referência; o total de cima continua
   // sendo o valor cheio, pra bater com o extrato bancário.
-  const totalDesconsiderado=totalEntreContas+totalTransfConta;
+  const totalDesconsiderado=totalEntreContas+totalTransfConta+totalRepasse;
   const totalPagarReal=totalPagar-totalDesconsiderado;
   // Maikon 06/11: o líquido real é do GRUPO TODO, com a conta da Service (antes tirava a cobertura duas vezes e misturava
   // o pagamento da Service sem o saldo dela). Fecha a conta: saldo do grupo − pagamento real = líquido real.
@@ -1442,7 +1446,7 @@ function renderSaldos(d) {
       <div class="mini-val" style="color:#fca5a5">-${fmt(totalPagar)}</div>
       <div class="mini-val">${fmt(totalFinal)}</div>
     </div>
-    ${totalDesconsiderado>0?`<div class="saldo-mini saldo-mini-real" title="Grupo todo, com a Service: tira as transferências internas (Cobertura ${fmt(totalEntreContas)} + para a Service ${fmt(totalTransfConta)}). Saldo do grupo ${fmt(totalIni+saldoService)} − pagamento real = líquido real.">
+    ${totalDesconsiderado>0?`<div class="saldo-mini saldo-mini-real" title="Grupo todo, com a Service: tira as transferências internas (Cobertura ${fmt(totalEntreContas)} + para a Service ${fmt(totalTransfConta)}${totalRepasse?` + Repasse ${fmt(totalRepasse)}`:''}). Saldo do grupo ${fmt(totalIni+saldoService)} − pagamento real = líquido real.">
       <div class="mini-val-real mini-val-real-label">🔁 ${fmt(totalDesconsiderado)}</div>
       <div class="mini-val-real" style="color:#fca5a5">-${fmt(totalPagarReal)}</div>
       <div class="mini-val-real" style="color:#86efac">${fmt(totalFinalReal)}</div>
@@ -1502,9 +1506,9 @@ const _gNorm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCas
 function noGrupo(c,g){
   if(!c) return false;
   if(g.k==='boleto') return catEfetiva(c)==='boleto';
-  if(g.entre){ const ce=catEfetiva(c); return ce==='entrecontas'||ce==='transfconta'||_G_INTERNAS.includes(catOficial(c.categoria||'')); }
-  if(g.total){ const ce=catEfetiva(c); if(ce==='entrecontas'||ce==='transfconta') return false; return !_G_INTERNAS.includes(catOficial(c.categoria||'')); }
-  if(g.outros){ const ce=catEfetiva(c); if(ce==='entrecontas'||ce==='transfconta') return false;
+  if(g.entre){ const ce=catEfetiva(c); return ce==='entrecontas'||ce==='transfconta'||ce==='repasse'||_G_INTERNAS.includes(catOficial(c.categoria||'')); }
+  if(g.total){ const ce=catEfetiva(c); if(ce==='entrecontas'||ce==='transfconta'||ce==='repasse') return false; return !_G_INTERNAS.includes(catOficial(c.categoria||'')); }
+  if(g.outros){ const ce=catEfetiva(c); if(ce==='entrecontas'||ce==='transfconta'||ce==='repasse') return false;
     const cat=catOficial(c.categoria||''); if(_G_INTERNAS.includes(cat)) return false;
     return !GRUPOS.some(x=>x.k!=='boleto' && !x.outros && !x.total && noGrupo(c,x)); }
   const cat=catOficial(c.categoria||'');
@@ -1692,7 +1696,7 @@ function imprimirTodas(ev) { imprimir(null, ev, true); }
 function imprimir(soEmp, ev, juntas) {
   if (ev) ev.stopPropagation();
   const d = getDia(diaAtual); if (!d) return;
-  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre contas – Cobertura',entrefunc:'Entre contas – Funcionário',transfconta:'Entre contas – Service',outro:'Outro'};
+  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre contas – Cobertura',entrefunc:'Entre contas – Funcionário',transfconta:'Entre contas – Service',repasse:'Entre contas – Repasse',outro:'Outro'};
   const [aa,mm,dd] = String(diaAtual||'').split('-'), dataBR = dd ? `${dd}/${mm}/${aa}` : '';
   const paginas = [];
   for (const emp of EMPRESAS) {
@@ -1758,8 +1762,8 @@ function imprimir(soEmp, ev, juntas) {
 }
 
 function rowHTML(empKey,c,i) {
-  const catMap={motoboy:'cat-mb',boleto:'cat-bl',pix:'cat-pix',ted:'cat-ted',cartao:'cat-cartao',entrecontas:'cat-entrecontas',entrefunc:'cat-entrecontas',transfconta:'cat-transfconta',outro:'cat-out'};
-  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre contas – Cobertura',entrefunc:'Entre contas – Funcionário',transfconta:'Entre contas – Service',outro:'Outro'};
+  const catMap={motoboy:'cat-mb',boleto:'cat-bl',pix:'cat-pix',ted:'cat-ted',cartao:'cat-cartao',entrecontas:'cat-entrecontas',entrefunc:'cat-entrecontas',transfconta:'cat-transfconta',repasse:'cat-repasse',outro:'cat-out'};
+  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre contas – Cobertura',entrefunc:'Entre contas – Funcionário',transfconta:'Entre contas – Service',repasse:'Entre contas – Repasse',outro:'Outro'};
   const st=c.status==='pago';
   const venc=c.venc||'';
   const pendente = c.origem==='conciliacao' && !c.conciliado;
@@ -2135,7 +2139,8 @@ function processRows(rowsFmt, rowsRaw, empKeyArquivo, filename) {
     // Método de pagamento -- "Cobertura Conta" vem escrita na Descrição,
     // não no Método, então ela tem prioridade sobre o normMetodo
     const metodoRaw=ci.metodo<rf.length?String(rf[ci.metodo]||'').trim():'';
-    const cat=ehCoberturaConta(ref) ? 'entrecontas'
+    const cat=((ehEntreContas(ref)||ehEntreContas(desc)) && (ehRepasse(ref)||ehRepasse(desc))) ? 'repasse'
+      : ehCoberturaConta(ref) ? 'entrecontas'
       : (ehEntreContas(ref)||ehEntreContas(desc)) ? 'transfconta'
       : normMetodo(metodoRaw);
 
@@ -2339,7 +2344,11 @@ function _paraOutraEmpresa(c){ const d=_gNorm(c.desc||''); return !!d && !/SERVI
 // Só para o NOME na tela: "Entre contas – Funcionário" (Sushi → Pizza, salário) conta igual à cobertura (fica no grupo)
 function catVis(c){ const ce=catEfetiva(c); if(ce!=='entrecontas') return ce;
   return (c.cat==='entrefunc' || /FUNCIONARI|SALARIO|DIAS TRABALHADOS|BONIFICA|ADIANTAMENTO|\bVALE\b/.test(_gNorm((c.ref||'')+' '+(c.categoria||'')))) ? 'entrefunc' : 'entrecontas'; }
+// Repasse (Maikon 13/11): "ENTRE CONTAS - REPASSE …" ou o método escolhido. Vem antes da cobertura e do "para outra empresa".
+function ehRepasse(t){ return /\bREPASSE\b/.test(_gNorm(t)); }
 function catEfetiva(c) {
+  if (c.cat==='repasse') return 'repasse';
+  if ((ehRepasse(c.ref)||ehRepasse(c.desc)) && (ehEntreContas(c.ref)||ehEntreContas(c.desc)||c.cat==='transfconta'||c.cat==='entrecontas'||catOficial(c.categoria||'')==='Transferência entre Contas')) return 'repasse';
   if (ehCoberturaConta(c.ref)||ehCoberturaConta(c.desc)) return 'entrecontas';
   if (c.cat==='entrecontas' || c.cat==='entrefunc' || catOficial(c.categoria||'')==='Cobertura de Conta') return 'entrecontas';
   if (ehEntreContas(c.ref)||ehEntreContas(c.desc)||c.cat==='transfconta') return _paraOutraEmpresa(c) ? 'entrecontas' : 'transfconta';
@@ -2877,7 +2886,7 @@ function buscaValor(q){
 function executarBusca(q) {
   const porValor = buscaValor(q);
   const termo = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre contas – Cobertura',entrefunc:'Entre contas – Funcionário',transfconta:'Entre contas – Service',outro:'Outro'};
+  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre contas – Cobertura',entrefunc:'Entre contas – Funcionário',transfconta:'Entre contas – Service',repasse:'Entre contas – Repasse',outro:'Outro'};
 
   // agrupa resultados por data
   const grupos = {};
@@ -2951,7 +2960,7 @@ function exPeriodo(tipo){
 }
 function exLinhas(){
   const emp=document.getElementById('exEmp').value, de=document.getElementById('exDe').value, ate=document.getElementById('exAte').value;
-  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre contas – Cobertura',entrefunc:'Entre contas – Funcionário',transfconta:'Entre contas – Service',outro:'Outro'};
+  const catLbl={motoboy:'Pix Motoboy',boleto:'Boleto',pix:'Pix',ted:'TED',cartao:'Cartão',entrecontas:'Entre contas – Cobertura',entrefunc:'Entre contas – Funcionário',transfconta:'Entre contas – Service',repasse:'Entre contas – Repasse',outro:'Outro'};
   const out=[];
   Object.keys(DB).filter(dt=>/^\d{4}-\d{2}-\d{2}$/.test(dt) && dt>=de && dt<=ate).sort().forEach(dt=>{
     const d=DB[dt]||{};
