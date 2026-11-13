@@ -684,6 +684,10 @@ body{background:#f4f6fb;color:#1a1d2e}
 .header .sub{color:#64748b;opacity:1;font-weight:600}
 .hdr-voltar{background:#f0f2f8;border:1px solid #dde1ed;color:#1a1d2e}
 .hdr-voltar:hover{background:#e3e7f2}
+/* Maikon 13/11: topo só com logo e título (sem a linha pequena embaixo), alinhados com o 1º campo da tela; voltar no canto */
+.header{position:sticky;padding-left:var(--hdr-esq,60px) !important}
+.header .hdr-voltar{position:absolute;left:12px;top:50%;transform:translateY(-50%)}
+.header .sub{display:none !important}
 .toolbar{background:#fff;border:1px solid #e8ecf3;border-radius:14px;margin:12px auto 0;max-width:1576px;width:calc(100% - 24px);padding:10px 12px;box-shadow:0 2px 8px rgba(15,23,42,.04)}
 .toolbar label{color:#475569;font-weight:700}
 input[type=date],.busca-wrap input{border:1px solid #dfe4ee;border-radius:10px;padding:8px 12px;background:#f8fafc;font-family:inherit}
@@ -842,6 +846,8 @@ body.grupo-on #saldoSection,body.grupo-on #uploadSection,body.grupo-on #contasSe
   </div>
 </div>
 
+<script>(function(){function al(){try{var h=document.querySelector('.header'),t=document.querySelector('.toolbar'),f=t&&t.firstElementChild;if(!h||!f)return;var x=Math.round(f.getBoundingClientRect().left);document.documentElement.style.setProperty('--hdr-esq',Math.max(window.innerWidth<520?54:60,x)+'px');}catch(e){}}
+window.addEventListener('load',al);window.addEventListener('resize',al);setTimeout(al,400);setTimeout(al,1500);})();</script>
 <!-- TOOLBAR -->
 <div class="toolbar">
   <label><i class="fa-regular fa-calendar"></i> Data:</label>
